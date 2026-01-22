@@ -89,7 +89,11 @@ function eachDayOfWeek(weekAnchor: Date) {
   });
 }
 function fmtYYYYMMDD(d: Date) {
-  return d.toISOString().split('T')[0];
+  // LOCAL date key (fixes month/week mismatch)
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 function toLocalHM(iso?: string) {
   if (!iso) return '';
@@ -147,6 +151,71 @@ function statusClasses(s: Installation['status']) {
   }
 }
 
+/* =============== Week-view overlap groups (Option 1 with popout) =============== */
+
+type DayEventInfo = {
+  inst: Installation;
+  top: number;
+  bottom: number;
+};
+
+type OverlapGroup = {
+  top: number;
+  bottom: number;
+  events: DayEventInfo[];
+};
+
+// Build groups of overlapping events (by time) for a single day
+function computeOverlapGroups(events: Installation[]): OverlapGroup[] {
+  if (!events.length) return [];
+
+  // Map events to vertical positions
+  const infos: DayEventInfo[] = events.map((ev) => {
+    const s = new Date(ev.scheduled_start || new Date());
+    const e = ev.scheduled_end ? new Date(ev.scheduled_end) : new Date(s);
+
+    const sh = s.getHours() + s.getMinutes() / 60;
+    const eh = e.getHours() + e.getMinutes() / 60;
+
+    const startClamped = Math.max(DAY_START, Math.min(sh, DAY_END));
+    const endClamped = Math.max(DAY_START, Math.min(eh, DAY_END));
+    const duration = Math.max(0.25, endClamped - startClamped); // ≥ 15 min
+
+    const top = (startClamped - DAY_START) * HOUR_HEIGHT;
+    const height = Math.max(28, duration * HOUR_HEIGHT);
+    const bottom = top + height;
+
+    return { inst: ev, top, bottom };
+  });
+
+  // Sort by start
+  infos.sort((a, b) => a.top - b.top || a.bottom - b.bottom);
+
+  const groups: OverlapGroup[] = [];
+  for (const info of infos) {
+    const last = groups[groups.length - 1];
+    if (!last || info.top > last.bottom) {
+      // New group
+      groups.push({ top: info.top, bottom: info.bottom, events: [info] });
+    } else {
+      // Extend existing group
+      last.events.push(info);
+      if (info.bottom > last.bottom) last.bottom = info.bottom;
+      if (info.top < last.top) last.top = info.top;
+    }
+  }
+
+  // Ensure enough height for stacked rows when expanded
+  for (const g of groups) {
+    const minByCount = g.events.length * 22; // ~22px per row when expanded
+    const natural = g.bottom - g.top;
+    const finalHeight = Math.max(32, natural, minByCount);
+    g.bottom = g.top + finalHeight;
+  }
+
+  return groups;
+}
+
 /* =============== Component =============== */
 type ViewMode = 'month' | 'week';
 
@@ -156,6 +225,7 @@ export default function CalendarPage() {
 
   const [mode, setMode] = useState<ViewMode>('month');
   const [cursor, setCursor] = useState<Date>(() => new Date());
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null); // for week-view popouts
 
   // Visible ranges
   const monthStart = startOfMonth(cursor);
@@ -231,17 +301,23 @@ export default function CalendarPage() {
 
   const byDayMonth = useMemo(() => {
     const m = new Map<string, Installation[]>();
+
     for (const inst of filteredByRange) {
       if (!inst.scheduled_start) continue;
-      const key = inst.scheduled_start.slice(0, 10);
+
+      const d = new Date(inst.scheduled_start);
+      const key = fmtYYYYMMDD(d);
+
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(inst);
     }
+
     for (const [, arr] of m) {
       arr.sort((a, b) =>
         (a.scheduled_start || '').localeCompare(b.scheduled_start || '')
       );
     }
+
     return m;
   }, [filteredByRange]);
 
@@ -251,17 +327,23 @@ export default function CalendarPage() {
 
   const byDayWeek = useMemo(() => {
     const m = new Map<string, Installation[]>();
+
     for (const inst of filteredByRange) {
       if (!inst.scheduled_start) continue;
-      const key = inst.scheduled_start.slice(0, 10);
+
+      const d = new Date(inst.scheduled_start);
+      const key = fmtYYYYMMDD(d);
+
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(inst);
     }
+
     for (const [, arr] of m) {
       arr.sort((a, b) =>
         (a.scheduled_start || '').localeCompare(b.scheduled_start || '')
       );
     }
+
     return m;
   }, [filteredByRange]);
 
@@ -548,6 +630,7 @@ export default function CalendarPage() {
             {weekDays.map((day) => {
               const key = fmtYYYYMMDD(day);
               const events = byDayWeek.get(key) ?? [];
+              const groups = computeOverlapGroups(events);
 
               return (
                 <div
@@ -564,47 +647,103 @@ export default function CalendarPage() {
                     />
                   ))}
 
-                  {/* Events */}
-                  {events.map((ev) => {
-                    const s = new Date(ev.scheduled_start || day);
-                    const e = new Date(ev.scheduled_end || s);
+                  {/* Groups (one main block per overlapping cluster) */}
+                  {groups.map((g, gi) => {
+                    const groupId = `${key}-${gi}`;
+                    const expanded = openGroupId === groupId;
+                    const primary = g.events[0];
+                    const others = g.events.slice(1);
 
-                    const sh = s.getHours() + s.getMinutes() / 60;
-                    const eh = e.getHours() + e.getMinutes() / 60;
+                    if (expanded) {
+                      // Expanded: show full card listing all installations
+                      return (
+                        <div
+                          key={groupId}
+                          className="absolute left-1 right-1 rounded-md border border-gray-200 bg-white shadow-sm"
+                          style={{ top: g.top, height: g.bottom - g.top }}
+                        >
+                          <div className="flex justify-between items-center px-2 py-1 border-b border-gray-100 text-[11px] font-semibold text-gray-700">
+                            <span>
+                              {toLocalHM(
+                                primary.inst.scheduled_start
+                              )}–{toLocalHM(primary.inst.scheduled_end)}
+                            </span>
+                            <button
+                              className="text-[10px] text-gray-500 hover:text-gray-700"
+                              onClick={() => setOpenGroupId(null)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                          <div className="flex h-full flex-col gap-0.5 overflow-auto px-1 py-1">
+                            {g.events.map((info) => {
+                              const ev = info.inst;
+                              return (
+                                <Link
+                                  to={`/app/installations/${ev.id}`}
+                                  key={ev.id}
+                                  className={cn(
+                                    'flex items-center justify-between gap-1 rounded px-1 py-0.5 text-[11px] font-medium hover:opacity-90',
+                                    statusClasses(ev.status)
+                                  )}
+                                  title={`${ev.order_id || ev.id} • ${toLocalHM(
+                                    ev.scheduled_start
+                                  )}–${toLocalHM(ev.scheduled_end)}`}
+                                >
+                                  <span className="truncate">
+                                    {ev.order_id || ev.id}
+                                  </span>
+                                  <span className="ml-1 flex-shrink-0 text-[10px] opacity-80">
+                                    {toLocalHM(ev.scheduled_start)}–
+                                    {toLocalHM(ev.scheduled_end)}
+                                  </span>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    }
 
-                    const startClamped = Math.max(
-                      DAY_START,
-                      Math.min(sh, DAY_END)
-                    );
-                    const endClamped = Math.max(
-                      DAY_START,
-                      Math.min(eh, DAY_END)
-                    );
-                    const duration = Math.max(0.25, endClamped - startClamped); // >= 15 min
-
-                    const top = (startClamped - DAY_START) * HOUR_HEIGHT;
-                    const height = Math.max(28, duration * HOUR_HEIGHT);
+                    // Collapsed: show only primary block + optional "+N more"
+                    const ev = primary.inst;
 
                     return (
                       <Link
                         to={`/app/installations/${ev.id}`}
-                        key={ev.id}
+                        key={groupId}
                         className={cn(
                           'absolute left-1 right-1 overflow-hidden rounded border px-2 py-1 text-[11px] font-medium shadow-sm transition-opacity hover:opacity-90',
                           statusClasses(ev.status)
                         )}
-                        style={{ top, height }}
+                        style={{ top: g.top, height: g.bottom - g.top }}
                         title={`${ev.order_id || ev.id} • ${toLocalHM(
                           ev.scheduled_start
                         )}–${toLocalHM(ev.scheduled_end)}`}
                       >
-                        <div className="truncate">
-                          {ev.order_id || ev.id}
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="truncate">
+                            {ev.order_id || ev.id}
+                          </span>
+                          <span className="ml-1 flex-shrink-0 text-[10px] opacity-80">
+                            {toLocalHM(ev.scheduled_start)}–
+                            {toLocalHM(ev.scheduled_end)}
+                          </span>
                         </div>
-                        <div className="text-[10px] opacity-70">
-                          {toLocalHM(ev.scheduled_start)}–
-                          {toLocalHM(ev.scheduled_end)}
-                        </div>
+                        {others.length > 0 && (
+                          <button
+                            className="mt-1 inline-flex items-center rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-medium text-gray-700 shadow-sm"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setOpenGroupId(
+                                openGroupId === groupId ? null : groupId
+                              );
+                            }}
+                          >
+                            +{others.length} more
+                          </button>
+                        )}
                       </Link>
                     );
                   })}
