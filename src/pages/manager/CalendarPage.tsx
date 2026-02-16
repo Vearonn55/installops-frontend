@@ -89,7 +89,6 @@ function eachDayOfWeek(weekAnchor: Date) {
   });
 }
 function fmtYYYYMMDD(d: Date) {
-  // LOCAL date key (fixes month/week mismatch)
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -282,7 +281,9 @@ export default function CalendarPage() {
     const toMs = to.getTime();
     return installations.filter((inst) => {
       if (!inst.scheduled_start) return false;
-      const tMs = new Date(inst.scheduled_start).getTime();
+      const d = new Date(inst.scheduled_start);
+      d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+      const tMs = d.getTime();
       return tMs >= fromMs && tMs <= toMs;
     });
   }, [installations, from, to]);
@@ -306,6 +307,7 @@ export default function CalendarPage() {
       if (!inst.scheduled_start) continue;
 
       const d = new Date(inst.scheduled_start);
+      d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
       const key = fmtYYYYMMDD(d);
 
       if (!m.has(key)) m.set(key, []);
@@ -332,6 +334,7 @@ export default function CalendarPage() {
       if (!inst.scheduled_start) continue;
 
       const d = new Date(inst.scheduled_start);
+      d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
       const key = fmtYYYYMMDD(d);
 
       if (!m.has(key)) m.set(key, []);
