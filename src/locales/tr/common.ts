@@ -340,6 +340,32 @@ installationsPage: {
 
   actions: {
     view: 'Görüntüle',
+    edit: 'Düzenle',
+  },
+
+  editModal: {
+    title: 'Kurulumu düzenle',
+    subtitle: 'Zamanlama, durum ve notları güncelleyin.',
+    scheduledStartLabel: 'Planlanan başlangıç',
+    scheduledEndLabel: 'Planlanan bitiş',
+    statusLabel: 'Durum',
+    notesLabel: 'Notlar',
+    notesPlaceholder: 'Ekip için ek notlar…',
+    saveChanges: 'Değişiklikleri kaydet',
+    saving: 'Kaydediliyor…',
+    statusOptions: {
+      scheduled: 'Planlandı',
+      in_progress: 'Devam ediyor',
+      completed: 'Tamamlandı',
+      failed: 'Başarısız',
+      canceled: 'İptal edildi',
+      after_sale_service: 'Satış Sonrası Hizmet',
+    },
+  },
+
+  toasts: {
+    updated: 'Kurulum güncellendi',
+    updateFailed: 'Kurulum güncellenemedi',
   },
 
   loading: 'Kurulumlar yükleniyor…',

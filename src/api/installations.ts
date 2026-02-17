@@ -49,6 +49,8 @@ export type CrewAssignmentCreate = {
 
 export type Installation = {
   id: UUID;
+  // human-readable code like "INST-00004" (returned by backend)
+  install_code?: string;
   external_order_id: string;
   store_id: UUID;
   scheduled_start?: string | null;

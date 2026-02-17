@@ -60,10 +60,6 @@ type Row = {
 
 
 /* ----------------------------- Helpers ---------------------------- */
-const isTr =
-  typeof navigator !== 'undefined' &&
-  navigator.language.toLowerCase().startsWith('tr');
-
 function ymd(d = new Date()) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -129,7 +125,7 @@ function makeRow(inst: Installation, store?: Store): Row {
 
   return {
     id: inst.id,
-    installCode: inst.install_code,   // <-- ADD THIS
+    installCode: inst.install_code ?? inst.id,
     status: uiStatus,
     start: inst.scheduled_start ?? null,
     end: inst.scheduled_end ?? null,
@@ -165,22 +161,30 @@ export default function InstallationsPage() {
     }
   };
 
-  // compute today and 1 month ago
-  const today = new Date();
-  const todayISO = ymd(today);
-
+  // compute 1 month ago, 1 month future
   const oneMonthAgo = new Date();
   oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-  const oneMonthAgoISO = ymd(oneMonthAgo);
 
+  const oneMonthFuture = new Date();
+  oneMonthFuture.setMonth(oneMonthFuture.getMonth() + 1);
+
+  const oneMonthAgoISO = ymd(oneMonthAgo);
+  const oneMonthFutureISO = ymd(oneMonthFuture);  
   // Filters
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<InstallationStatus | 'all'>('all');
   const [zone, setZone] = useState<Zone | 'all'>('all');
 
   // Set default range: from = 1 month ago, to = today
-  const [from, setFrom] = useState<string>(oneMonthAgoISO);
-  const [to, setTo] = useState<string>(todayISO);
+  // Restore from localStorage or use defaults
+  const [from, setFrom] = useState<string>(() => {
+    return localStorage.getItem('installations_from') || oneMonthAgoISO;
+  });
+
+  const [to, setTo] = useState<string>(() => {
+    return localStorage.getItem('installations_to') || oneMonthFutureISO;
+  });
+
 
   // Sort & pagination
   const [sortBy, setSortBy] = useState<'start' | 'customer' | 'zone' | 'status'>('start');
@@ -361,13 +365,12 @@ export default function InstallationsPage() {
 
       await queryClient.invalidateQueries({ queryKey: ['installations'] });
 
-      toast.success(isTr ? 'Kurulum güncellendi' : 'Installation updated');
+      toast.success(t('installationsPage.toasts.updated'));
       setEditState(null);
     } catch (err: any) {
       console.error(err);
       toast.error(
-        err?.message ||
-          (isTr ? 'Kurulum güncellenemedi' : 'Failed to update installation')
+        err?.message || t('installationsPage.toasts.updateFailed')
       );
     } finally {
       setSaving(false);
@@ -496,7 +499,9 @@ export default function InstallationsPage() {
                 value={from}
                 onClick={handleDateClick}
                 onChange={(e) => {
-                  setFrom(e.target.value);
+                  const value = e.target.value;
+                  setFrom(value);
+                  localStorage.setItem('installations_from', value);
                   setPage(1);
                 }}
               />
@@ -514,7 +519,9 @@ export default function InstallationsPage() {
                 value={to}
                 onClick={handleDateClick}
                 onChange={(e) => {
-                  setTo(e.target.value);
+                  const value = e.target.value;
+                  setTo(value);
+                  localStorage.setItem('installations_to', value);
                   setPage(1);
                 }}
               />
@@ -645,7 +652,9 @@ export default function InstallationsPage() {
                 dir={sortDir}
                 onClick={() => toggleSort('status')}
               />
-              <th className="w-28 px-3 py-2 text-left">Crew</th>
+              <th className="w-28 px-3 py-2 text-left">
+                {t('installationsPage.table.crew')}
+              </th>
               <th className="w-32 px-3 py-2"></th>
             </tr>
           </thead>
@@ -717,14 +726,14 @@ export default function InstallationsPage() {
                         onClick={() => goDetail(r.id)}
                         className="text-primary-600 hover:text-primary-800 text-xs font-medium"
                       >
-                        View
+                        {t('installationsPage.actions.view')}
                       </button>
                       <button
                         onClick={() => openEdit(r.id)}
                         className="inline-flex items-center gap-1 rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
-                        {isTr ? 'Düzenle' : 'Edit'}
+                        {t('installationsPage.actions.edit')}
                       </button>
                     </div>
                   </td>
@@ -777,12 +786,10 @@ export default function InstallationsPage() {
           <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
             <div className="border-b px-4 py-3">
               <h2 className="text-sm font-semibold text-gray-900">
-                {isTr ? 'Kurulumu düzenle' : 'Edit installation'}
+                {t('installationsPage.editModal.title')}
               </h2>
               <p className="mt-1 text-xs text-gray-500">
-                {isTr
-                  ? 'Takvim, durum ve notları güncelleyin.'
-                  : 'Update schedule, status and notes.'}
+                {t('installationsPage.editModal.subtitle')}
               </p>
             </div>
 
@@ -790,7 +797,7 @@ export default function InstallationsPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs text-gray-600">
-                    {isTr ? 'Planlanan başlangıç' : 'Scheduled start'}
+                    {t('installationsPage.editModal.scheduledStartLabel')}
                   </label>
                   <input
                     type="datetime-local"
@@ -807,7 +814,7 @@ export default function InstallationsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-gray-600">
-                    {isTr ? 'Planlanan bitiş' : 'Scheduled end'}
+                    {t('installationsPage.editModal.scheduledEndLabel')}
                   </label>
                   <input
                     type="datetime-local"
@@ -826,7 +833,7 @@ export default function InstallationsPage() {
 
               <div>
                 <label className="mb-1 block text-xs text-gray-600">
-                  {isTr ? 'Durum' : 'Status'}
+                  {t('installationsPage.editModal.statusLabel')}
                 </label>
                 <select
                   className="input w-full"
@@ -840,29 +847,29 @@ export default function InstallationsPage() {
                   }
                 >
                   <option value="scheduled">
-                    {isTr ? 'Planlandı' : 'Scheduled'}
+                    {t('installationsPage.editModal.statusOptions.scheduled')}
                   </option>
                   <option value="in_progress">
-                    {isTr ? 'Devam ediyor' : 'In progress'}
+                    {t('installationsPage.editModal.statusOptions.in_progress')}
                   </option>
                   <option value="completed">
-                    {isTr ? 'Tamamlandı' : 'Completed'}
+                    {t('installationsPage.editModal.statusOptions.completed')}
                   </option>
                   <option value="failed">
-                    {isTr ? 'Başarısız' : 'Failed'}
+                    {t('installationsPage.editModal.statusOptions.failed')}
                   </option>
                   <option value="canceled">
-                    {isTr ? 'İptal edildi' : 'Cancelled'}
+                    {t('installationsPage.editModal.statusOptions.canceled')}
                   </option>
                   <option value="after_sale_service">
-                    {isTr ? 'Satış sonrası servis' : 'After-sale service'}
+                    {t('installationsPage.editModal.statusOptions.after_sale_service')}
                   </option>
                 </select>
               </div>
 
               <div>
                 <label className="mb-1 block text-xs text-gray-600">
-                  {isTr ? 'Notlar' : 'Notes'}
+                  {t('installationsPage.editModal.notesLabel')}
                 </label>
                 <textarea
                   rows={3}
@@ -873,9 +880,7 @@ export default function InstallationsPage() {
                       prev ? { ...prev, notes: e.target.value } : prev
                     )
                   }
-                  placeholder={
-                    isTr ? 'Ekip için ek notlar…' : 'Additional notes for the crew…'
-                  }
+                  placeholder={t('installationsPage.editModal.notesPlaceholder')}
                 />
               </div>
             </div>
@@ -886,7 +891,7 @@ export default function InstallationsPage() {
                 disabled={saving}
                 className="rounded-md border px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
               >
-                {isTr ? 'İptal' : 'Cancel'}
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSaveEdit}
@@ -894,12 +899,8 @@ export default function InstallationsPage() {
                 className="inline-flex items-center rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 disabled:opacity-70"
               >
                 {saving
-                  ? isTr
-                    ? 'Kaydediliyor…'
-                    : 'Saving…'
-                  : isTr
-                  ? 'Değişiklikleri kaydet'
-                  : 'Save changes'}
+                  ? t('installationsPage.editModal.saving')
+                  : t('installationsPage.editModal.saveChanges')}
               </button>
             </div>
           </div>

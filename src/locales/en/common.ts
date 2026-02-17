@@ -335,6 +335,32 @@ installationsPage: {
 
   actions: {
     view: 'View',
+    edit: 'Edit',
+  },
+
+  editModal: {
+    title: 'Edit installation',
+    subtitle: 'Update schedule, status and notes.',
+    scheduledStartLabel: 'Scheduled start',
+    scheduledEndLabel: 'Scheduled end',
+    statusLabel: 'Status',
+    notesLabel: 'Notes',
+    notesPlaceholder: 'Additional notes for the crew…',
+    saveChanges: 'Save changes',
+    saving: 'Saving…',
+    statusOptions: {
+      scheduled: 'Scheduled',
+      in_progress: 'In progress',
+      completed: 'Completed',
+      failed: 'Failed',
+      canceled: 'Cancelled',
+      after_sale_service: 'After Sale Service',
+    },
+  },
+
+  toasts: {
+    updated: 'Installation updated',
+    updateFailed: 'Failed to update installation',
   },
 
   loading: 'Loading installations…',
