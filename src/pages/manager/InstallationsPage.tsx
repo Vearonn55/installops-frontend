@@ -334,12 +334,15 @@ export default function InstallationsPage() {
     const inst = insts.find((i) => i.id === id);
     if (!inst) return;
 
+    const now = new Date();
+    const end = new Date(now.getTime() + 60 * 60 * 1000);
+
     setEditState({
       id: inst.id as UUID,
       status: inst.status,
-      scheduled_start: isoToLocalInput(inst.scheduled_start ?? null),
-      scheduled_end: isoToLocalInput(inst.scheduled_end ?? null),
-      notes: inst.notes ?? '',
+      scheduled_start: isoToLocalInput(now.toISOString()),
+      scheduled_end: isoToLocalInput(end.toISOString()),
+      notes: '',
     });
   };
 

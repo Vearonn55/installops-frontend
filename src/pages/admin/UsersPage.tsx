@@ -284,21 +284,21 @@ export default function UsersPage() {
 
       {/* Filters */}
       <div className="card">
-        <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+        <div className="grid grid-cols-1 gap-3 p-6 md:grid-cols-12 md:items-center">
+          <div className="relative md:col-span-6">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-8"
+              className="input w-full pl-9"
               placeholder={t('usersPage.searchPlaceholder')}
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+          <div className="relative md:col-span-3">
+            <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <select
-              className="input w-full"
+              className="input w-full pl-9"
               value={roleIdFilter}
               onChange={(e) => setRoleIdFilter(e.target.value)}
             >
@@ -311,19 +311,17 @@ export default function UsersPage() {
             </select>
           </div>
 
-          <select
-            className="input w-full"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">{t('usersPage.filters.allStatuses')}</option>
-            <option value="active">
-              {t('usersPage.status.active')}
-            </option>
-            <option value="disabled">
-              {t('usersPage.status.disabled')}
-            </option>
-          </select>
+          <div className="relative md:col-span-3">
+            <select
+              className="input w-full"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">{t('usersPage.filters.allStatuses')}</option>
+              <option value="active">{t('usersPage.status.active')}</option>
+              <option value="disabled">{t('usersPage.status.disabled')}</option>
+            </select>
+          </div>
         </div>
       </div>
 

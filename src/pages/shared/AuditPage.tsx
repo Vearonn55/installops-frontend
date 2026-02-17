@@ -1,5 +1,6 @@
 // src/pages/shared/AuditPage.tsx
 import { useState, useMemo } from 'react';
+import type { MouseEvent } from 'react';
 import {
   RefreshCw,
   Search,
@@ -13,7 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { listAuditLogs, type AuditLog } from '../../api/auditLogs';
@@ -25,6 +26,14 @@ type SortDir = 'asc' | 'desc';
 
 export default function AuditPage() {
   const { t } = useTranslation('common');
+
+  // Force-open date picker (Chrome / Edge / Safari)
+  const handleDateClick = (e: MouseEvent<HTMLInputElement>) => {
+    const input = e.currentTarget as HTMLInputElement;
+    if (typeof (input as any).showPicker === 'function') {
+      (input as any).showPicker();
+    }
+  };
 
   /* ------------------ Filters ------------------ */
   const [search, setSearch] = useState('');
@@ -56,7 +65,7 @@ export default function AuditPage() {
         limit: PAGE_SIZE,
         offset,
       }),
-    keepPreviousData: true,
+    placeholderData: keepPreviousData,
   });
 
   const logs = query.data?.data ?? [];
@@ -138,12 +147,12 @@ export default function AuditPage() {
 
       {/* Filters */}
       <div className="card">
-        <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 p-6 md:grid-cols-12 md:items-center">
           {/* Search */}
-          <div className="relative md:col-span-2">
-            <Search className="h-4 w-4 absolute left-2 top-2.5 text-gray-400" />
+          <div className="relative min-w-0 md:col-span-4">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-8"
+              className="input w-full pl-9"
               placeholder={t('audit.filters.searchPlaceholder')}
               value={search}
               onChange={(e) => {
@@ -154,10 +163,10 @@ export default function AuditPage() {
           </div>
 
           {/* Actor */}
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-gray-400" />
+          <div className="relative min-w-0 md:col-span-2">
+            <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full"
+              className="input w-full pl-9"
               placeholder={t('audit.filters.actorPlaceholder')}
               value={actor}
               onChange={(e) => {
@@ -168,10 +177,10 @@ export default function AuditPage() {
           </div>
 
           {/* Entity */}
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-gray-400" />
+          <div className="relative min-w-0 md:col-span-3">
+            <Shield className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full"
+              className="input w-full pl-9"
               placeholder={t('audit.filters.entityPlaceholder')}
               value={entity}
               onChange={(e) => {
@@ -182,29 +191,40 @@ export default function AuditPage() {
           </div>
 
           {/* Date range */}
-          <div className="flex items-center gap-2 md:col-span-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <input
-              type="date"
-              className="input w-full"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                setPage(1);
-              }}
-            />
-            <span className="text-xs text-gray-500">
-              {t('audit.filters.dateTo')}
-            </span>
-            <input
-              type="date"
-              className="input w-full"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                setPage(1);
-              }}
-            />
+          <div className="min-w-0 md:col-span-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="date"
+                  className="input w-full pl-9"
+                  value={from}
+                  onClick={handleDateClick}
+                  onChange={(e) => {
+                    setFrom(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+
+              <span className="text-center text-xs text-gray-500">
+                {t('audit.filters.dateTo')}
+              </span>
+
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="date"
+                  className="input w-full pl-9"
+                  value={to}
+                  onClick={handleDateClick}
+                  onChange={(e) => {
+                    setTo(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
