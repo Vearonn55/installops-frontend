@@ -103,7 +103,8 @@ function localInputToIso(value: string): string | null {
 }
 
 function mapBackendStatusToUi(status: InstallStatus | string): InstallationStatus {
-  switch (status) {
+  const normalized = String(status ?? '').toLowerCase().replace(/-/g, '_').trim();
+  switch (normalized) {
     case 'staged':
       return 'staged';
     case 'in_progress':
@@ -113,11 +114,12 @@ function mapBackendStatusToUi(status: InstallStatus | string): InstallationStatu
     case 'failed':
       return 'failed';
     case 'canceled':
+    case 'cancelled':
       return 'cancelled';
     case 'after_sale_service':
       return 'after_sale_service';
-    // backend has "scheduled"; UI shows that as "Pending"
     case 'scheduled':
+      return 'pending';
     default:
       return 'pending';
   }
@@ -912,7 +914,7 @@ export default function InstallationsPage() {
 }
 
 /* -------------------------------- Bits -------------------------------- */
-function statusRank(s: InstallationStatus) {
+function statusRank(s: InstallationStatus | string): number {
   const order: InstallationStatus[] = [
     'pending',
     'staged',
@@ -922,57 +924,67 @@ function statusRank(s: InstallationStatus) {
     'failed',
     'cancelled',
   ];
-  return order.indexOf(s);
+  const i = order.indexOf(s as InstallationStatus);
+  return i >= 0 ? i : order.length;
 }
+
+const STATUS_PILL_CFG: Record<
+  InstallationStatus,
+  { tone: string; Icon: (props: { className?: string }) => JSX.Element; label: string }
+> = {
+  pending: {
+    tone: 'border-gray-200 bg-gray-50 text-gray-700',
+    Icon: Clock,
+    label: 'Pending',
+  },
+  staged: {
+    tone: 'border-blue-200 bg-blue-50 text-blue-700',
+    Icon: Wrench,
+    label: 'Staged',
+  },
+  in_progress: {
+    tone: 'border-amber-200 bg-amber-50 text-amber-700',
+    Icon: Clock,
+    label: 'In progress',
+  },
+  completed: {
+    tone: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    Icon: CheckCircle2,
+    label: 'Completed',
+  },
+  failed: {
+    tone: 'border-rose-200 bg-rose-50 text-rose-700',
+    Icon: AlertTriangle,
+    label: 'Failed',
+  },
+  cancelled: {
+    tone: 'border-zinc-200 bg-zinc-50 text-zinc-700',
+    Icon: XCircle,
+    label: 'Cancelled',
+  },
+  after_sale_service: {
+    tone: 'border-sky-200 bg-sky-50 text-sky-700',
+    Icon: Wrench,
+    label: 'After-sale service',
+  },
+};
+
+const FALLBACK_PILL = {
+  tone: 'border-gray-200 bg-gray-100 text-gray-600',
+  Icon: Clock,
+  label: '—',
+};
 
 function StatusPill({
   status,
   labelOverride,
 }: {
-  status: InstallationStatus;
+  status: InstallationStatus | string;
   labelOverride?: string;
 }) {
-  const cfg: Record<
-    InstallationStatus,
-    { tone: string; Icon: any; label: string }
-  > = {
-    pending: {
-      tone: 'border-gray-200 bg-gray-50 text-gray-700',
-      Icon: Clock,
-      label: 'Pending',
-    },
-    staged: {
-      tone: 'border-blue-200 bg-blue-50 text-blue-700',
-      Icon: Wrench,
-      label: 'Staged',
-    },
-    in_progress: {
-      tone: 'border-amber-200 bg-amber-50 text-amber-700',
-      Icon: Clock,
-      label: 'In progress',
-    },
-    completed: {
-      tone: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-      Icon: CheckCircle2,
-      label: 'Completed',
-    },
-    failed: {
-      tone: 'border-rose-200 bg-rose-50 text-rose-700',
-      Icon: AlertTriangle,
-      label: 'Failed',
-    },
-    cancelled: {
-      tone: 'border-zinc-200 bg-zinc-50 text-zinc-700',
-      Icon: XCircle,
-      label: 'Cancelled',
-    },
-    after_sale_service: {
-      tone: 'border-sky-200 bg-sky-50 text-sky-700',
-      Icon: Wrench,
-      label: 'After-sale service',
-    },
-  };
-  const { tone, Icon, label } = cfg[status];
+  const normalized = String(status ?? '').toLowerCase().replace(/-/g, '_').trim() as InstallationStatus;
+  const cfg = STATUS_PILL_CFG[normalized] ?? FALLBACK_PILL;
+  const { tone, Icon, label } = cfg;
   return (
     <span
       className={cn(
