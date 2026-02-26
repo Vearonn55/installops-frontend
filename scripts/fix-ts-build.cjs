@@ -29,14 +29,16 @@ function edit(file, ...replacements) {
 }
 
 // ---------------------------------------------------------------------------
-// Config
+// Config (string-based to support tsconfig with comments)
 // ---------------------------------------------------------------------------
 const tsconfigPath = path.join(root, 'tsconfig.app.json');
-let tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf8'));
-if (!tsconfig.compilerOptions.baseUrl) {
-  tsconfig.compilerOptions.baseUrl = '.';
-  tsconfig.compilerOptions.paths = { '@/*': ['src/*'] };
-  fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2));
+let tsconfigContent = fs.readFileSync(tsconfigPath, 'utf8');
+if (!tsconfigContent.includes('"baseUrl"')) {
+  tsconfigContent = tsconfigContent.replace(
+    '"skipLibCheck": true',
+    '"skipLibCheck": true,\n    "baseUrl": ".",\n    "paths": { "@/*": ["src/*"] }'
+  );
+  fs.writeFileSync(tsconfigPath, tsconfigContent);
 }
 
 const vitePath = path.join(root, 'vite.config.ts');
