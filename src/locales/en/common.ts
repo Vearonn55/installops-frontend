@@ -46,6 +46,35 @@ const enCommon = {
     keyboardShortcuts: 'Keyboard shortcuts',
   },
 
+  comingSoon: {
+    title: 'Coming soon',
+    description: 'This feature is not available yet. We’re working on it.',
+    backToDashboard: 'Back to Dashboard',
+    goBack: 'Go back',
+    features: {
+      help: {
+        title: 'Help centre',
+        description: 'Documentation and help articles are coming soon.',
+      },
+      shortcuts: {
+        title: 'Keyboard shortcuts',
+        description: 'A shortcuts reference will be available here soon.',
+      },
+      integrations: {
+        title: 'Integrations',
+        description: 'Third-party integrations are coming soon.',
+      },
+      reports: {
+        title: 'Reports',
+        description: 'Advanced reporting is coming soon.',
+      },
+      capacity: {
+        title: 'Capacity settings',
+        description: 'Capacity and scheduling settings are coming soon.',
+      },
+    },
+  },
+
   pages: {
     adminDashboard: 'Dashboard',
     installations: 'Installations',

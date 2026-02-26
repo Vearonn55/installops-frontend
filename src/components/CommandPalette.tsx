@@ -64,7 +64,7 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
     return items.filter((item) => fuzzyMatch(query, item.label));
   }, [items, query]);
 
-  const showDropdown = isOpen && (query.trim() === '' || filtered.length > 0);
+  const showDropdown = isOpen && query.trim().length > 0;
 
   useEffect(() => {
     setSelectedIndex(0);

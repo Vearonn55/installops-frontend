@@ -54,6 +54,7 @@ import AuditPage from './pages/shared/AuditPage';
 import NotFoundPage from './pages/shared/NotFoundPage';
 import ForbiddenPage from './pages/shared/ForbiddenPage';
 import SettingsPage from './pages/shared/SettingsPage';
+import ComingSoonPage from './pages/shared/ComingSoonPage';
 
 
 type DevtoolsCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -228,6 +229,9 @@ const getDefaultRoute = () => {
                     </RoleGuard>
                   }
                 />
+
+                {/* Coming soon (unimplemented features) */}
+                <Route path="coming-soon" element={<ComingSoonPage />} />
 
                 {/* Admin-only */}
                 <Route

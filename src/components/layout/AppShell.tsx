@@ -154,14 +154,14 @@ export default function AppShell() {
         label: t('commandPalette.helpCentre'),
         type: 'help' as const,
         icon: HelpCircle,
-        action: () => window.open('/help', '_blank'),
+        href: '/app/coming-soon?feature=help',
       },
       {
         id: 'help-shortcuts',
         label: t('commandPalette.keyboardShortcuts'),
         type: 'help' as const,
         icon: Keyboard,
-        action: () => window.open('/help#shortcuts', '_blank'),
+        href: '/app/coming-soon?feature=shortcuts',
       },
     ];
     return [...pages, ...commands, ...help];

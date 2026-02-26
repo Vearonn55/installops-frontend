@@ -46,6 +46,35 @@ const trCommon = {
     keyboardShortcuts: 'Klavye kısayolları',
   },
 
+  comingSoon: {
+    title: 'Yakında',
+    description: 'Bu özellik henüz mevcut değil. Üzerinde çalışıyoruz.',
+    backToDashboard: 'Panele dön',
+    goBack: 'Geri',
+    features: {
+      help: {
+        title: 'Yardım merkezi',
+        description: 'Dokümantasyon ve yardım makaleleri yakında eklenecek.',
+      },
+      shortcuts: {
+        title: 'Klavye kısayolları',
+        description: 'Kısayol referansı yakında burada olacak.',
+      },
+      integrations: {
+        title: 'Entegrasyonlar',
+        description: 'Üçüncü taraf entegrasyonları yakında eklenecek.',
+      },
+      reports: {
+        title: 'Raporlar',
+        description: 'Gelişmiş raporlama yakında eklenecek.',
+      },
+      capacity: {
+        title: 'Kapasite ayarları',
+        description: 'Kapasite ve planlama ayarları yakında eklenecek.',
+      },
+    },
+  },
+
   pages: {
     adminDashboard: 'Kontrol Paneli',
     installations: 'Kurulumlar',
