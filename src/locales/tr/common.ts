@@ -30,7 +30,20 @@ const trCommon = {
   common: {
     save: 'Kaydet',
     cancel: 'İptal',
+    search: 'Ara',
     searchPlaceholder: 'Ara...',
+  },
+
+  commandPalette: {
+    placeholder: 'Ara veya komut yaz…',
+    noResults: 'Sonuç yok',
+    newOrder: 'Yeni sipariş',
+    newInstallation: 'Yeni kurulum',
+    profile: 'Profiliniz',
+    settings: 'Ayarlar',
+    signOut: 'Çıkış yap',
+    helpCentre: 'Yardım merkezi',
+    keyboardShortcuts: 'Klavye kısayolları',
   },
 
   pages: {

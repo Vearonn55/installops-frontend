@@ -1,6 +1,6 @@
 // src/components/layout/AppShell.tsx
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -16,8 +16,13 @@ import {
   Menu,
   X,
   Shield,
+  Plus,
+  LogOut,
+  HelpCircle,
+  Keyboard,
 } from 'lucide-react';
 
+import CommandPalette, { type CommandPaletteItem } from '../CommandPalette';
 import { useAuthStore } from '../../stores/auth-simple';
 import { cn } from '../../lib/utils';
 import type { UserRole } from '../../types';
@@ -84,6 +89,7 @@ const navigation: NavigationItem[] = [
 export default function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const { user, hasAnyRole, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -92,6 +98,99 @@ export default function AppShell() {
   const filteredNavigation = navigation.filter((item) =>
     hasAnyRole(item.roles as any),
   );
+
+  const paletteItems = useMemo<CommandPaletteItem[]>(() => {
+    const pages: CommandPaletteItem[] = filteredNavigation.map((item) => ({
+      id: `page-${item.href}`,
+      label: t(item.labelKey),
+      href: item.href,
+      type: 'page' as const,
+      icon: item.icon,
+    }));
+    const canManage = hasAnyRole(['ADMIN', 'STORE_MANAGER']);
+    const commands: CommandPaletteItem[] = [
+      ...(canManage
+        ? [
+            {
+              id: 'cmd-new-order',
+              label: t('commandPalette.newOrder'),
+              href: '/app/orders/new',
+              type: 'command' as const,
+              icon: Plus,
+            },
+            {
+              id: 'cmd-new-installation',
+              label: t('commandPalette.newInstallation'),
+              href: '/app/installations/new',
+              type: 'command' as const,
+              icon: Plus,
+            },
+          ]
+        : []),
+      {
+        id: 'cmd-profile',
+        label: t('commandPalette.profile'),
+        href: '/app/profile',
+        type: 'command' as const,
+        icon: UserIcon,
+      },
+      {
+        id: 'cmd-settings',
+        label: t('commandPalette.settings'),
+        href: '/app/settings',
+        type: 'command' as const,
+        icon: Settings,
+      },
+      {
+        id: 'cmd-signout',
+        label: t('commandPalette.signOut'),
+        type: 'command' as const,
+        icon: LogOut,
+        action: () => {},
+      },
+    ];
+    const help: CommandPaletteItem[] = [
+      {
+        id: 'help-centre',
+        label: t('commandPalette.helpCentre'),
+        type: 'help' as const,
+        icon: HelpCircle,
+        action: () => window.open('/help', '_blank'),
+      },
+      {
+        id: 'help-shortcuts',
+        label: t('commandPalette.keyboardShortcuts'),
+        type: 'help' as const,
+        icon: Keyboard,
+        action: () => window.open('/help#shortcuts', '_blank'),
+      },
+    ];
+    return [...pages, ...commands, ...help];
+  }, [filteredNavigation, t, hasAnyRole]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handlePaletteSelect = (item: CommandPaletteItem) => {
+    if (item.action) {
+      if (item.id === 'cmd-signout') {
+        handleLogout();
+      } else {
+        item.action();
+      }
+    } else if (item.href) {
+      navigate(item.href);
+      setSidebarOpen(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -251,25 +350,19 @@ export default function AppShell() {
           </button>
 
           <div className="flex flex-1 justify-between px-4">
-            {/* Search */}
+            {/* Search / Command palette trigger */}
             <div className="flex flex-1">
-              <form className="flex w-full md:ml-0" action="#" method="GET">
-                <label htmlFor="search-field" className="sr-only">
-                  {t('common.search')}
-                </label>
-                <div className="relative w-full text-gray-400 focus-within:text-gray-600">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center">
-                    <Search className="h-5 w-5" />
-                  </div>
-                  <input
-                    id="search-field"
-                    className="block h-full w-full border-transparent py-2 pl-8 pr-3 text-gray-900 placeholder-gray-500 focus:border-transparent focus:placeholder-gray-400 focus:outline-none focus:ring-0"
-                    placeholder={t('common.searchPlaceholder')}
-                    type="search"
-                    name="search"
-                  />
-                </div>
-              </form>
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(true)}
+                className="flex w-full md:ml-0 items-center gap-2 rounded-lg border border-transparent py-2 pl-8 pr-3 text-left text-gray-500 hover:border-gray-200 hover:bg-gray-50 hover:text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              >
+                <Search className="h-5 w-5 flex-shrink-0 -ml-6 text-gray-400" />
+                <span className="truncate">{t('commandPalette.placeholder')}</span>
+                <kbd className="ml-auto hidden sm:inline-flex h-5 items-center rounded border border-gray-200 bg-gray-50 px-1.5 text-xs text-gray-400">
+                  ⌘K
+                </kbd>
+              </button>
             </div>
 
             {/* Right side: notifications + user menu */}
@@ -343,6 +436,15 @@ export default function AppShell() {
           </div>
         </main>
       </div>
+
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        items={paletteItems}
+        onSelect={handlePaletteSelect}
+        placeholder={t('commandPalette.placeholder')}
+        noResultsText={t('commandPalette.noResults')}
+      />
     </div>
   );
 }

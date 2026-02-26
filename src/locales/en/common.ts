@@ -30,7 +30,20 @@ const enCommon = {
   common: {
     save: 'Save',
     cancel: 'Cancel',
+    search: 'Search',
     searchPlaceholder: 'Search...',
+  },
+
+  commandPalette: {
+    placeholder: 'Search or type a command…',
+    noResults: 'No results',
+    newOrder: 'New order',
+    newInstallation: 'New installation',
+    profile: 'Your profile',
+    settings: 'Settings',
+    signOut: 'Sign out',
+    helpCentre: 'Help centre',
+    keyboardShortcuts: 'Keyboard shortcuts',
   },
 
   pages: {
