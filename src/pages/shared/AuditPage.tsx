@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
-import { listAuditLogs, type AuditLog } from '../../api/auditLogs';
+import { listAuditLogs, type AuditLog, type AuditLogList } from '../../api/auditLogs';
 
 const PAGE_SIZE = 20;
 
@@ -50,7 +50,7 @@ export default function AuditPage() {
   const offset = (page - 1) * PAGE_SIZE;
 
   /* ------------------ Query: fetch audit logs ------------------ */
-  const query = useQuery({
+  const query = useQuery<AuditLogList>({
     queryKey: [
       'auditLogs',
       { search, actor, entity, from, to, offset, limit: PAGE_SIZE },
