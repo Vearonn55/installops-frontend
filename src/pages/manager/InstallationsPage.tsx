@@ -839,6 +839,9 @@ export default function InstallationsPage() {
                   <option value="scheduled">
                     {isTr ? 'Planlandı' : 'Scheduled'}
                   </option>
+                  <option value="staged">
+                    {t('installationsPage.filters.status.staged')}
+                  </option>
                   <option value="in_progress">
                     {isTr ? 'Devam ediyor' : 'In progress'}
                   </option>
