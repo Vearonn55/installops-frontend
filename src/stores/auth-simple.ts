@@ -5,6 +5,16 @@ import type { User, UserRole } from '../types';
 import { getCurrentUser } from '../api/auth';
 import { isAxiosError } from '../api/http';
 
+/** Backend may return "store_manager", "Store Manager", "manager" etc. Normalize to UserRole. */
+function normalizeBackendRole(role: string | null | undefined): UserRole {
+  if (!role || typeof role !== 'string') return 'ADMIN';
+  const r = role.trim().toLowerCase().replace(/\s+/g, '_');
+  if (r === 'admin' || r === 'administrator') return 'ADMIN';
+  if (r === 'store_manager' || r === 'manager' || r === 'storemanager') return 'STORE_MANAGER';
+  if (r === 'crew' || r === 'installation_crew' || r === 'installationcrew') return 'CREW';
+  return 'ADMIN';
+}
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -75,7 +85,7 @@ export const useAuthStore = create<AuthStore>()(
             name: '',
             email,
             phone: undefined,
-            role: (me.role?.toUpperCase?.() || 'ADMIN') as UserRole,
+            role: normalizeBackendRole(me.role),
             store_id: undefined,
             status: 'active',
             created_at: new Date().toISOString(),
@@ -119,19 +129,21 @@ export const useAuthStore = create<AuthStore>()(
       hasPermission: (permission: string) => {
         const { user } = get();
         if (!user) return false;
-
-        const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+        const role = normalizeBackendRole(user.role) as UserRole;
+        const userPermissions = ROLE_PERMISSIONS[role] || [];
         return userPermissions.includes(permission);
       },
 
       hasRole: (role: UserRole) => {
         const { user } = get();
-        return user?.role === role;
+        if (!user) return false;
+        return normalizeBackendRole(user.role) === role;
       },
 
       hasAnyRole: (roles: UserRole[]) => {
         const { user } = get();
-        return user ? roles.includes(user.role) : false;
+        if (!user) return false;
+        return roles.includes(normalizeBackendRole(user.role) as UserRole);
       },
     }),
     {
@@ -140,6 +152,13 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as { user?: User | null; isAuthenticated?: boolean };
+        const user = p.user
+          ? { ...p.user, role: normalizeBackendRole(p.user.role) as UserRole }
+          : null;
+        return { ...current, user, isAuthenticated: p.isAuthenticated ?? current.isAuthenticated };
+      },
     }
   )
 );
@@ -162,7 +181,7 @@ export const initializeAuth = async () => {
         name: state.user?.name ?? '',
         email: state.user?.email ?? '',
         phone: state.user?.phone,
-        role: (me.role?.toUpperCase?.() || 'ADMIN') as UserRole,
+        role: normalizeBackendRole(me.role),
         store_id: state.user?.store_id,
         status: state.user?.status ?? 'active',
         created_at: state.user?.created_at ?? new Date().toISOString(),
