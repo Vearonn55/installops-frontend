@@ -104,6 +104,8 @@ function localInputToIso(value: string): string | null {
 
 function mapBackendStatusToUi(status: InstallStatus | string): InstallationStatus {
   switch (status) {
+    case 'staged':
+      return 'staged';
     case 'in_progress':
       return 'in_progress';
     case 'completed':
