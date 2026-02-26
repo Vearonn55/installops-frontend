@@ -39,7 +39,7 @@ export default function ResetPasswordPage() {
     }
   }, [token, navigate]);
 
-  const onSubmit = async (data: ResetPasswordForm) => {
+  const onSubmit = async (_data: ResetPasswordForm) => {
     setIsLoading(true);
     try {
       // TODO: Implement reset password API call

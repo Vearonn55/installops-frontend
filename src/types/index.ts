@@ -88,14 +88,17 @@ export interface OrderItem {
   updated_at: string;
 }
 
-export type InstallationStatus = 
-  | 'pending' 
-  | 'staged' 
-  | 'accepted' 
-  | 'in_progress' 
-  | 'completed' 
-  | 'failed' 
-  | 'cancelled';
+export type InstallationStatus =
+  | 'pending'
+  | 'staged'
+  | 'accepted'
+  | 'in_progress'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'after_sale_service'
+  | 'scheduled'
+  | 'canceled';
 
 export interface Installation {
   id: string;

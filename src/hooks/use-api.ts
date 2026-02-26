@@ -74,7 +74,7 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
       apiClient.updateUser(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users });
       queryClient.invalidateQueries({ queryKey: queryKeys.user(variables.id) });
       toast.success('User updated successfully');
@@ -145,7 +145,7 @@ export function useUpdateCustomer() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
       apiClient.updateCustomer(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.customers });
       queryClient.invalidateQueries({ queryKey: queryKeys.customer(variables.id) });
       toast.success('Customer updated successfully');
@@ -256,7 +256,7 @@ export function useUpdateOrder() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
       apiClient.updateOrder(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.orders });
       queryClient.invalidateQueries({ queryKey: queryKeys.order(variables.id) });
       toast.success('Order updated successfully');
@@ -309,7 +309,7 @@ export function useUpdateInstallation() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
       apiClient.updateInstallation(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installations });
       queryClient.invalidateQueries({ queryKey: queryKeys.installation(variables.id) });
       toast.success('Installation updated successfully');
@@ -326,7 +326,7 @@ export function useAssignCrew() {
   return useMutation({
     mutationFn: ({ id, crewUserIds }: { id: string; crewUserIds: string[] }) => 
       apiClient.assignCrew(id, crewUserIds),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installations });
       queryClient.invalidateQueries({ queryKey: queryKeys.installation(variables.id) });
       toast.success('Crew assigned successfully');
@@ -342,7 +342,7 @@ export function useAcceptInstallation() {
   
   return useMutation({
     mutationFn: (id: string) => apiClient.acceptInstallation(id),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installations });
       queryClient.invalidateQueries({ queryKey: queryKeys.installation(variables) });
       toast.success('Installation accepted');
@@ -359,7 +359,7 @@ export function useStartInstallation() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data?: any }) => 
       apiClient.startInstallation(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installations });
       queryClient.invalidateQueries({ queryKey: queryKeys.installation(variables.id) });
       toast.success('Installation started');
@@ -375,7 +375,7 @@ export function useFinishInstallation() {
   
   return useMutation({
     mutationFn: (id: string) => apiClient.finishInstallation(id),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installations });
       queryClient.invalidateQueries({ queryKey: queryKeys.installation(variables) });
       toast.success('Installation completed');
@@ -392,7 +392,7 @@ export function useFailInstallation() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: { reason_code: string; notes?: string } }) => 
       apiClient.failInstallation(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installations });
       queryClient.invalidateQueries({ queryKey: queryKeys.installation(variables.id) });
       toast.success('Installation marked as failed');
@@ -452,7 +452,7 @@ export function useSubmitChecklist() {
   return useMutation({
     mutationFn: ({ id, responses }: { id: string; responses: any[] }) => 
       apiClient.submitChecklist(id, responses),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installationChecklist(variables.id) });
       toast.success('Checklist submitted successfully');
     },
@@ -487,7 +487,7 @@ export function useCompleteMediaUpload() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: { files: Array<{ name: string; url: string; sha256: string; tags: any }> } }) => 
       apiClient.completeMediaUpload(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.installationMedia(variables.id) });
       toast.success('Media uploaded successfully');
     },
@@ -526,7 +526,7 @@ export function useUpdatePickList() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => 
       apiClient.updatePickList(id, data),
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.pickLists });
       queryClient.invalidateQueries({ queryKey: queryKeys.pickList(variables.id) });
       toast.success('Pick list updated successfully');

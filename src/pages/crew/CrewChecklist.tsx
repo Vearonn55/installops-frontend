@@ -153,8 +153,8 @@ export default function CrewChecklist() {
     } catch (err) {
       if (isAxiosError(err)) {
         const msg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
+          (err.response?.data as { message?: string; error?: string })?.message ||
+          (err.response?.data as { message?: string; error?: string })?.error ||
           'Failed to submit checklist';
         toast.error(msg);
       } else {
@@ -184,8 +184,8 @@ export default function CrewChecklist() {
     } catch (err) {
       if (isAxiosError(err)) {
         const msg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
+          (err.response?.data as { message?: string; error?: string })?.message ||
+          (err.response?.data as { message?: string; error?: string })?.error ||
           'Failed to mark after-sale service';
         toast.error(msg);
       } else {

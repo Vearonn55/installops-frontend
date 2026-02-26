@@ -1,9 +1,9 @@
 // src/pages/manager/ManagerDashboard.tsx
+import type { JSX } from 'react';
 import { useMemo } from 'react';
 import {
   Package,
   Calendar as CalendarIcon,
-  TrendingUp,
   CheckCircle,
   XCircle,
   ShoppingCart,

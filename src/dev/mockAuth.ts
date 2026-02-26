@@ -1,5 +1,5 @@
 // src/dev/mockAuth.ts
-import type { User, UserRole } from '@/types';
+import type { User, UserRole } from '../types';
 import { useAuthStore } from "../stores/auth-simple";
 
 const makeUser = (role: UserRole): User => ({

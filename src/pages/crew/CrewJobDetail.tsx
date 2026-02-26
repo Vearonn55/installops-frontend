@@ -6,10 +6,8 @@ import {
   Clock,
   MapPin,
   Phone,
-  Play,
   ChevronRight,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { cn } from '../../lib/utils';
 
 /* --------------------------- Mock types & data --------------------------- */
@@ -136,19 +134,6 @@ export default function CrewJobDetail() {
   useEffect(() => {
     setJob(initial);
   }, [initial]);
-
-  const onAccept = () => {
-    if (job.status !== 'pending') return;
-    setJob({ ...job, status: 'Staged' });
-    toast.success('Job staged');
-  };
-
-  const onStart = () => {
-    if (job.status !== 'Staged' && job.status !== 'pending') return;
-    setJob({ ...job, status: 'in_progress' });
-    toast.success('Job started');
-  };
-
 
   return (
     <div className="mx-auto h-full w-full max-w-screen-sm">

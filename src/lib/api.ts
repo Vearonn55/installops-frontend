@@ -25,9 +25,9 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     if (this.token) {
@@ -58,7 +58,7 @@ class ApiClient {
 
   // Auth endpoints
   async login(credentials: { email: string; password: string }): Promise<ApiResponse<{ access_token: string; refresh_token: string; user: User }>> {
-    const response = await this.request('/auth/login', {
+    const response = await this.request<{ access_token: string; refresh_token: string; user: User }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
@@ -76,7 +76,7 @@ class ApiClient {
       throw new Error('No refresh token available');
     }
 
-    const response = await this.request('/auth/refresh', {
+    const response = await this.request<{ access_token: string; refresh_token: string }>('/auth/refresh', {
       method: 'POST',
       body: JSON.stringify({ refresh_token: refreshToken }),
     });

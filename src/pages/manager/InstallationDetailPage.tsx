@@ -52,6 +52,7 @@ type CrewAssignmentDto = {
 type InstallationWithRelations = Installation & {
   items?: InstallationItemDto[];
   crew?: CrewAssignmentDto[];
+  external_order_id?: string;
 };
 
 const badge = (s: Installation['status']) =>

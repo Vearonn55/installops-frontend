@@ -1,4 +1,5 @@
-// src/pages/admin/AdminDashboard.tsx 
+// src/pages/admin/AdminDashboard.tsx
+import type { JSX } from 'react';
 import { useMemo, useState } from 'react';
 import {
   Package,
@@ -25,8 +26,6 @@ import { listStores, type Store } from '../../api/stores';
 import { apiGet } from '../../api/http';
 
 /* ---------- Types for metrics / filters ---------- */
-
-type PeriodKey = 'weekly' | 'monthly';
 
 type PeriodMetrics = {
   success: number;
@@ -338,10 +337,6 @@ export default function AdminDashboard() {
     return opts;
   }, [storesQuery.data, t]);
 
-  const selectedStoreLabel =
-    storeOptions.find((o) => o.id === selectedStoreId)?.label ??
-    t('adminDashboard.allStores');
-
   const metrics = useMemo(
     () => computeStoreMetrics(installationsQuery.data),
     [installationsQuery.data]
@@ -404,11 +399,6 @@ export default function AdminDashboard() {
           : null;
 
         const { icon, iconBgClass } = buildActivityIcon(log);
-
-        const actorShort =
-          log.actor_id && log.actor_id.length > 8
-            ? log.actor_id.slice(0, 8)
-            : log.actor_id;
 
         const title = log.action.replace(/_/g, ' ');
         const subtitleParts: string[] = [];

@@ -1,8 +1,8 @@
 // src/dev/DevControls.tsx
 import { useEffect, useRef, useState } from 'react';
-import type { UserRole } from '@/types';
+import type { UserRole } from '../types';
 import { setMockRole, clearMock, } from './mockAuth';
-import { GripVertical, Settings2, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
+import { GripVertical, ChevronDown, ChevronUp, Wrench } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 type Corner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';

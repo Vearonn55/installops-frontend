@@ -58,15 +58,8 @@ import SettingsPage from './pages/shared/SettingsPage';
 
 type DevtoolsCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
-const cornerToSide: Record<DevtoolsCorner, 'top' | 'bottom' | 'left' | 'right'> = {
-  'top-left': 'left',
-  'bottom-left': 'left',
-  'top-right': 'right',
-  'bottom-right': 'right',
-};
-
 function App() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { user } = useAuthStore();
 
 // Initialize auth once
 useEffect(() => {
@@ -100,20 +93,6 @@ useEffect(() => {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
-
-const getDefaultRoute = () => {
-  if (!isAuthenticated || !user) return '/auth/login';
-  switch (user.role) {
-    case 'ADMIN':
-    case 'STORE_MANAGER':
-      return '/app/dashboard';
-    case 'CREW':
-      return '/crew';
-    default:
-      return '/app/dashboard';
-  }
-};
-
 
   return (
     <ErrorBoundary>

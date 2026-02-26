@@ -164,7 +164,7 @@ export default function CrewJobs() {
   }, [weekOffset, weekStart, todayKey]);
 
   // UI state (search is wired to filtering, there is no input yet)
-  const [q, setQ] = useState('');
+  const [q] = useState('');
 
   // Fetch installations and stores from backend (axios via /api/* helpers)
   const installationsQuery = useQuery<InstallationList>({

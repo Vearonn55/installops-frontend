@@ -60,7 +60,7 @@ export const useAuthStore = create<AuthStore>()(
       error: null,
 
       // Actions
-      login: async (email: string, password: string) => {
+      login: async (email: string, _password: string) => {
         set({ isLoading: true, error: null });
 
         try {
@@ -150,17 +150,18 @@ export const initializeAuth = async () => {
 
     // If we already had a user in local storage, keep it.
     // Otherwise, create a minimal user object from /auth/me and cast to User.
+    const prev = state.user;
     const mappedUser: User =
-      state.user ??
+      prev ??
       {
         id: me.id,
-        name: state.user?.name ?? '',
-        email: state.user?.email ?? '',
-        phone: state.user?.phone,
+        name: '',
+        email: '',
+        phone: undefined,
         role: (me.role?.toUpperCase?.() || 'ADMIN') as UserRole,
-        store_id: state.user?.store_id,
-        status: state.user?.status ?? 'active',
-        created_at: state.user?.created_at ?? new Date().toISOString(),
+        store_id: undefined,
+        status: 'active',
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 

@@ -209,13 +209,6 @@ export default function CrewHome() {
     return [...weekJobs].sort(byStart)[0];
   }, [weekJobs, todayJobs, now]);
 
-  const summary = {
-    weekTotal: weekJobs.length,
-    active: weekJobs.filter((j) => j.status === 'in_progress').length,
-    done: weekJobs.filter((j) => j.status === 'completed').length,
-    issues: weekJobs.filter((j) => j.status === 'failed').length,
-  };
-
   if (isLoading) {
     return (
       <div className="mx-auto w-full max-w-md px-3 pb-[calc(env(safe-area-inset-bottom)+88px)] pt-3">
@@ -427,15 +420,6 @@ export default function CrewHome() {
 }
 
 /* ------------------------------ UI bits ------------------------------ */
-
-function SummaryCard({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-lg border bg-white px-2.5 py-2 text-center shadow-sm">
-      <div className="text-[11px] text-gray-500">{label}</div>
-      <div className="text-base font-semibold text-gray-900">{value}</div>
-    </div>
-  );
-}
 
 function StatusPill({ status }: { status: JobStatus }) {
   const tone: Record<JobStatus, string> = {

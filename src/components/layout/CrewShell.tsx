@@ -33,9 +33,9 @@ const navigation: NavigationItem[] = [
 
 export default function CrewShell() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const { user, logout } = useAuthStore();
+  useAuthStore();
   const location = useLocation();
-  const navigate = useNavigate();
+  useNavigate();
   const { t } = useTranslation();
 
   // Stubs until offline store is wired back
@@ -56,15 +56,6 @@ export default function CrewShell() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  const handleLogout = async () => {
-    try {
-      logout();
-      navigate('/auth/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
 
   const handleSync = async () => {
     await syncActions();

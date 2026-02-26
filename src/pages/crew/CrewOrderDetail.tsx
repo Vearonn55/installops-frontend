@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Loader2, MapPin, User2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Loader2, MapPin, User2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 type TimelineStatus = 'failed' | 'missing_part' | 'completed';

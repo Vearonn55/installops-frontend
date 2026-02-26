@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { OfflineAction } from '../types';
+import type { OfflineAction } from '../types';
 import { apiClient } from '../lib/api';
 
 interface OfflineState {
@@ -132,9 +132,6 @@ export const useOfflineStore = create<OfflineStore>()(
       },
 
       retryFailedActions: async () => {
-        const { actions } = get();
-        const failedActions = actions.filter((action) => action.status === 'failed');
-        
         // Reset failed actions to pending for retry
         set((state) => ({
           actions: state.actions.map((action) =>
@@ -174,7 +171,7 @@ async function executeAction(action: OfflineAction): Promise<void> {
       break;
       
     case 'media':
-      await apiClient.completeMediaUpload(installation_id, payload);
+      await apiClient.completeMediaUpload(installation_id, payload as { files: Array<{ name: string; url: string; sha256: string; tags: any }> });
       break;
       
     case 'finish':
@@ -182,7 +179,7 @@ async function executeAction(action: OfflineAction): Promise<void> {
       break;
       
     case 'fail':
-      await apiClient.failInstallation(installation_id, payload);
+      await apiClient.failInstallation(installation_id, payload as { reason_code: string; notes?: string });
       break;
       
     default:

@@ -7,8 +7,6 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 import type { UUID } from '../../api/http';
-import type { User as ApiUser, UserStatus as ApiUserStatus } from '../../api/users';
-import type { Role as ApiRole } from '../../api/roles';
 import * as usersApi from '../../api/users';
 import * as rolesApi from '../../api/roles';
 import { cn } from '../../lib/utils';
@@ -42,18 +40,6 @@ export type User = {
     name: string;
     permissions?: string[];
   } | null;
-};
-
-type UserListResponse = {
-  data: User[];
-  limit: number;
-  offset: number;
-};
-
-type RoleListResponse = {
-  data: Role[];
-  limit: number;
-  offset: number;
 };
 
 /** ---------- Component ---------- */

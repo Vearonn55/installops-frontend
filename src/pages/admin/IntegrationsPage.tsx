@@ -1,5 +1,5 @@
 // src/pages/admin/IntegrationsPage.tsx
-import { Zap, Plug, Clock } from 'lucide-react';
+import { Plug, Clock } from 'lucide-react';
 
 export default function IntegrationsPage() {
   return (

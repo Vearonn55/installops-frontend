@@ -15,13 +15,13 @@ import { cn } from "../../lib/utils";
 import { useAuthStore } from "../../stores/auth-simple";
 
 // real API
-import { listOrders, type ListOrdersParams, type Order } from "../../api/orders";
+import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
 import { useTranslation } from "react-i18next";
 
 export default function OrdersPage() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  useAuthStore();
   const { t } = useTranslation("common");
 
   // 🔹 Local UI state

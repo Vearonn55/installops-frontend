@@ -84,7 +84,6 @@ export default function OrderDetailPage() {
 
 const order: ExtendedOrder = (orderQuery.data as ExtendedOrder) ?? mockOrder;
 
-  const items = useMemo(() => order?.items ?? [], [order]);
 
   // Desktop-focused timeline (use server-provided if exists; otherwise mock based on placed_at)
   const timeline: TimelineEvent[] = useMemo(() => {
@@ -106,13 +105,6 @@ const order: ExtendedOrder = (orderQuery.data as ExtendedOrder) ?? mockOrder;
       { id: 't3', date: d(6, 15, 30), status: 'completed', note: 'Installation successful.' },
     ];
   }, [order]);
-
-  const statusBadge = (s?: string) =>
-    s === 'confirmed'
-      ? 'bg-emerald-100 text-emerald-800'
-      : s === 'pending'
-      ? 'bg-yellow-100 text-yellow-800'
-      : 'bg-gray-100 text-gray-800';
 
   const formatDateTime = (iso?: string) => {
     if (!iso) return '—';

@@ -44,12 +44,6 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'calendar:read', 'calendar:write',
     'reports:read',
   ],
-  WAREHOUSE_MANAGER: [
-    'inventory:read', 'inventory:write',
-    'installations:read',
-    'picklists:read', 'picklists:write',
-    'products:read',
-  ],
   CREW: [
     'installations:read',
     'checklists:read', 'checklists:write',
