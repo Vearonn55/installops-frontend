@@ -375,6 +375,8 @@ installationsPage: {
 
   actions: {
     view: 'View',
+    edit: 'Edit',
+    stageInstallation: 'Stage installation',
   },
 
   loading: 'Loading installations…',

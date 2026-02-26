@@ -375,6 +375,8 @@ installationsPage: {
 
   actions: {
     view: 'Görüntüle',
+    edit: 'Düzenle',
+    stageInstallation: 'Kurulumu hazırla',
   },
 
   loading: 'Kurulumlar yükleniyor…',

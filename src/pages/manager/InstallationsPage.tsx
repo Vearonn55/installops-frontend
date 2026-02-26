@@ -15,12 +15,14 @@ import {
   AlertTriangle,
   Wrench,
   Edit3,
+  Package,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '../../lib/utils';
+import { useAuthStore } from '../../stores/auth-simple';
 import {
   listInstallations,
   type Installation,
@@ -157,6 +159,8 @@ export default function InstallationsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useTranslation('common');
+  const { hasRole } = useAuthStore();
+  const isAdmin = hasRole('ADMIN');
 
   // Force-open date picker (Chrome / Edge / Safari)
   const handleDateClick = (e: React.MouseEvent<HTMLInputElement>) => {
@@ -372,6 +376,23 @@ export default function InstallationsPage() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const [stagingId, setStagingId] = useState<string | null>(null);
+  const handleStageInstallation = async (id: string) => {
+    setStagingId(id);
+    try {
+      await updateInstallationStatus(id as UUID, { status: 'staged' });
+      await queryClient.invalidateQueries({ queryKey: ['installations'] });
+      toast.success(isTr ? 'Kurulum hazırlandı' : 'Installation staged');
+    } catch (err: any) {
+      toast.error(
+        err?.message ||
+          (isTr ? 'Kurulum hazırlanamadı' : 'Failed to stage installation')
+      );
+    } finally {
+      setStagingId(null);
     }
   };
 
@@ -718,15 +739,31 @@ export default function InstallationsPage() {
                         onClick={() => goDetail(r.id)}
                         className="text-primary-600 hover:text-primary-800 text-xs font-medium"
                       >
-                        View
+                        {t('installationsPage.actions.view')}
                       </button>
-                      <button
-                        onClick={() => openEdit(r.id)}
-                        className="inline-flex items-center gap-1 rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                        {isTr ? 'Düzenle' : 'Edit'}
-                      </button>
+                      {isAdmin ? (
+                        <button
+                          onClick={() => openEdit(r.id)}
+                          className="inline-flex items-center gap-1 rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                          {t('installationsPage.actions.edit')}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleStageInstallation(r.id)}
+                          disabled={r.status !== 'pending' || stagingId === r.id}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium',
+                            r.status === 'pending' && stagingId !== r.id
+                              ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                              : 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400'
+                          )}
+                        >
+                          <Package className="h-3.5 w-3.5" />
+                          {t('installationsPage.actions.stageInstallation')}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
