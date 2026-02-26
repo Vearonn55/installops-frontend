@@ -1,7 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # serve-nginx.sh — Install, start, and serve nginx on a VDS/VPS
-# Usage: sudo ./serve-nginx.sh [install|start|stop|restart|status|enable]
+# Usage: sudo bash serve-nginx.sh [install|start|stop|restart|status|enable]
+#        Or:   sudo ./scripts/serve-nginx.sh install  (from project root)
 #
 
 set -e
