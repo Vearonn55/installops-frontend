@@ -58,12 +58,14 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     try {
       clearError();
-      // Call backend API to set session cookie
+      // 1) POST /auth/login — backend sets session cookie (Set-Cookie) in response
       await apiLogin({
         email: data.email,
         password: data.password,
       });
-      // Update frontend auth store state
+      // 2) Brief delay so the browser can persist the cookie before the next request
+      await new Promise((r) => setTimeout(r, 100));
+      // 3) GET /auth/me — must send cookie; then we update auth store
       await login(data.email, data.password);
       // Redirect will be handled by the useEffect above when isAuthenticated flips to true
     } catch (error) {

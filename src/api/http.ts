@@ -6,8 +6,15 @@ const baseURL =
 
 export const apiClient = axios.create({
   baseURL,
-  withCredentials: true, // needed for cookie-based auth (sid)
+  withCredentials: true, // required for cookie-based session (same origin)
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
 });
+
+// Ensure credentials are always sent (e.g. for cookie-based auth)
+apiClient.defaults.withCredentials = true;
 
 export type ApiErrorBody = {
   error: string;

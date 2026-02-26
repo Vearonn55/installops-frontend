@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole } from '../types';
 import { getCurrentUser } from '../api/auth';
+import { isAxiosError } from '../api/http';
 
 interface AuthState {
   user: User | null;
@@ -88,11 +89,15 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
           });
         } catch (err: any) {
+          const is401 = isAxiosError(err) && err.response?.status === 401;
+          const message = is401
+            ? 'Session could not be established. Please enable cookies and try again, or contact support if the problem persists.'
+            : (err?.response?.data?.message || err?.message || 'Login failed');
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
-            error: err?.message || 'Login failed',
+            error: message,
           });
           throw err;
         }
