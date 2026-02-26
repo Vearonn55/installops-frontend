@@ -76,6 +76,48 @@ npm run dev
 - `npm run test:ui` - Run tests with UI
 - `npm run test:coverage` - Run tests with coverage
 
+## Build and serve with nginx
+
+### 1. Build the app
+
+On the server (or in CI), from the project root:
+
+```bash
+cd /var/www/installops-frontend
+npm install
+# Optional: apply TypeScript/build fixes if build fails
+node scripts/fix-ts-build.cjs
+npm run build
+```
+
+Output goes to `dist/`.
+
+### 2. Configure nginx
+
+Copy the example config and enable the site:
+
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/installops-frontend
+# Edit server_name and paths if needed
+sudo ln -sf /etc/nginx/sites-available/installops-frontend /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+- **Root**: nginx serves from `/var/www/installops-frontend/dist` (set in `deploy/nginx.conf`).
+- **SPA routing**: `try_files` sends all routes to `index.html` so React Router works.
+- **API**: If your backend runs on the same host, uncomment the `location /api/` block in `deploy/nginx.conf` and point `proxy_pass` at your API (e.g. `http://127.0.0.1:8000/`).
+
+### 3. Deploy updates
+
+After pulling new code:
+
+```bash
+cd /var/www/installops-frontend
+npm install
+npm run build
+# nginx already serves dist/; no reload needed for static files
+```
+
 ## Project Structure
 
 ```
