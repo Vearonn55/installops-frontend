@@ -1,6 +1,6 @@
 // src/components/layout/AppShell.tsx
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -12,7 +12,6 @@ import {
   Settings,
   User as UserIcon,
   Bell,
-  Search,
   Menu,
   X,
   Shield,
@@ -22,7 +21,7 @@ import {
   Keyboard,
 } from 'lucide-react';
 
-import CommandPalette, { type CommandPaletteItem } from '../CommandPalette';
+import CommandPalette, { type CommandPaletteItem, type CommandPaletteRef } from '../CommandPalette';
 import { useAuthStore } from '../../stores/auth-simple';
 import { cn } from '../../lib/utils';
 import type { UserRole } from '../../types';
@@ -89,7 +88,7 @@ const navigation: NavigationItem[] = [
 export default function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
+  const searchRef = useRef<CommandPaletteRef>(null);
   const { user, hasAnyRole, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -172,7 +171,7 @@ export default function AppShell() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setPaletteOpen((open) => !open);
+        searchRef.current?.focus();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -350,19 +349,15 @@ export default function AppShell() {
           </button>
 
           <div className="flex flex-1 justify-between px-4">
-            {/* Search / Command palette trigger */}
-            <div className="flex flex-1">
-              <button
-                type="button"
-                onClick={() => setPaletteOpen(true)}
-                className="flex w-full md:ml-0 items-center gap-2 rounded-lg border border-transparent py-2 pl-8 pr-3 text-left text-gray-500 hover:border-gray-200 hover:bg-gray-50 hover:text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              >
-                <Search className="h-5 w-5 flex-shrink-0 -ml-6 text-gray-400" />
-                <span className="truncate">{t('commandPalette.placeholder')}</span>
-                <kbd className="ml-auto hidden sm:inline-flex h-5 items-center rounded border border-gray-200 bg-gray-50 px-1.5 text-xs text-gray-400">
-                  ⌘K
-                </kbd>
-              </button>
+            {/* Inline search with dropdown */}
+            <div className="flex flex-1 md:ml-0">
+              <CommandPalette
+                ref={searchRef}
+                items={paletteItems}
+                onSelect={handlePaletteSelect}
+                placeholder={t('commandPalette.placeholder')}
+                noResultsText={t('commandPalette.noResults')}
+              />
             </div>
 
             {/* Right side: notifications + user menu */}
@@ -436,15 +431,6 @@ export default function AppShell() {
           </div>
         </main>
       </div>
-
-      <CommandPalette
-        isOpen={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-        items={paletteItems}
-        onSelect={handlePaletteSelect}
-        placeholder={t('commandPalette.placeholder')}
-        noResultsText={t('commandPalette.noResults')}
-      />
     </div>
   );
 }

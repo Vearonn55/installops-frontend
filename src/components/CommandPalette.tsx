@@ -1,14 +1,17 @@
-// src/components/CommandPalette.tsx
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+// src/components/CommandPalette.tsx — Inline search bar with Dropbox-style dropdown
+import { useEffect, useRef, useState, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { HelpCircle, Search } from 'lucide-react';
+
+export interface CommandPaletteRef {
+  focus: () => void;
+}
 
 export type PaletteItemType = 'page' | 'command' | 'help';
 
 export interface CommandPaletteItem {
   id: string;
   label: string;
-  labelKey?: string; // i18n key, resolved to label by parent
+  labelKey?: string;
   href?: string;
   type: PaletteItemType;
   icon?: React.ComponentType<{ className?: string }>;
@@ -28,51 +31,53 @@ function fuzzyMatch(query: string, text: string): boolean {
 }
 
 interface CommandPaletteProps {
-  isOpen: boolean;
-  onClose: () => void;
   items: CommandPaletteItem[];
   onSelect: (item: CommandPaletteItem) => void;
   placeholder?: string;
   noResultsText?: string;
+  className?: string;
 }
 
-export default function CommandPalette({
-  isOpen,
-  onClose,
+const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(function CommandPalette({
   items,
   onSelect,
   placeholder = 'Search or type a command…',
   noResultsText = 'No results',
-}: CommandPaletteProps) {
+  className = '',
+}, ref) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      setIsOpen(true);
+      inputRef.current?.focus();
+    },
+  }), []);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return items;
     return items.filter((item) => fuzzyMatch(query, item.label));
   }, [items, query]);
 
+  const showDropdown = isOpen && (query.trim() === '' || filtered.length > 0);
+
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setQuery('');
-    setSelectedIndex(0);
-    inputRef.current?.focus();
-  }, [isOpen]);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+      if (!showDropdown) return;
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
-          onClose();
+          setIsOpen(false);
+          inputRef.current?.blur();
           break;
         case 'ArrowDown':
           e.preventDefault();
@@ -88,7 +93,9 @@ export default function CommandPalette({
           e.preventDefault();
           if (filtered[selectedIndex]) {
             onSelect(filtered[selectedIndex]);
-            onClose();
+            setQuery('');
+            setIsOpen(false);
+            inputRef.current?.blur();
           }
           break;
         default:
@@ -97,7 +104,7 @@ export default function CommandPalette({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, onSelect, filtered, selectedIndex]);
+  }, [showDropdown, onSelect, filtered, selectedIndex]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -106,51 +113,56 @@ export default function CommandPalette({
     child?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [selectedIndex, filtered.length]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (item: CommandPaletteItem) => {
+    onSelect(item);
+    setQuery('');
+    setIsOpen(false);
+    inputRef.current?.blur();
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] px-4 bg-black/50"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Command palette"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div
-        className="w-full max-w-xl rounded-xl bg-white shadow-xl ring-1 ring-gray-200 overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center border-b border-gray-200 px-3">
-          <Search className="h-5 w-5 text-gray-400 flex-shrink-0" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={placeholder}
-            className="flex-1 py-3 px-3 text-gray-900 placeholder-gray-500 border-0 focus:ring-0 focus:outline-none"
-            autoComplete="off"
-            aria-autocomplete="list"
-            aria-controls="command-palette-list"
-            aria-activedescendant={
-              filtered[selectedIndex]
-                ? `palette-item-${filtered[selectedIndex].id}`
-                : undefined
-            }
-          />
-          <kbd className="hidden sm:inline-flex h-6 items-center rounded border border-gray-200 bg-gray-50 px-1.5 text-xs text-gray-500">
-            ESC
-          </kbd>
-        </div>
+    <div ref={containerRef} className={`relative flex flex-1 max-w-xl ${className}`}>
+      <div className="relative flex w-full items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-primary-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary-500 transition-colors">
+        <Search className="absolute left-3 h-4 w-4 text-gray-400 pointer-events-none" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className="w-full py-2.5 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-500 bg-transparent border-0 focus:ring-0 focus:outline-none"
+          autoComplete="off"
+          aria-autocomplete="list"
+          aria-controls="command-palette-list"
+          aria-expanded={showDropdown}
+          aria-activedescendant={
+            showDropdown && filtered[selectedIndex]
+              ? `palette-item-${filtered[selectedIndex].id}`
+              : undefined
+          }
+        />
+      </div>
 
+      {showDropdown && (
         <div
           id="command-palette-list"
           ref={listRef}
-          className="max-h-[min(60vh,400px)] overflow-y-auto py-2"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
           role="listbox"
         >
           {filtered.length === 0 ? (
-            <div className="py-6 px-4 text-center text-sm text-gray-500">
+            <div className="py-4 px-4 text-center text-sm text-gray-500">
               {noResultsText}
             </div>
           ) : (
@@ -164,16 +176,13 @@ export default function CommandPalette({
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
+                  className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
                     isSelected
                       ? 'bg-primary-50 text-primary-900'
                       : 'text-gray-700 hover:bg-gray-50'
                   }`}
                   onMouseEnter={() => setSelectedIndex(index)}
-                  onClick={() => {
-                    onSelect(item);
-                    onClose();
-                  }}
+                  onClick={() => handleSelect(item)}
                 >
                   {Icon ? (
                     <Icon
@@ -193,24 +202,9 @@ export default function CommandPalette({
             })
           )}
         </div>
-
-        <div className="border-t border-gray-100 px-4 py-2 flex items-center gap-4 text-xs text-gray-400">
-          <span>
-            <kbd className="rounded border border-gray-200 bg-gray-50 px-1">↑</kbd>
-            <kbd className="rounded border border-gray-200 bg-gray-50 px-1 ml-0.5">↓</kbd>
-            {' '}navigate
-          </span>
-          <span>
-            <kbd className="rounded border border-gray-200 bg-gray-50 px-1">↵</kbd>
-            {' '}select
-          </span>
-          <span>
-            <kbd className="rounded border border-gray-200 bg-gray-50 px-1">esc</kbd>
-            {' '}close
-          </span>
-        </div>
-      </div>
+      )}
     </div>
   );
-}
+});
 
+export default CommandPalette;
