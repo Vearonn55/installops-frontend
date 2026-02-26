@@ -366,6 +366,7 @@ installationsPage: {
     completed: 'Completed',
     failed: 'Failed',
     cancelled: 'Cancelled',
+    after_sale_service: 'After-sale service',
   },
 
   crew: {

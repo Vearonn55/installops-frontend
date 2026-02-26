@@ -366,6 +366,7 @@ installationsPage: {
     completed: 'Tamamlandı',
     failed: 'Başarısız',
     cancelled: 'İptal edildi',
+    after_sale_service: 'Satış sonrası servis',
   },
 
   crew: {
