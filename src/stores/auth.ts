@@ -158,17 +158,11 @@ export const useAuthStore = create<AuthStore>()(
           : null;
         return { ...current, user, isAuthenticated: p.isAuthenticated ?? current.isAuthenticated };
       },
-      onRehydrateStorage: () => (_state, error) => {
-        useAuthStore.setState({ hasHydrated: true });
-        if (!import.meta.env.DEV && !error) {
-          void initializeAuth();
-        }
-      },
     }
   )
 );
 
-/** Merge /auth/me with persisted user after rehydrate (production). */
+/** Merge /auth/me with persisted user after rehydrate. */
 export const initializeAuth = async () => {
   const state = useAuthStore.getState();
 
@@ -199,3 +193,22 @@ export const initializeAuth = async () => {
     return { user: state.user, isAuthenticated: state.isAuthenticated };
   }
 };
+
+/**
+ * `persist` may finish hydrating inside `create()` (sync localStorage path). You must not call
+ * `useAuthStore` from `onRehydrateStorage` — the `useAuthStore` binding is still in the TDZ.
+ * Mark storage ready here, then validate the session cookie with `/auth/me`.
+ */
+function onStorageHydrated() {
+  useAuthStore.setState({ hasHydrated: true });
+  void initializeAuth();
+}
+
+const unsubPersist = useAuthStore.persist.onFinishHydration(() => {
+  onStorageHydrated();
+  unsubPersist();
+});
+
+if (useAuthStore.persist.hasHydrated()) {
+  onStorageHydrated();
+}
