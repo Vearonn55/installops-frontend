@@ -79,9 +79,9 @@ export default function LoginPage() {
         <div>
           <div className="mx-auto flex w-fit items-center justify-center px-2 py-1">
             <img
-              src="/ozerman-logo.png"
-              alt="Ozerman Ticaret"
-              className="mx-auto h-16 w-auto object-contain"
+              src="/ozerman-mark.png"
+              alt="Özerman"
+              className="mx-auto h-20 w-auto object-contain"
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
