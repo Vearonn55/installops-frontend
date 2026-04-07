@@ -81,7 +81,7 @@ export default function LoginPage() {
             <img
               src="/ozerman-logo.png"
               alt="Ozerman Ticaret"
-              className="mx-auto h-16 w-auto object-contain mix-blend-screen"
+              className="mx-auto h-16 w-auto object-contain"
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
