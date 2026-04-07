@@ -1,5 +1,5 @@
 // src/components/layout/CrewShell.tsx
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -14,7 +14,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { useAuthStore } from '../../stores/auth';
 import { useDateDisplayStore } from '../../stores/date-display';
 import { cn } from '../../lib/utils';
 
@@ -34,9 +33,7 @@ const navigation: NavigationItem[] = [
 
 export default function CrewShell() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const { user, logout } = useAuthStore();
   const location = useLocation();
-  const navigate = useNavigate();
   const { t } = useTranslation();
   useDateDisplayStore((s) => s.datePattern);
 
@@ -58,15 +55,6 @@ export default function CrewShell() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  const handleLogout = async () => {
-    try {
-      logout();
-      navigate('/auth/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
 
   const handleSync = async () => {
     await syncActions();
@@ -144,14 +132,14 @@ export default function CrewShell() {
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex-1 overflow-hidden">
+      {/* Main content — scrollable on small screens */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain">
         <Outlet />
       </div>
 
       {/* Bottom navigation */}
-      <div className="bg-white border-t border-gray-200 px-2 py-1">
-        <nav className="flex justify-around">
+      <div className="border-t border-gray-200 bg-white px-1 pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
+        <nav className="flex justify-around gap-0.5">
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
@@ -159,7 +147,7 @@ export default function CrewShell() {
                 key={item.href}
                 to={item.href}
                 className={cn(
-                  'flex flex-col items-center py-2 px-3 text-xs font-medium rounded-lg transition-colors',
+                  'relative flex min-w-0 max-w-[25%] flex-1 touch-manipulation flex-col items-center rounded-lg px-1 py-2 text-[10px] font-medium leading-tight transition-colors sm:px-2 sm:text-xs',
                   isActive
                     ? 'text-primary-600 bg-primary-50'
                     : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50',
@@ -167,11 +155,11 @@ export default function CrewShell() {
               >
                 <item.icon
                   className={cn(
-                    'h-5 w-5 mb-1',
+                    'mb-0.5 h-5 w-5 shrink-0 sm:mb-1',
                     isActive ? 'text-primary-600' : 'text-gray-400',
                   )}
                 />
-                {t(item.labelKey)}
+                <span className="line-clamp-2 text-center">{t(item.labelKey)}</span>
                 {item.badge && (
                   <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                     {item.badge}
@@ -183,29 +171,6 @@ export default function CrewShell() {
         </nav>
       </div>
 
-      {/* User info overlay (for settings/logout) */}
-      {location.pathname === '/crew/settings' && (
-        <div className="fixed top-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
-          <div className="flex items-center space-x-3">
-            <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-              <span className="text-sm font-medium text-primary-600">
-                {user?.name?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-900">{user?.name}</div>
-              <div className="text-xs text-gray-500">Installation Crew</div>
-            </div>
-            <button
-              onClick={handleLogout}
-              disabled={false}
-              className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

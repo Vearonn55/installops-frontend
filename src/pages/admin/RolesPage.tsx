@@ -118,18 +118,18 @@ export default function RolesPage() {
         </div>
 
         <div className="card-content space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="relative">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-end">
+            <div className="relative min-w-0">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
-                className="input w-full pl-9"
+                className="input-search-field w-full"
                 placeholder="Search users…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
               />
             </div>
             <select
-              className="input w-full cursor-pointer pr-10"
+              className="input-select-chevron-only min-w-0 w-full"
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
             >

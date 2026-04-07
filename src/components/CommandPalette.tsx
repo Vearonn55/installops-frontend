@@ -131,9 +131,9 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
   };
 
   return (
-    <div ref={containerRef} className={`relative flex flex-1 max-w-xl ${className}`}>
-      <div className="relative flex w-full items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-primary-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary-500 transition-colors">
-        <Search className="absolute left-3 h-4 w-4 text-gray-400 pointer-events-none" />
+    <div ref={containerRef} className={`relative flex min-w-0 flex-1 max-w-xl ${className}`}>
+      <div className="relative flex w-full min-w-0 items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-primary-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary-500 transition-colors">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           ref={inputRef}
           type="text"
@@ -141,7 +141,7 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full py-2.5 pl-9 pr-3 text-sm text-gray-900 placeholder-gray-500 bg-transparent border-0 focus:ring-0 focus:outline-none"
+          className="w-full min-w-0 bg-transparent py-2.5 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-500 border-0 focus:outline-none focus:ring-0"
           autoComplete="off"
           aria-autocomplete="list"
           aria-controls="command-palette-list"

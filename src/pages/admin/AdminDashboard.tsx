@@ -480,7 +480,7 @@ export default function AdminDashboard() {
             id="storeFilter"
             value={selectedStoreId}
             onChange={(e) => setSelectedStoreId(e.target.value as StoreId)}
-            className="block rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="input-select-chevron-only min-w-[12rem] max-w-full text-sm shadow-sm"
           >
             {storeOptions.map((s) => (
               <option key={s.id} value={s.id}>

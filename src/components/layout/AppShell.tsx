@@ -352,9 +352,9 @@ export default function AppShell() {
             <Menu className="h-6 w-6" />
           </button>
 
-          <div className="flex flex-1 justify-between px-4">
+          <div className="flex min-w-0 flex-1 justify-between px-4">
             {/* Inline search with dropdown */}
-            <div className="flex flex-1 md:ml-0">
+            <div className="flex min-w-0 flex-1 md:ml-0">
               <CommandPalette
                 ref={searchRef}
                 items={paletteItems}

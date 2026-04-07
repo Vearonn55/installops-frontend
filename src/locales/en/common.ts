@@ -36,6 +36,9 @@ const enCommon = {
     dateFormatLabel: 'Format',
     crewSettingsTitle: 'Crew settings',
     crewSettingsSubtitle: 'Language and how dates are shown.',
+    accountSectionTitle: 'Account',
+    accountSectionDescription: 'You are signed in on this device.',
+    signOutButton: 'Sign out',
   },
 
   common: {

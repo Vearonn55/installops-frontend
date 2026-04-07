@@ -298,7 +298,7 @@ export default function ReportsPage() {
                 onChange={(e) =>
                   setCity(e.target.value as CityFilter)
                 }
-                className="min-w-0 flex-1 cursor-pointer rounded-md border py-1 pl-2 pr-8 text-sm"
+                className="input-select-chevron-only min-w-0 flex-1 text-sm"
               >
                 {allCities.map((c) => (
                   <option key={c} value={c}>
@@ -322,7 +322,7 @@ export default function ReportsPage() {
                 onChange={(e) =>
                   setStoreFilter(e.target.value as StoreFilter)
                 }
-                className="min-w-0 flex-1 cursor-pointer rounded-md border py-1 pl-2 pr-8 text-sm"
+                className="input-select-chevron-only min-w-0 flex-1 text-sm"
               >
                 <option value="All Stores">
                   {t('reportsPage.allStores')}

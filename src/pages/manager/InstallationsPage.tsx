@@ -285,19 +285,48 @@ export default function InstallationsPage() {
     return list;
   }, [allRows, q, status, zone, sortBy, sortDir, from, to]);
 
+  /** Status chip counts respect date / search / zone so totals match the current filter context. */
+  const rowsForStatusCounts = useMemo(() => {
+    let list = allRows.slice();
+    if (from) {
+      list = list.filter((r) => !r.start || ymdFromIso(r.start) >= from);
+    }
+    if (to) {
+      list = list.filter((r) => !r.start || ymdFromIso(r.start) <= to);
+    }
+    if (q.trim()) {
+      const s = q.toLowerCase();
+      list = list.filter((r) => {
+        return (
+          r.id.toLowerCase().includes(s) ||
+          r.externalOrderId.toLowerCase().includes(s) ||
+          r.storeName.toLowerCase().includes(s) ||
+          (r.addressLine ?? '').toLowerCase().includes(s) ||
+          (r.city ?? '').toLowerCase().includes(s)
+        );
+      });
+    }
+    if (zone !== 'all') {
+      list = list.filter((r) => r.city === zone);
+    }
+    return list;
+  }, [allRows, from, to, q, zone]);
+
   const counts = useMemo(() => {
     const c: Record<InstallationStatus | 'all', number> = {
-      all: allRows.length,
-      pending: allRows.filter((r) => r.status === 'pending').length,
-      staged: allRows.filter((r) => r.status === 'staged').length,
-      in_progress: allRows.filter((r) => r.status === 'in_progress').length,
-      completed: allRows.filter((r) => r.status === 'completed').length,
-      failed: allRows.filter((r) => r.status === 'failed').length,
-      cancelled: allRows.filter((r) => r.status === 'cancelled').length,
-      after_sale_service: allRows.filter((r) => r.status === 'after_sale_service').length,
+      all: rowsForStatusCounts.length,
+      pending: rowsForStatusCounts.filter((r) => r.status === 'pending').length,
+      staged: rowsForStatusCounts.filter((r) => r.status === 'staged').length,
+      in_progress: rowsForStatusCounts.filter((r) => r.status === 'in_progress').length,
+      completed: rowsForStatusCounts.filter((r) => r.status === 'completed').length,
+      failed: rowsForStatusCounts.filter((r) => r.status === 'failed').length,
+      cancelled: rowsForStatusCounts.filter((r) => r.status === 'cancelled').length,
+      after_sale_service: rowsForStatusCounts.filter(
+        (r) => r.status === 'after_sale_service'
+      ).length,
     };
     return c;
-  }, [allRows]);
+  }, [rowsForStatusCounts]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -402,15 +431,15 @@ export default function InstallationsPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 gap-3 rounded-xl border bg-white p-3 shadow-sm md:grid-cols-5">
-        <div className="md:col-span-2">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border bg-white p-3 shadow-sm md:grid-cols-5 md:items-end">
+        <div className="min-w-0 md:col-span-2">
           <label className="mb-1 block text-xs text-gray-600">
             {t('installationsPage.filters.searchLabel')}
           </label>
-          <div className="relative">
+          <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-9"
+              className="input-search-field w-full"
               placeholder={t('installationsPage.filters.searchPlaceholder')}
               value={q}
               onChange={(e) => {
@@ -421,14 +450,14 @@ export default function InstallationsPage() {
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <label className="mb-1 block text-xs text-gray-600">
             {t('installationsPage.filters.statusLabel')}
           </label>
-          <div className="relative">
+          <div className="relative min-w-0">
             <Filter className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <select
-              className="input w-full pl-9 pr-10"
+              className="input-select-with-icon w-full"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value as any);
@@ -463,14 +492,14 @@ export default function InstallationsPage() {
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <label className="mb-1 block text-xs text-gray-600">
             {t('installationsPage.filters.zoneLabel')}
           </label>
-          <div className="relative">
+          <div className="relative min-w-0">
             <MapPin className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <select
-              className="input w-full pl-9 pr-10"
+              className="input-select-with-icon w-full"
               value={zone}
               onChange={(e) => {
                 setZone(e.target.value as any);
@@ -536,7 +565,7 @@ export default function InstallationsPage() {
       </div>
 
       {/* Status quick filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="-mx-1 flex gap-2 overflow-x-auto pb-1 pt-0.5 md:flex-wrap md:overflow-visible">
         <QuickChip
           label={t('installationsPage.chips.all')}
           value={counts.all}
@@ -1087,16 +1116,17 @@ function QuickChip({
   };
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm',
+        'mx-1 inline-flex max-w-[min(100%,18rem)] shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-left text-sm sm:max-w-none sm:gap-2 sm:px-3',
         tones[tone],
-        active && 'ring-2 ring-primary-200'
+        active && 'ring-2 ring-primary-500 ring-offset-1'
       )}
     >
-      {icon}
-      <span className="font-medium">{label}</span>
-      <span className="rounded-full bg-white px-2 py-0.5 text-xs text-gray-700">
+      {icon && <span className="shrink-0">{icon}</span>}
+      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+      <span className="shrink-0 rounded-full bg-white/90 px-2 py-0.5 text-xs tabular-nums text-gray-800 shadow-sm">
         {value}
       </span>
     </button>

@@ -284,15 +284,15 @@ export default function UsersPage() {
 
       {/* Filters */}
       <div className="card">
-        <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div>
+        <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-3 md:items-end">
+          <div className="min-w-0">
             <label className="mb-1 block text-xs text-gray-600">
               {t('usersPage.filters.searchLabel')}
             </label>
-            <div className="relative">
+            <div className="relative min-w-0">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
-                className="input w-full pl-9"
+                className="input-search-field w-full"
                 placeholder={t('usersPage.searchPlaceholder')}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -300,14 +300,14 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-xs text-gray-600">
               {t('usersPage.filters.roleLabel')}
             </label>
-            <div className="relative">
+            <div className="relative min-w-0">
               <Filter className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <select
-                className="input w-full cursor-pointer pl-9 pr-10"
+                className="input-select-with-icon w-full"
                 value={roleIdFilter}
                 onChange={(e) => setRoleIdFilter(e.target.value)}
               >
@@ -321,12 +321,12 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label className="mb-1 block text-xs text-gray-600">
               {t('usersPage.filters.statusLabel')}
             </label>
             <select
-              className="input w-full cursor-pointer pr-10"
+              className="input-select-chevron-only w-full"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >

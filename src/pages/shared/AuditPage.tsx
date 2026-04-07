@@ -141,12 +141,12 @@ export default function AuditPage() {
 
       {/* Filters */}
       <div className="card">
-        <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-5">
+        <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-5 md:items-end">
           {/* Search */}
-          <div className="relative md:col-span-2">
+          <div className="relative min-w-0 md:col-span-2">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-9"
+              className="input-search-field w-full"
               placeholder={t('audit.filters.searchPlaceholder')}
               value={search}
               onChange={(e) => {
@@ -157,10 +157,10 @@ export default function AuditPage() {
           </div>
 
           {/* Actor */}
-          <div className="relative">
+          <div className="relative min-w-0">
             <User className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-9"
+              className="input-search-field w-full"
               placeholder={t('audit.filters.actorPlaceholder')}
               value={actor}
               onChange={(e) => {
@@ -171,10 +171,10 @@ export default function AuditPage() {
           </div>
 
           {/* Entity */}
-          <div className="relative">
+          <div className="relative min-w-0">
             <Shield className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-9"
+              className="input-search-field w-full"
               placeholder={t('audit.filters.entityPlaceholder')}
               value={entity}
               onChange={(e) => {

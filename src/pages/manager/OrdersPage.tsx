@@ -167,16 +167,16 @@ export default function OrdersPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 gap-3 rounded-xl border bg-white p-3 shadow-sm md:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border bg-white p-3 shadow-sm md:grid-cols-6 md:items-end">
         {/* Search */}
-        <div className="md:col-span-2">
+        <div className="min-w-0 md:col-span-2">
           <label className="text-xs text-gray-600 mb-1 block">
             {t("ordersPage.filters.searchLabel")}
           </label>
-          <div className="relative">
+          <div className="relative min-w-0">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-9"
+              className="input-search-field w-full"
               placeholder={t("ordersPage.filters.searchPlaceholder")}
               value={q}
               onChange={(e) => {
@@ -422,7 +422,7 @@ function FilterSelect({ label, icon: Icon, value, onChange, options }: any) {
       <div className="relative">
         <Icon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <select
-          className="input w-full pl-9 pr-10"
+          className="input-select-with-icon w-full"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >

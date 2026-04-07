@@ -36,6 +36,9 @@ const trCommon = {
     dateFormatLabel: 'Biçim',
     crewSettingsTitle: 'Ekip ayarları',
     crewSettingsSubtitle: 'Dil ve tarih gösterimi.',
+    accountSectionTitle: 'Hesap',
+    accountSectionDescription: 'Bu cihazda oturum açtınız.',
+    signOutButton: 'Çıkış yap',
   },
 
   common: {
