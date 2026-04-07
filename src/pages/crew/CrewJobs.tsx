@@ -53,6 +53,20 @@ function addDays(date: Date, n: number) {
   return d;
 }
 
+function toLocalYmd(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function isoToLocalYmd(iso: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return toLocalYmd(parsed);
+}
+
 function fmtTimeRange(sISO: string, eISO: string) {
   const s = new Date(sISO);
   const e = new Date(eISO);
@@ -94,6 +108,8 @@ function statusLabel(s: CrewJobStatus) {
 // Map backend installation.status to crew job UI status
 function mapBackendStatusToJobStatus(status: string): CrewJobStatus {
   switch (status) {
+    case 'staged':
+      return 'staged';
     case 'in_progress':
       return 'in_progress';
     case 'completed':
@@ -198,8 +214,8 @@ export default function CrewJobs() {
   );
 
   const raw = useMemo(() => {
-    const dayKey = activeDate.toISOString().slice(0, 10);
-    return allJobs.filter((j) => j.start.slice(0, 10) === dayKey);
+    const dayKey = toLocalYmd(activeDate);
+    return allJobs.filter((j) => isoToLocalYmd(j.start) === dayKey);
   }, [allJobs, activeDate]);
 
   const jobs = useMemo(() => {

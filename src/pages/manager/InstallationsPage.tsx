@@ -72,7 +72,10 @@ function ymd(d = new Date()) {
 }
 
 function ymdFromIso(iso: string) {
-  return iso.split('T')[0] ?? '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return ymd(d);
 }
 
 function fmt(dtIso: string | null) {

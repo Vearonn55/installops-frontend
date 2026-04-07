@@ -386,7 +386,10 @@ export default function OrdersPage() {
 /* ------------------------ Helpers & small components ------------------------ */
 
 function ymd(d = new Date()) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function statusRank(s: "pending" | "confirmed" | "cancelled") {

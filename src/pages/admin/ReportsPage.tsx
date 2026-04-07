@@ -23,9 +23,19 @@ type StoreFilter = 'All Stores' | string;
 /* ---------- Helpers that interpret backend data ---------- */
 
 // get YYYY-MM-DD from ISO
+function toLocalYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function isoDateOnly(iso: string | null | undefined): string | null {
   if (!iso) return null;
-  return iso.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return toLocalYmd(d);
 }
 
 // which date we treat as "installation date" for reports
@@ -73,13 +83,13 @@ export default function ReportsPage() {
 
   // default: last 7 days
   const todayStr = useMemo(
-    () => new Date().toISOString().slice(0, 10),
+    () => toLocalYmd(new Date()),
     []
   );
   const weekAgoStr = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 10);
+    return toLocalYmd(d);
   }, []);
 
   const [startDate, setStartDate] = useState<string>(weekAgoStr);
