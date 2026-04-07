@@ -20,6 +20,8 @@ import {
 } from '../../api/installations';
 import { listStores, type Store as ApiStore } from '../../api/stores';
 import { apiGet } from '../../api/http';
+import { formatUiDateTime } from '../../lib/date-display';
+import { useDateDisplayStore } from '../../stores/date-display';
 
 /* ---------- Period metrics & KPI helpers ---------- */
 
@@ -251,6 +253,8 @@ function buildActivityIcon(log: AuditLog): {
 /* ===================== COMPONENT ===================== */
 
 export default function ManagerDashboard() {
+  const datePattern = useDateDisplayStore((s) => s.datePattern);
+
   // 1) Load installations visible to the manager (backend should scope by store)
   const installationsQuery = useQuery({
     queryKey: ['manager-dashboard', 'installations'],
@@ -360,7 +364,7 @@ export default function ManagerDashboard() {
           id: log.id,
           title,
           subtitle: subtitleParts.join(' • '),
-          time: new Date(log.created_at).toLocaleString(),
+          time: formatUiDateTime(log.created_at),
           icon,
           iconBgClass,
           storeId,
@@ -376,6 +380,7 @@ export default function ManagerDashboard() {
     installationById,
     storeNameById,
     primaryStoreId,
+    datePattern,
   ]);
 
   return (

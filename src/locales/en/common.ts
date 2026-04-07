@@ -23,8 +23,19 @@ const enCommon = {
     subtitle: 'Configure your preferences.',
     languageSectionTitle: 'Language',
     languageSectionDescription: 'Choose the interface language.',
+    languageLabel: 'Interface language',
     english: 'English',
     turkish: 'Turkish',
+    dateFormatSectionTitle: 'Date format',
+    dateFormatSectionDescription:
+      'How dates appear across the app (lists, calendars, timelines). Default is day/month/year.',
+    dateFormatDmy: 'DD/MM/YYYY (day first)',
+    dateFormatMdy: 'MM/DD/YYYY (month first)',
+    dateFormatYmd: 'YYYY-MM-DD (ISO)',
+    dateFormatPreview: 'Preview',
+    dateFormatLabel: 'Format',
+    crewSettingsTitle: 'Crew settings',
+    crewSettingsSubtitle: 'Language and how dates are shown.',
   },
 
   common: {

@@ -15,6 +15,7 @@ import {
 
 import type { Installation } from '../../types';
 import { cn } from '../../lib/utils';
+import { formatUiDateTime } from '../../lib/date-display';
 import { apiGet } from '../../api/http';
 import { useTranslation } from 'react-i18next';
 import {
@@ -221,7 +222,7 @@ export default function InstallationDetailPage() {
               {t('installationDetailPage.statusCard.start')}{' '}
               <span className="text-gray-700">
                 {inst?.scheduled_start
-                  ? new Date(inst.scheduled_start).toLocaleString()
+                  ? formatUiDateTime(inst.scheduled_start)
                   : '—'}
               </span>
             </div>
@@ -229,7 +230,7 @@ export default function InstallationDetailPage() {
               {t('installationDetailPage.statusCard.end')}{' '}
               <span className="text-gray-700">
                 {inst?.scheduled_end
-                  ? new Date(inst.scheduled_end).toLocaleString()
+                  ? formatUiDateTime(inst.scheduled_end)
                   : '—'}
               </span>
             </div>

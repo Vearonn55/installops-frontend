@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import { useAuthStore } from '../../stores/auth';
+import { useDateDisplayStore } from '../../stores/date-display';
 import { cn } from '../../lib/utils';
 
 interface NavigationItem {
@@ -37,6 +38,7 @@ export default function CrewShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useDateDisplayStore((s) => s.datePattern);
 
   // Stubs until offline store is wired back
   const pendingActions: any[] = [];

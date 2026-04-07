@@ -23,8 +23,19 @@ const trCommon = {
     subtitle: 'Tercihlerinizi yapılandırın.',
     languageSectionTitle: 'Dil',
     languageSectionDescription: 'Arayüz dilini seçin.',
+    languageLabel: 'Arayüz dili',
     english: 'İngilizce',
     turkish: 'Türkçe',
+    dateFormatSectionTitle: 'Tarih biçimi',
+    dateFormatSectionDescription:
+      'Uygulamada tarihlerin nasıl gösterileceği (listeler, takvimler, zaman çizelgeleri). Varsayılan gün/ay/yıl.',
+    dateFormatDmy: 'GG/AA/YYYY (önce gün)',
+    dateFormatMdy: 'AA/GG/YYYY (önce ay)',
+    dateFormatYmd: 'YYYY-AA-GG (ISO)',
+    dateFormatPreview: 'Önizleme',
+    dateFormatLabel: 'Biçim',
+    crewSettingsTitle: 'Ekip ayarları',
+    crewSettingsSubtitle: 'Dil ve tarih gösterimi.',
   },
 
   common: {

@@ -17,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
+import { formatUiDateTime } from '../../lib/date-display';
 import { listAuditLogs, type AuditLog } from '../../api/auditLogs';
 
 const PAGE_SIZE = 20;
@@ -275,7 +276,7 @@ export default function AuditPage() {
             {sortedLogs.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm text-gray-700">
-                  {new Date(row.created_at).toLocaleString()}
+                  {formatUiDateTime(row.created_at)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
                   {row.actor_id || '—'}
@@ -358,7 +359,7 @@ export default function AuditPage() {
                 </div>
                 <div className="text-xs text-gray-500">
                   {selected.entity} • {selected.entity_id} •{' '}
-                  {new Date(selected.created_at).toLocaleString()}
+                  {formatUiDateTime(selected.created_at)}
                 </div>
               </div>
 

@@ -23,6 +23,7 @@ import {
 
 import CommandPalette, { type CommandPaletteItem, type CommandPaletteRef } from '../CommandPalette';
 import { useAuthStore } from '../../stores/auth';
+import { useDateDisplayStore } from '../../stores/date-display';
 import { cn } from '../../lib/utils';
 import type { UserRole } from '../../types';
 
@@ -93,6 +94,7 @@ export default function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useDateDisplayStore((s) => s.datePattern);
 
   const filteredNavigation = navigation.filter((item) =>
     hasAnyRole(item.roles as any),

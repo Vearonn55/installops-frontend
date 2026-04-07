@@ -14,7 +14,7 @@ import {
 
 import type { Order } from '../../types';
 import { apiClient } from '../../lib/api';
-import { cn } from '../../lib/utils';
+import { cn, formatDateTime } from '../../lib/utils';
 
 // Mock Data
 const mockOrder = {
@@ -114,16 +114,6 @@ const order: ExtendedOrder = (orderQuery.data as ExtendedOrder) ?? mockOrder;
       ? 'bg-yellow-100 text-yellow-800'
       : 'bg-gray-100 text-gray-800';
 
-  const formatDateTime = (iso?: string) => {
-    if (!iso) return '—';
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString([], { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return iso;
-    }
-  };
-
   const statusIcon = (s: TimelineStatus) => {
     switch (s) {
       case 'failed':
@@ -175,7 +165,7 @@ const order: ExtendedOrder = (orderQuery.data as ExtendedOrder) ?? mockOrder;
   <div className="card-content space-y-3">
     {/* Order details */}
     <div className="text-sm text-gray-600">
-      Placed: {order?.placed_at ? new Date(order.placed_at).toLocaleString() : '—'}
+      Placed: {order?.placed_at ? formatDateTime(order.placed_at) : '—'}
     </div>
     <div className="text-sm text-gray-600">
       Store: {order?.store_id ?? '—'}

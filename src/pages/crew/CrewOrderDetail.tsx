@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle2, XCircle, AlertTriangle, Loader2, MapPin, User2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { formatUiDateTime } from '../../lib/date-display';
 
 type TimelineStatus = 'failed' | 'missing_part' | 'completed';
 
@@ -100,22 +101,6 @@ const fallback: OrderDetail = {
   };
 
   return MOCK[jobId] ?? fallback;
-}
-
-// ---------------------- Helpers ----------------------
-function formatDate(dt: string) {
-  try {
-    const d = new Date(dt);
-    return d.toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return dt;
-  }
 }
 
 function statusBadgeStyles(status: TimelineStatus) {
@@ -277,7 +262,7 @@ export default function CrewOrderDetail() {
                             {statusIcon(ev.status)}
                             {statusLabel(ev.status)}
                         </span>
-                        <span className="text-[11px] text-gray-500">{formatDate(ev.date)}</span>
+                        <span className="text-[11px] text-gray-500">{formatUiDateTime(ev.date)}</span>
                         </div>
                         {ev.note && <div className="mt-1 text-sm text-gray-800">{ev.note}</div>}
                     </div>

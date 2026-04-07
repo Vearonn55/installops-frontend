@@ -19,6 +19,7 @@ import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../stores/auth';
 import { listInstallations } from '../../api/installations';
 import { useTranslation } from 'react-i18next';
+import { formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
 
 /* =============== Date helpers =============== */
 const MONDAY = 1;
@@ -105,18 +106,6 @@ function toLocalHM(iso?: string) {
   if (!iso) return '';
   const dt = new Date(iso);
   return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// Display helpers DD/MM and DD/MM/YYYY
-function fmtDDMM(d: Date) {
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  return `${day}/${month}`;
-}
-function fmtDDMMYYYY(d: Date) {
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  return `${day}/${month}/${d.getFullYear()}`;
 }
 
 /* =============== Week layout constants =============== */
@@ -258,7 +247,7 @@ export default function CalendarPage() {
 
   /* ---- Weekly prep ---- */
   const weekDays = useMemo(() => eachDayOfWeek(cursor), [cursor]);
-  const weekLabel = `${fmtDDMMYYYY(weekStart)} – ${fmtDDMMYYYY(weekEnd)}`;
+  const weekLabel = `${formatUiFullFromDate(weekStart)} – ${formatUiFullFromDate(weekEnd)}`;
 
   const byDayWeek = useMemo(() => {
     const m = new Map<string, Installation[]>();
@@ -310,7 +299,7 @@ export default function CalendarPage() {
             </h1>
             <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
               {mode === 'month'
-                ? `${fmtDDMMYYYY(monthStart)} – ${fmtDDMMYYYY(monthEnd)}`
+                ? `${formatUiFullFromDate(monthStart)} – ${formatUiFullFromDate(monthEnd)}`
                 : weekLabel}
               {storeFilter && (
                 <span className="inline-flex items-center gap-1 text-gray-600">
@@ -453,7 +442,7 @@ export default function CalendarPage() {
                       {d.getDate()}
                     </span>
                     <span className="text-[10px] text-gray-400">
-                      {fmtDDMMYYYY(d)}
+                      {formatUiFullFromDate(d)}
                     </span>
                   </div>
 
@@ -522,7 +511,7 @@ export default function CalendarPage() {
                     {d.toLocaleDateString(i18n.language, {
                       weekday: 'short',
                     })}{' '}
-                    <span className="text-gray-500">{fmtDDMM(d)}</span>
+                    <span className="text-gray-500">{formatUiDayMonth(d)}</span>
                   </div>
                 </div>
               );

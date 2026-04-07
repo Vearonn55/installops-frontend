@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '../../lib/utils';
+import { formatUiDateTime } from '../../lib/date-display';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { useAuthStore } from '../../stores/auth';
 import {
@@ -77,20 +78,6 @@ function ymdFromIso(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return ymd(d);
-}
-
-function fmt(dtIso: string | null) {
-  if (!dtIso) return '—';
-  const d = new Date(dtIso);
-
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-
-  return `${day}/${month}/${year}, ${hours}:${minutes}`;
 }
 
 function isoToLocalInput(value?: string | null): string {
@@ -699,7 +686,7 @@ export default function InstallationsPage() {
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1 text-xs text-gray-600">
                       <CalendarIcon className="h-3.5 w-3.5" />
-                      {fmt(r.start)}
+                      {formatUiDateTime(r.start)}
                     </div>
                   </td>
                   <td className="px-3 py-2">

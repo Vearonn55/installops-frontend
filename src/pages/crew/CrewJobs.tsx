@@ -8,7 +8,9 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
+import { formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
 
 import {
   listInstallations,
@@ -130,6 +132,7 @@ function mapBackendStatusToJobStatus(status: string): CrewJobStatus {
 /* --------------------------- Component --------------------------- */
 export default function CrewJobs() {
   const navigate = useNavigate();
+  const { i18n } = useTranslation('common');
 
   // Build current week (Mon–Sun)
   const weekStart = useMemo(() => startOfWeek(new Date(), 1), []);
@@ -245,7 +248,7 @@ export default function CrewJobs() {
             <div className="text-lg font-semibold text-gray-900">Jobs</div>
             <div className="inline-flex items-center text-xs text-gray-500">
               <CalendarDays className="mr-1 h-3.5 w-3.5" />
-              Week of {weekStart.toLocaleDateString()}
+              Week of {formatUiFullFromDate(weekStart)}
             </div>
           </div>
         </div>
@@ -266,7 +269,7 @@ export default function CrewJobs() {
                 onClick={() => setSelectedKey(d.toDateString())}
               >
                 <div className="text-[10px] uppercase tracking-wide">
-                  {d.toLocaleDateString(undefined, { weekday: 'short' })}
+                  {d.toLocaleDateString(i18n.language, { weekday: 'short' })}
                 </div>
                 <div
                   className={cn(
@@ -274,7 +277,7 @@ export default function CrewJobs() {
                     isActive ? 'text-white' : 'text-gray-900'
                   )}
                 >
-                  {d.getDate()}
+                  {formatUiDayMonth(d)}
                 </div>
               </button>
             );

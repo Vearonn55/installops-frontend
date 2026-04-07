@@ -16,6 +16,8 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
+import { formatUiDateTime } from '../../lib/date-display';
+import { useDateDisplayStore } from '../../stores/date-display';
 import {
   listInstallations,
   type Installation,
@@ -300,6 +302,7 @@ function buildActivityIcon(log: AuditLog): {
 export default function AdminDashboard() {
   const [selectedStoreId, setSelectedStoreId] = useState<StoreId>('ALL');
   const { t } = useTranslation();
+  const datePattern = useDateDisplayStore((s) => s.datePattern);
 
   // Load installations (for metrics)
   const installationsQuery = useQuery({
@@ -419,13 +422,13 @@ export default function AdminDashboard() {
           id: log.id,
           title,
           subtitle: subtitleParts.join(' • '),
-          time: new Date(log.created_at).toLocaleString(),
+          time: formatUiDateTime(log.created_at),
           storeLabel,
           icon,
           iconBgClass,
         };
       });
-  }, [auditLogsQuery.data, installationById, storeNameById]);
+  }, [auditLogsQuery.data, installationById, storeNameById, datePattern]);
 
   const filteredActivities = useMemo(
     () =>

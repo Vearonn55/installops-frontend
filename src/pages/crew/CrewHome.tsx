@@ -2,9 +2,11 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { CalendarDays, MapPin, Clock, ClipboardCheck, User2 } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
+import { formatUiFullFromDate, formatUiTime } from '../../lib/date-display';
 import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
@@ -25,10 +27,6 @@ type CrewJob = {
   status: JobStatus;
 };
 
-function fmtTime(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
 
 function isSameDay(a: Date, b: Date) {
   return (
@@ -96,6 +94,7 @@ function buildAddress(inst: Installation): { customer: string; address: string; 
 }
 
 export default function CrewHome() {
+  const { i18n } = useTranslation('common');
   const now = new Date();
   const weekStart = startOfWeek(now);
   const weekEnd = endOfWeek(now);
@@ -142,10 +141,10 @@ export default function CrewHome() {
     return Array.from({ length: 7 }).map((_, i) => {
       const d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
-      const label = d.toLocaleDateString([], { weekday: 'short' }); // Mon/Tue...
+      const label = d.toLocaleDateString(i18n.language, { weekday: 'short' });
       return { date: d, label, key: dayKey(d), isToday: isSameDay(d, now) };
     });
-  }, [weekStart, now]);
+  }, [weekStart, now, i18n.language]);
 
   // Jobs within the current week
   const weekJobs = useMemo(
@@ -267,7 +266,7 @@ export default function CrewHome() {
         <div className="mb-2 flex items-center justify-between px-1">
           <div className="text-sm font-semibold text-gray-900">This Week</div>
           <div className="text-[11px] text-gray-500">
-            {weekStart.toLocaleDateString()} – {weekEnd.toLocaleDateString()}
+            {formatUiFullFromDate(weekStart)} – {formatUiFullFromDate(weekEnd)}
           </div>
         </div>
 
@@ -297,7 +296,7 @@ export default function CrewHome() {
                   .map((j) => (
                     <div
                       key={j.id}
-                      title={`${j.customer} • ${fmtTime(j.start)}-${fmtTime(j.end)}`}
+                      title={`${j.customer} • ${formatUiTime(j.start)}-${formatUiTime(j.end)}`}
                       className={cn('h-1.5 w-5 rounded-full', statusColor(j.status))}
                     />
                   ))}
@@ -338,7 +337,7 @@ export default function CrewHome() {
               <div className="flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-gray-500" />
                 <span>
-                  {fmtTime(activeJob.start)} – {fmtTime(activeJob.end)}
+                  {formatUiTime(activeJob.start)} – {formatUiTime(activeJob.end)}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -397,7 +396,7 @@ export default function CrewHome() {
                       <div className="mt-1 grid grid-cols-1 gap-3 text-sm text-gray-700 sm:grid-cols-2">
                         <span className="flex items-center gap-1.5 font-medium">
                           <Clock className="h-4 w-4" />
-                          {fmtTime(j.start)} – {fmtTime(j.end)}
+                          {formatUiTime(j.start)} – {formatUiTime(j.end)}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <MapPin className="h-4 w-4" />

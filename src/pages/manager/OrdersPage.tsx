@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "../../lib/utils";
+import { formatUiDateTime } from "../../lib/date-display";
 import { defaultDateRangeOneMonthAhead } from "../../lib/date-range";
 import { useAuthStore } from "../../stores/auth";
 
@@ -84,18 +85,6 @@ export default function OrdersPage() {
       label: s.name?.trim() || s.id,
     }));
   }, [stores]);
-
-  // Helpers
-  const fmt = (iso: string | undefined) =>
-    iso
-      ? new Date(iso).toLocaleString([], {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "-";
 
   // 🔹 Filter + search + store filter
   const filtered = useMemo(() => {
@@ -309,7 +298,7 @@ export default function OrdersPage() {
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1 text-xs text-gray-600">
                       <CalendarIcon className="h-3.5 w-3.5" />
-                      {fmt(o.placed_at ?? o.created_at)}
+                      {formatUiDateTime(o.placed_at ?? o.created_at ?? undefined)}
                     </div>
                   </td>
 

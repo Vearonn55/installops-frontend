@@ -10,6 +10,7 @@ import {
 import { listStores, type Store as ApiStore } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
+import { formatUiDate } from '../../lib/date-display';
 
 /* ---------- Local filter types ---------- */
 
@@ -227,15 +228,6 @@ export default function ReportsPage() {
   const serviceAfterCount = filtered.filter((inst) =>
     hasServiceAfter(inst)
   ).length;
-
-  /* ---------- Date formatting ---------- */
-
-  const fmt = (iso: string) =>
-    new Date(iso + 'T00:00:00').toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-    });
 
   /* ---------- Render ---------- */
 
@@ -515,7 +507,7 @@ export default function ReportsPage() {
                     </div>
                     {d && (
                       <div className="text-xs text-gray-500">
-                        {fmt(d)}
+                        {formatUiDate(d)}
                       </div>
                     )}
                   </div>

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../lib/utils';
+import { formatUiTime } from '../../lib/date-display';
 
 /* --------------------------- Mock types & data --------------------------- */
 type CrewJobStatus = 'pending' | 'Staged' | 'in_progress' | 'completed' | 'failed';
@@ -30,10 +31,7 @@ type CrewJob = {
 };
 
 function formatTimeRange(startISO: string, endISO: string) {
-  const s = new Date(startISO);
-  const e = new Date(endISO);
-  const fmt = (d: Date) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  return `${fmt(s)}–${fmt(e)}`;
+  return `${formatUiTime(startISO)}–${formatUiTime(endISO)}`;
 }
 
 function mockJobs(): CrewJob[] {
