@@ -11,6 +11,7 @@ import { listStores, type Store as ApiStore } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { formatUiDate } from '../../lib/date-display';
+import { useDateDisplayStore } from '../../stores/date-display';
 
 /* ---------- Local filter types ---------- */
 
@@ -82,6 +83,7 @@ function hasServiceAfter(inst: Installation): boolean {
 export default function ReportsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
+  useDateDisplayStore((s) => s.datePattern);
 
   // default: today → one month ahead
   const reportRangeDefaults = useMemo(() => defaultDateRangeOneMonthAhead(), []);
@@ -247,12 +249,12 @@ export default function ReportsPage() {
           </h2>
         </div>
         <div className="px-4 py-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {/* Start date */}
-            <div className="flex items-center gap-2">
+            <div className="min-w-0">
               <label
                 htmlFor="start-date"
-                className="text-sm font-medium"
+                className="mb-1 block text-xs font-medium text-gray-600"
               >
                 {t('reportsPage.startLabel')}
               </label>
@@ -261,16 +263,19 @@ export default function ReportsPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => onStartChange(e.target.value)}
-                className="min-w-0 rounded-md border px-2 py-1 pr-10 text-sm [color-scheme:light]"
+                className="input-date-native w-full"
                 max={endDate || undefined}
               />
+              <p className="mt-1 truncate text-xs text-gray-500">
+                {formatUiDate(startDate)}
+              </p>
             </div>
 
             {/* End date */}
-            <div className="flex items-center gap-2">
+            <div className="min-w-0">
               <label
                 htmlFor="end-date"
-                className="text-sm font-medium"
+                className="mb-1 block text-xs font-medium text-gray-600"
               >
                 {t('reportsPage.endLabel')}
               </label>
@@ -279,16 +284,19 @@ export default function ReportsPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => onEndChange(e.target.value)}
-                className="min-w-0 rounded-md border px-2 py-1 pr-10 text-sm [color-scheme:light]"
+                className="input-date-native w-full"
                 min={startDate || undefined}
               />
+              <p className="mt-1 truncate text-xs text-gray-500">
+                {formatUiDate(endDate)}
+              </p>
             </div>
 
             {/* City */}
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 sm:col-span-2 xl:col-span-1">
               <label
                 htmlFor="city"
-                className="shrink-0 text-sm font-medium"
+                className="mb-1 block text-xs font-medium text-gray-600"
               >
                 {t('reportsPage.cityLabel')}
               </label>
@@ -298,7 +306,7 @@ export default function ReportsPage() {
                 onChange={(e) =>
                   setCity(e.target.value as CityFilter)
                 }
-                className="input-select-chevron-only min-w-0 flex-1 text-sm"
+                className="input-select-chevron-only w-full"
               >
                 {allCities.map((c) => (
                   <option key={c} value={c}>
@@ -309,10 +317,10 @@ export default function ReportsPage() {
             </div>
 
             {/* Store */}
-            <div className="flex min-w-0 items-center gap-2">
+            <div className="min-w-0 sm:col-span-2 xl:col-span-1">
               <label
                 htmlFor="store"
-                className="shrink-0 text-sm font-medium"
+                className="mb-1 block text-xs font-medium text-gray-600"
               >
                 {t('reportsPage.storeLabel')}
               </label>
@@ -322,7 +330,7 @@ export default function ReportsPage() {
                 onChange={(e) =>
                   setStoreFilter(e.target.value as StoreFilter)
                 }
-                className="input-select-chevron-only min-w-0 flex-1 text-sm"
+                className="input-select-chevron-only w-full"
               >
                 <option value="All Stores">
                   {t('reportsPage.allStores')}
@@ -479,11 +487,11 @@ export default function ReportsPage() {
             {' '}
             {t('reportsPage.between')}
             {' '}
-            {startDate}
+            {formatUiDate(startDate)}
             {' '}
             {t('reportsPage.and')}
             {' '}
-            {endDate}
+            {formatUiDate(endDate)}
           </p>
         </div>
 
@@ -536,8 +544,9 @@ export default function ReportsPage() {
         {t('reportsPage.debugCurrentParams')}
         {' '}
         {t('reportsPage.startLabel')}
-        : <b>{startDate}</b>, {t('reportsPage.endLabel')}
-        : <b>{endDate}</b>, {t('reportsPage.cityLabel')}
+        : <b>{formatUiDate(startDate)}</b> ({startDate}),{' '}
+        {t('reportsPage.endLabel')}
+        : <b>{formatUiDate(endDate)}</b> ({endDate}), {t('reportsPage.cityLabel')}
         : <b>{city}</b>, {t('reportsPage.storeLabel')}
         : <b>{storeFilter}</b>
       </div>

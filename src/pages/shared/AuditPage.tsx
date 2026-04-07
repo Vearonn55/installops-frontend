@@ -17,7 +17,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
-import { formatUiDateTime } from '../../lib/date-display';
+import { formatUiDate, formatUiDateTime } from '../../lib/date-display';
+import { useDateDisplayStore } from '../../stores/date-display';
 import { listAuditLogs, type AuditLog } from '../../api/auditLogs';
 
 const PAGE_SIZE = 20;
@@ -27,6 +28,7 @@ type SortDir = 'asc' | 'desc';
 
 export default function AuditPage() {
   const { t } = useTranslation('common');
+  useDateDisplayStore((s) => s.datePattern);
 
   /* ------------------ Filters ------------------ */
   const [search, setSearch] = useState('');
@@ -141,52 +143,54 @@ export default function AuditPage() {
 
       {/* Filters */}
       <div className="card">
-        <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-5 md:items-end">
-          {/* Search */}
-          <div className="relative min-w-0 md:col-span-2">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              className="input-search-field w-full"
-              placeholder={t('audit.filters.searchPlaceholder')}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
+        <div className="card-content space-y-4">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+            {/* Search */}
+            <div className="relative min-w-0 lg:col-span-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                className="input-search-field w-full"
+                placeholder={t('audit.filters.searchPlaceholder')}
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            {/* Actor */}
+            <div className="relative min-w-0">
+              <User className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                className="input-search-field w-full"
+                placeholder={t('audit.filters.actorPlaceholder')}
+                value={actor}
+                onChange={(e) => {
+                  setActor(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
+
+            {/* Entity */}
+            <div className="relative min-w-0">
+              <Shield className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                className="input-search-field w-full"
+                placeholder={t('audit.filters.entityPlaceholder')}
+                value={entity}
+                onChange={(e) => {
+                  setEntity(e.target.value);
+                  setPage(1);
+                }}
+              />
+            </div>
           </div>
 
-          {/* Actor */}
-          <div className="relative min-w-0">
-            <User className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              className="input-search-field w-full"
-              placeholder={t('audit.filters.actorPlaceholder')}
-              value={actor}
-              onChange={(e) => {
-                setActor(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-
-          {/* Entity */}
-          <div className="relative min-w-0">
-            <Shield className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              className="input-search-field w-full"
-              placeholder={t('audit.filters.entityPlaceholder')}
-              value={entity}
-              onChange={(e) => {
-                setEntity(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-
-          {/* Date range */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:col-span-2">
-            <div>
+          {/* Date range — own row so inputs never squeeze with text fields */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="min-w-0">
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 {t('audit.filters.dateFrom')}
               </label>
@@ -194,7 +198,7 @@ export default function AuditPage() {
                 <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   type="date"
-                  className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
+                  className="input-date-native w-full pl-9"
                   value={from}
                   max={to || undefined}
                   onChange={(e) => {
@@ -205,8 +209,11 @@ export default function AuditPage() {
                   }}
                 />
               </div>
+              <p className="mt-1 truncate text-xs text-gray-500">
+                {formatUiDate(from)}
+              </p>
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 {t('audit.filters.dateTo')}
               </label>
@@ -214,7 +221,7 @@ export default function AuditPage() {
                 <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   type="date"
-                  className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
+                  className="input-date-native w-full pl-9"
                   value={to}
                   min={from || undefined}
                   onChange={(e) => {
@@ -225,6 +232,9 @@ export default function AuditPage() {
                   }}
                 />
               </div>
+              <p className="mt-1 truncate text-xs text-gray-500">
+                {formatUiDate(to)}
+              </p>
             </div>
           </div>
         </div>

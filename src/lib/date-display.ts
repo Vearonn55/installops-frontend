@@ -28,9 +28,18 @@ const PATTERNS: Record<
 function coerceDate(input: string | Date | null | undefined): Date | null {
   if (input == null || input === '') return null;
   if (input instanceof Date) return isValid(input) ? input : null;
-  const parsed = parseISO(input);
+  if (typeof input === 'string') {
+    const s = input.trim();
+    // Plain calendar date from <input type="date"> — parse in local time (parseISO is UTC midnight).
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y, mo, d] = s.split('-').map(Number);
+      const local = new Date(y, mo - 1, d, 12, 0, 0, 0);
+      return isValid(local) ? local : null;
+    }
+  }
+  const parsed = parseISO(input as string);
   if (isValid(parsed)) return parsed;
-  const d = new Date(input);
+  const d = new Date(input as string);
   return isValid(d) ? d : null;
 }
 

@@ -79,6 +79,12 @@
   }
 
   /** Select without a leading icon — still hide native arrow clash on WebKit */
+  /** Native date picker: leave room for WebKit calendar control + light scheme for dark pages */
+  .input-date-native {
+    @apply input min-w-0 pr-11;
+    color-scheme: light;
+  }
+
   .input-select-chevron-only {
     @apply input min-w-0 cursor-pointer pr-9;
     -webkit-appearance: none;

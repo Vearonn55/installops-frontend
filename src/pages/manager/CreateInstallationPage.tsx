@@ -24,13 +24,25 @@ import {
 import { listUsers, type User } from '../../api/users';
 import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
+import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
+import { formatUiDate } from '../../lib/date-display';
+import { useDateDisplayStore } from '../../stores/date-display';
 
 // ---------- helpers ----------
 const toISODateTime = (date: string, time: string) => {
   if (!date || !time) return '';
+  const [y, mo, d] = date.split('-').map((v) => parseInt(v, 10));
   const [h, m] = time.split(':').map((v) => parseInt(v, 10));
-  const dt = new Date(date);
-  dt.setHours(h, m, 0, 0);
+  if (
+    Number.isNaN(y) ||
+    Number.isNaN(mo) ||
+    Number.isNaN(d) ||
+    Number.isNaN(h) ||
+    Number.isNaN(m)
+  ) {
+    return '';
+  }
+  const dt = new Date(y, mo - 1, d, h, m, 0, 0);
   return dt.toISOString();
 };
 
@@ -60,12 +72,15 @@ export default function CreateInstallationPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { t } = useTranslation('common');
+  useDateDisplayStore((s) => s.datePattern);
 
   const myStoreId = (user as any)?.store_id as string | undefined;
 
   // ----- form state -----
   const [externalOrderId, setExternalOrderId] = useState<string>('');
-  const [date, setDate] = useState<string>('');
+  const [date, setDate] = useState<string>(
+    () => defaultDateRangeOneMonthAhead().from
+  );
   const [timeStart, setTimeStart] = useState<string>('09:00');
   const [zone, setZone] = useState<string>('');
   const [crewIds, setCrewIds] = useState<string[]>([]);
@@ -228,7 +243,7 @@ export default function CreateInstallationPage() {
             </div>
             <div className="card-content space-y-2">
               <select
-                className="input w-full"
+                className="input-select-chevron-only w-full"
                 value={selectedStoreId}
                 onChange={(e) => setSelectedStoreId(e.target.value)}
                 disabled={!!myStoreId && !storesQuery.isError && !storesQuery.isLoading}
@@ -295,10 +310,15 @@ export default function CreateInstallationPage() {
                 </span>
                 <input
                   type="date"
-                  className="input"
+                  className="input-date-native w-full"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
+                {date ? (
+                  <span className="text-xs text-gray-500">
+                    {formatUiDate(date)}
+                  </span>
+                ) : null}
               </label>
 
               <label className="flex flex-col gap-1">
@@ -328,7 +348,7 @@ export default function CreateInstallationPage() {
             </div>
             <div className="card-content">
               <select
-                className="input w-full"
+                className="input-select-chevron-only w-full"
                 value={zone}
                 onChange={(e) => setZone(e.target.value)}
               >
@@ -355,7 +375,7 @@ export default function CreateInstallationPage() {
               </p>
             </div>
             <div className="card-content space-y-3">
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {DIFFICULTIES.map((value) => {
                   const selected = difficulty === value;
                   const labelKey =
@@ -371,7 +391,7 @@ export default function CreateInstallationPage() {
                       type="button"
                       onClick={() => setDifficulty(value)}
                       className={cn(
-                        'rounded-md border px-3 py-1.5 text-sm transition',
+                        'min-h-[2.75rem] w-full rounded-md border px-3 py-2 text-center text-sm transition',
                         selected
                           ? 'border-primary-600 bg-primary-600 text-white'
                           : 'border-gray-300 bg-white hover:bg-gray-50'
