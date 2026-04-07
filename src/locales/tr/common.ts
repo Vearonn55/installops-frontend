@@ -133,8 +133,11 @@ usersPage: {
     searchPlaceholder: 'İsim, e-posta, telefon veya kimlik ile ara…',
 
     filters: {
+      searchLabel: 'Arama',
       allRoles: 'Tüm roller',
       allStatuses: 'Tüm durumlar',
+      roleLabel: 'Rol',
+      statusLabel: 'Durum',
     },
 
     status: {
@@ -201,7 +204,8 @@ usersPage: {
       searchPlaceholder: 'ID, işlem, varlık, IP ara...',
       actorPlaceholder: 'Aktör ID',
       entityPlaceholder: 'Varlık (Kullanıcı, Sipariş, Kurulum...)',
-      dateTo: 'ile',
+      dateFrom: 'Başlangıç',
+      dateTo: 'Bitiş',
     },
 
     table: {

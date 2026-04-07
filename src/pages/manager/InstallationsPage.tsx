@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '../../lib/utils';
+import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
@@ -173,22 +174,15 @@ export default function InstallationsPage() {
     }
   };
 
-  // compute today and 1 month ago
-  const today = new Date();
-  const todayISO = ymd(today);
-
-  const oneMonthAgo = new Date();
-  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-  const oneMonthAgoISO = ymd(oneMonthAgo);
+  const installationsRangeDefault = useMemo(() => defaultDateRangeOneMonthAhead(), []);
 
   // Filters
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<InstallationStatus | 'all'>('all');
   const [zone, setZone] = useState<Zone | 'all'>('all');
 
-  // Set default range: from = 1 month ago, to = today
-  const [from, setFrom] = useState<string>(oneMonthAgoISO);
-  const [to, setTo] = useState<string>(todayISO);
+  const [from, setFrom] = useState<string>(installationsRangeDefault.from);
+  const [to, setTo] = useState<string>(installationsRangeDefault.to);
 
   // Sort & pagination
   const [sortBy, setSortBy] = useState<'start' | 'customer' | 'zone' | 'status'>('start');
@@ -427,9 +421,9 @@ export default function InstallationsPage() {
             {t('installationsPage.filters.searchLabel')}
           </label>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-8"
+              className="input w-full pl-9"
               placeholder={t('installationsPage.filters.searchPlaceholder')}
               value={q}
               onChange={(e) => {
@@ -445,9 +439,9 @@ export default function InstallationsPage() {
             {t('installationsPage.filters.statusLabel')}
           </label>
           <div className="relative">
-            <Filter className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+            <Filter className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <select
-              className="input w-full pl-8"
+              className="input w-full pl-9 pr-10"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value as any);
@@ -487,9 +481,9 @@ export default function InstallationsPage() {
             {t('installationsPage.filters.zoneLabel')}
           </label>
           <div className="relative">
-            <MapPin className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+            <MapPin className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <select
-              className="input w-full pl-8"
+              className="input w-full pl-9 pr-10"
               value={zone}
               onChange={(e) => {
                 setZone(e.target.value as any);
@@ -514,14 +508,17 @@ export default function InstallationsPage() {
               {t('installationsPage.filters.from')}
             </label>
             <div className="relative">
-              <CalendarIcon className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              <CalendarIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="date"
-                className="input w-full pl-8"
+                className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
                 value={from}
+                max={to}
                 onClick={handleDateClick}
                 onChange={(e) => {
-                  setFrom(e.target.value);
+                  const val = e.target.value;
+                  setFrom(val);
+                  if (to && val > to) setTo(val);
                   setPage(1);
                 }}
               />
@@ -532,14 +529,17 @@ export default function InstallationsPage() {
               {t('installationsPage.filters.to')}
             </label>
             <div className="relative">
-              <CalendarIcon className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+              <CalendarIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="date"
-                className="input w-full pl-8"
+                className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
                 value={to}
+                min={from}
                 onClick={handleDateClick}
                 onChange={(e) => {
-                  setTo(e.target.value);
+                  const val = e.target.value;
+                  setTo(val);
+                  if (from && val < from) setFrom(val);
                   setPage(1);
                 }}
               />

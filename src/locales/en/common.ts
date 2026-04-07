@@ -133,8 +133,11 @@ adminDashboard: {
     searchPlaceholder: 'Search by name, email, phone, id…',
 
     filters: {
+      searchLabel: 'Search',
       allRoles: 'All roles',
       allStatuses: 'All statuses',
+      roleLabel: 'Role',
+      statusLabel: 'Status',
     },
 
     status: {
@@ -201,7 +204,8 @@ adminDashboard: {
       searchPlaceholder: 'Search id, action, entity, ip...',
       actorPlaceholder: 'Actor ID',
       entityPlaceholder: 'Entity (User, Order, Installation...)',
-      dateTo: 'to',
+      dateFrom: 'From',
+      dateTo: 'To',
     },
 
     table: {

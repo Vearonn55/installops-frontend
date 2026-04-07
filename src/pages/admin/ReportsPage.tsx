@@ -9,6 +9,7 @@ import {
 } from '../../api/installations';
 import { listStores, type Store as ApiStore } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
+import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 
 /* ---------- Local filter types ---------- */
 
@@ -81,19 +82,11 @@ export default function ReportsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation('common');
 
-  // default: last 7 days
-  const todayStr = useMemo(
-    () => toLocalYmd(new Date()),
-    []
-  );
-  const weekAgoStr = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7);
-    return toLocalYmd(d);
-  }, []);
+  // default: today → one month ahead
+  const reportRangeDefaults = useMemo(() => defaultDateRangeOneMonthAhead(), []);
 
-  const [startDate, setStartDate] = useState<string>(weekAgoStr);
-  const [endDate, setEndDate] = useState<string>(todayStr);
+  const [startDate, setStartDate] = useState<string>(reportRangeDefaults.from);
+  const [endDate, setEndDate] = useState<string>(reportRangeDefaults.to);
   const [city, setCity] = useState<CityFilter>('All Cities');
   const [storeFilter, setStoreFilter] = useState<StoreFilter>('All Stores');
 
@@ -276,7 +269,7 @@ export default function ReportsPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => onStartChange(e.target.value)}
-                className="rounded-md border px-2 py-1 text-sm"
+                className="min-w-0 rounded-md border px-2 py-1 pr-10 text-sm [color-scheme:light]"
                 max={endDate || undefined}
               />
             </div>
@@ -294,16 +287,16 @@ export default function ReportsPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => onEndChange(e.target.value)}
-                className="rounded-md border px-2 py-1 text-sm"
+                className="min-w-0 rounded-md border px-2 py-1 pr-10 text-sm [color-scheme:light]"
                 min={startDate || undefined}
               />
             </div>
 
             {/* City */}
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <label
                 htmlFor="city"
-                className="text-sm font-medium"
+                className="shrink-0 text-sm font-medium"
               >
                 {t('reportsPage.cityLabel')}
               </label>
@@ -313,7 +306,7 @@ export default function ReportsPage() {
                 onChange={(e) =>
                   setCity(e.target.value as CityFilter)
                 }
-                className="rounded-md border px-2 py-1 text-sm"
+                className="min-w-0 flex-1 cursor-pointer rounded-md border py-1 pl-2 pr-8 text-sm"
               >
                 {allCities.map((c) => (
                   <option key={c} value={c}>
@@ -324,10 +317,10 @@ export default function ReportsPage() {
             </div>
 
             {/* Store */}
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <label
                 htmlFor="store"
-                className="text-sm font-medium"
+                className="shrink-0 text-sm font-medium"
               >
                 {t('reportsPage.storeLabel')}
               </label>
@@ -337,14 +330,14 @@ export default function ReportsPage() {
                 onChange={(e) =>
                   setStoreFilter(e.target.value as StoreFilter)
                 }
-                className="rounded-md border px-2 py-1 text-sm"
+                className="min-w-0 flex-1 cursor-pointer rounded-md border py-1 pl-2 pr-8 text-sm"
               >
                 <option value="All Stores">
                   {t('reportsPage.allStores')}
                 </option>
                 {allStoresForFilter.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name}
+                    {s.name?.trim() || s.id}
                   </option>
                 ))}
               </select>

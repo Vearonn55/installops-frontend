@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "../../lib/utils";
+import { defaultDateRangeOneMonthAhead } from "../../lib/date-range";
 import { useAuthStore } from "../../stores/auth";
 
 // real API
@@ -24,18 +25,25 @@ export default function OrdersPage() {
   const { user } = useAuthStore();
   const { t } = useTranslation("common");
 
-  // 🔹 Local UI state
-  // Default date range: last 1 month
-  const todayISO = ymd();
-  const oneMonthAgoDate = new Date();
-  oneMonthAgoDate.setMonth(oneMonthAgoDate.getMonth() - 1);
-  const oneMonthAgoISO = ymd(oneMonthAgoDate);
+  // 🔹 Local UI state — date range: today → one month ahead
+  const ordersRangeDefault = useMemo(() => defaultDateRangeOneMonthAhead(), []);
 
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
   const [store, setStore] = useState<string>("all");
-  const [from, setFrom] = useState<string>(oneMonthAgoISO);
-  const [to, setTo] = useState<string>(todayISO);
+  const [from, setFrom] = useState<string>(ordersRangeDefault.from);
+  const [to, setTo] = useState<string>(ordersRangeDefault.to);
+
+  const setFromClamped = (val: string) => {
+    setFrom(val);
+    if (to && val > to) setTo(val);
+    setPage(1);
+  };
+  const setToClamped = (val: string) => {
+    setTo(val);
+    if (from && val < from) setFrom(val);
+    setPage(1);
+  };
 
 
   const [sortBy, setSortBy] = useState<"placed_at" | "id" | "customer" | "store" | "items_count" | "status">("placed_at");
@@ -73,7 +81,7 @@ export default function OrdersPage() {
   const storeOptions = useMemo(() => {
     return stores.map((s) => ({
       id: s.id,
-      label: s.name,
+      label: s.name?.trim() || s.id,
     }));
   }, [stores]);
 
@@ -177,9 +185,9 @@ export default function OrdersPage() {
             {t("ordersPage.filters.searchLabel")}
           </label>
           <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-8"
+              className="input w-full pl-9"
               placeholder={t("ordersPage.filters.searchPlaceholder")}
               value={q}
               onChange={(e) => {
@@ -226,12 +234,14 @@ export default function OrdersPage() {
         <DateFilter
           label={t("ordersPage.filters.from")}
           value={from}
-          onChange={setFrom}
+          max={to}
+          onChange={setFromClamped}
         />
         <DateFilter
           label={t("ordersPage.filters.to")}
           value={to}
-          onChange={setTo}
+          min={from}
+          onChange={setToClamped}
         />
       </div>
 
@@ -385,13 +395,6 @@ export default function OrdersPage() {
 
 /* ------------------------ Helpers & small components ------------------------ */
 
-function ymd(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 function statusRank(s: "pending" | "confirmed" | "cancelled") {
   return ["pending", "confirmed", "cancelled"].indexOf(s);
 }
@@ -428,9 +431,9 @@ function FilterSelect({ label, icon: Icon, value, onChange, options }: any) {
     <div>
       <label className="text-xs text-gray-600 mb-1 block">{label}</label>
       <div className="relative">
-        <Icon className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+        <Icon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <select
-          className="input w-full pl-8"
+          className="input w-full pl-9 pr-10"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -445,16 +448,30 @@ function FilterSelect({ label, icon: Icon, value, onChange, options }: any) {
   );
 }
 
-function DateFilter({ label, value, onChange }: any) {
+function DateFilter({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  min?: string;
+  max?: string;
+}) {
   return (
     <div>
       <label className="text-xs text-gray-600 mb-1 block">{label}</label>
       <div className="relative">
-        <CalendarIcon className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+        <CalendarIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           type="date"
-          className="input w-full pl-8"
+          className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
           value={value}
+          min={min || undefined}
+          max={max || undefined}
           onChange={(e) => onChange(e.target.value)}
         />
       </div>

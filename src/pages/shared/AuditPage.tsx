@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
+import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { listAuditLogs, type AuditLog } from '../../api/auditLogs';
 
 const PAGE_SIZE = 20;
@@ -30,8 +31,9 @@ export default function AuditPage() {
   const [search, setSearch] = useState('');
   const [actor, setActor] = useState('');
   const [entity, setEntity] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const auditRangeDefault = useMemo(() => defaultDateRangeOneMonthAhead(), []);
+  const [from, setFrom] = useState(auditRangeDefault.from);
+  const [to, setTo] = useState(auditRangeDefault.to);
 
   /* ------------------ Sorting & Pagination ------------------ */
   const [sortKey, setSortKey] = useState<SortKey>('created_at');
@@ -141,9 +143,9 @@ export default function AuditPage() {
         <div className="card-content grid grid-cols-1 gap-3 md:grid-cols-5">
           {/* Search */}
           <div className="relative md:col-span-2">
-            <Search className="h-4 w-4 absolute left-2 top-2.5 text-gray-400" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full pl-8"
+              className="input w-full pl-9"
               placeholder={t('audit.filters.searchPlaceholder')}
               value={search}
               onChange={(e) => {
@@ -154,10 +156,10 @@ export default function AuditPage() {
           </div>
 
           {/* Actor */}
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-gray-400" />
+          <div className="relative">
+            <User className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full"
+              className="input w-full pl-9"
               placeholder={t('audit.filters.actorPlaceholder')}
               value={actor}
               onChange={(e) => {
@@ -168,10 +170,10 @@ export default function AuditPage() {
           </div>
 
           {/* Entity */}
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-gray-400" />
+          <div className="relative">
+            <Shield className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
-              className="input w-full"
+              className="input w-full pl-9"
               placeholder={t('audit.filters.entityPlaceholder')}
               value={entity}
               onChange={(e) => {
@@ -182,29 +184,47 @@ export default function AuditPage() {
           </div>
 
           {/* Date range */}
-          <div className="flex items-center gap-2 md:col-span-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <input
-              type="date"
-              className="input w-full"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                setPage(1);
-              }}
-            />
-            <span className="text-xs text-gray-500">
-              {t('audit.filters.dateTo')}
-            </span>
-            <input
-              type="date"
-              className="input w-full"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                setPage(1);
-              }}
-            />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:col-span-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                {t('audit.filters.dateFrom')}
+              </label>
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="date"
+                  className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
+                  value={from}
+                  max={to || undefined}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFrom(val);
+                    if (to && val > to) setTo(val);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                {t('audit.filters.dateTo')}
+              </label>
+              <div className="relative">
+                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="date"
+                  className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
+                  value={to}
+                  min={from || undefined}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setTo(val);
+                    if (from && val < from) setFrom(val);
+                    setPage(1);
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
