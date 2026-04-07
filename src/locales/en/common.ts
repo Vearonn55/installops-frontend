@@ -1,6 +1,6 @@
 // src/locales/en/common.ts
 const enCommon = {
-  appName: 'Kurulum Takip',
+  appName: 'InstallOps',
 
   nav: {
     dashboard: 'Dashboard',
