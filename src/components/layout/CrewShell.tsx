@@ -1,5 +1,5 @@
 // src/components/layout/CrewShell.tsx
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -14,7 +14,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 import { cn } from '../../lib/utils';
 
 interface NavigationItem {
@@ -153,9 +153,9 @@ export default function CrewShell() {
           {navigation.map((item) => {
             const isActive = location.pathname === item.href;
             return (
-              <a
+              <Link
                 key={item.href}
-                href={item.href}
+                to={item.href}
                 className={cn(
                   'flex flex-col items-center py-2 px-3 text-xs font-medium rounded-lg transition-colors',
                   isActive
@@ -175,7 +175,7 @@ export default function CrewShell() {
                     {item.badge}
                   </span>
                 )}
-              </a>
+              </Link>
             );
           })}
         </nav>

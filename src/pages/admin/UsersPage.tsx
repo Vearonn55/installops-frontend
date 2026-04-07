@@ -12,7 +12,7 @@ import type { Role as ApiRole } from '../../api/roles';
 import * as usersApi from '../../api/users';
 import * as rolesApi from '../../api/roles';
 import { cn } from '../../lib/utils';
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 
 /** ---------- Types aligned with OpenAPI ---------- */
 

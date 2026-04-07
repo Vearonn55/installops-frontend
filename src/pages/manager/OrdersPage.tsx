@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "../../lib/utils";
-import { useAuthStore } from "../../stores/auth-simple";
+import { useAuthStore } from "../../stores/auth";
 
 // real API
 import { listOrders, type ListOrdersParams, type Order } from "../../api/orders";

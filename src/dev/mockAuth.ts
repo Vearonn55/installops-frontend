@@ -1,6 +1,6 @@
 // src/dev/mockAuth.ts
 import type { User, UserRole } from '@/types';
-import { useAuthStore } from "../stores/auth-simple";
+import { useAuthStore } from "../stores/auth";
 
 const makeUser = (role: UserRole): User => ({
   id: `mock_${role.toLowerCase()}`,

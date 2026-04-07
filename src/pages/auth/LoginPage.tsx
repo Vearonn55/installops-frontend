@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 import { login as apiLogin } from '../../api/auth';
 
 const loginSchema = z.object({
@@ -36,16 +36,19 @@ export default function LoginPage() {
     }
   };
 
-  // Redirect if already authenticated (run once when auth state changes)
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const from =
-        (location.state as any)?.from?.pathname ||
-        getDefaultRoute();
+  // Preserve deep link when session exists (state comes from ProtectedRoute).
+  const postLoginTarget = useMemo(() => {
+    const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+    const path = from?.pathname;
+    if (!path || path === '/auth/login') return null;
+    return `${path}${from?.search ?? ''}`;
+  }, [location.state, location.key]);
 
-      navigate(from, { replace: true });
-    }
-  }, [isAuthenticated, user, location, navigate]);
+  useEffect(() => {
+    if (location.pathname !== '/auth/login') return;
+    if (!isAuthenticated || !user) return;
+    navigate(postLoginTarget ?? getDefaultRoute(), { replace: true });
+  }, [isAuthenticated, user?.id, user?.role, location.pathname, postLoginTarget, navigate]);
 
   const {
     register,

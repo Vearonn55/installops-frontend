@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, MapPin, Clock, ClipboardCheck, User2 } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
   type Installation,

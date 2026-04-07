@@ -6,7 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import { useEffect, useState } from 'react';
 
 import { queryClient } from './lib/query-client';
-import { useAuthStore, initializeAuth } from './stores/auth-simple';
+import { useAuthStore } from './stores/auth';
 
 // Layout & guards
 import AppShell from './components/layout/AppShell';
@@ -68,16 +68,6 @@ const cornerToSide: Record<DevtoolsCorner, 'top' | 'bottom' | 'left' | 'right'> 
 
 function App() {
   const { isAuthenticated, user } = useAuthStore();
-
-// Initialize auth once
-useEffect(() => {
-  // In dev (localhost), do NOT auto-restore session from backend.
-  // This prevents automatic login and always shows the normal login page first.
-  if (!import.meta.env.DEV) {
-    initializeAuth();
-  }
-}, []);
-
 
   // React Query Devtools position (persisted by DevControls)
   const [rqPosition, setRqPosition] = useState<DevtoolsCorner>('bottom-right');

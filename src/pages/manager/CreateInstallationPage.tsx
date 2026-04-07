@@ -14,7 +14,7 @@ import {
 import toast from 'react-hot-toast';
 
 import { cn } from '../../lib/utils';
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 
 import {
   createInstallation,

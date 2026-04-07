@@ -1,5 +1,5 @@
 // src/components/layout/AppShell.tsx
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 import CommandPalette, { type CommandPaletteItem, type CommandPaletteRef } from '../CommandPalette';
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 import { cn } from '../../lib/utils';
 import type { UserRole } from '../../types';
 
@@ -252,9 +252,9 @@ export default function AppShell() {
               {filteredNavigation.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
-                  <a
+                  <Link
                     key={item.href}
-                    href={item.href}
+                    to={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
                       'group flex items-center rounded-md px-2 py-2 text-base font-medium',
@@ -277,7 +277,7 @@ export default function AppShell() {
                         {item.badge}
                       </span>
                     )}
-                  </a>
+                  </Link>
                 );
               })}
             </nav>
@@ -305,9 +305,9 @@ export default function AppShell() {
                 {filteredNavigation.map((item) => {
                   const isActive = location.pathname === item.href;
                   return (
-                    <a
+                    <Link
                       key={item.href}
-                      href={item.href}
+                      to={item.href}
                       className={cn(
                         'group flex items-center rounded-md px-2 py-2 text-sm font-medium',
                         isActive
@@ -329,7 +329,7 @@ export default function AppShell() {
                           {item.badge}
                         </span>
                       )}
-                    </a>
+                    </Link>
                   );
                 })}
               </nav>
@@ -398,18 +398,18 @@ export default function AppShell() {
                         {roleLabel(user?.role)}
                       </div>
                     </div>
-                    <a
-                      href="/app/profile"
+                    <Link
+                      to="/app/profile"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       {t('header.yourProfile')}
-                    </a>
-                    <a
-                      href="/app/settings"
+                    </Link>
+                    <Link
+                      to="/app/settings"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       {t('header.settings')}
-                    </a>
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"

@@ -16,7 +16,7 @@ import { Link } from 'react-router-dom';
 
 import type { Installation } from '../../types';
 import { cn } from '../../lib/utils';
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 import { listInstallations } from '../../api/installations';
 import { useTranslation } from 'react-i18next';
 

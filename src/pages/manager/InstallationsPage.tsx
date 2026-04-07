@@ -22,7 +22,7 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '../../lib/utils';
-import { useAuthStore } from '../../stores/auth-simple';
+import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
   type Installation,

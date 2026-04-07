@@ -1,20 +1,32 @@
+// src/stores/auth.ts — cookie session via /auth/me; single source of truth for app auth state
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole } from '../types';
-import { apiClient } from '../lib/api';
+import { getCurrentUser, logout as logoutSession } from '../api/auth';
+import { isAxiosError } from '../api/http';
+
+/** Backend may return "store_manager", "Store Manager", "manager" etc. Normalize to UserRole. */
+function normalizeBackendRole(role: string | null | undefined): UserRole {
+  if (!role || typeof role !== 'string') return 'ADMIN';
+  const r = role.trim().toLowerCase().replace(/\s+/g, '_');
+  if (r === 'admin' || r === 'administrator') return 'ADMIN';
+  if (r === 'store_manager' || r === 'manager' || r === 'storemanager') return 'STORE_MANAGER';
+  if (r === 'crew' || r === 'installation_crew' || r === 'installationcrew') return 'CREW';
+  return 'ADMIN';
+}
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  /** False until persisted auth is re-read from storage (avoids bogus redirects before rehydrate). */
+  hasHydrated: boolean;
 }
 
 interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refreshToken: () => Promise<void>;
-  getCurrentUser: () => Promise<void>;
+  logout: () => void;
   clearError: () => void;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: UserRole) => boolean;
@@ -23,7 +35,6 @@ interface AuthActions {
 
 type AuthStore = AuthState & AuthActions;
 
-// Permission mapping based on roles
 const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   ADMIN: [
     'users:read', 'users:write', 'users:delete',
@@ -44,12 +55,6 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
     'calendar:read', 'calendar:write',
     'reports:read',
   ],
-  WAREHOUSE_MANAGER: [
-    'inventory:read', 'inventory:write',
-    'installations:read',
-    'picklists:read', 'picklists:write',
-    'products:read',
-  ],
   CREW: [
     'installations:read',
     'checklists:read', 'checklists:write',
@@ -60,95 +65,60 @@ const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
-      // State
       user: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      hasHydrated: false,
 
-      // Actions
-      login: async (email: string, password: string) => {
+      login: async (email: string, _password: string) => {
         set({ isLoading: true, error: null });
-        
+
         try {
-          const response = await apiClient.login({ email, password });
-          const { user, refresh_token } = response.data;
-          
-          // Store refresh token
-          localStorage.setItem('refresh_token', refresh_token);
-          
+          const me = await getCurrentUser();
+
+          const mappedUser: User = {
+            id: me.id,
+            name: '',
+            email,
+            phone: undefined,
+            role: normalizeBackendRole(me.role),
+            store_id: undefined,
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
           set({
-            user,
+            user: mappedUser,
             isAuthenticated: true,
             isLoading: false,
             error: null,
           });
-        } catch (error: any) {
+        } catch (err: unknown) {
+          const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
+          const is401 = isAxiosError(err) && err.response?.status === 401;
+          const message = is401
+            ? 'Session could not be established. Please enable cookies and try again, or contact support if the problem persists.'
+            : (e?.response?.data?.message || e?.message || 'Login failed');
           set({
             user: null,
             isAuthenticated: false,
             isLoading: false,
-            error: error.message || 'Login failed',
+            error: message,
           });
-          throw error;
+          throw err;
         }
       },
 
-      logout: async () => {
-        set({ isLoading: true });
-        
-        try {
-          await apiClient.logout();
-        } catch (error) {
-          // Continue with logout even if API call fails
-          console.error('Logout API call failed:', error);
-        } finally {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null,
-          });
-        }
-      },
-
-      refreshToken: async () => {
-        try {
-          const response = await apiClient.refreshToken();
-          const { refresh_token } = response.data;
-          
-          // Update refresh token
-          localStorage.setItem('refresh_token', refresh_token);
-          
-          // Get current user to ensure token is valid
-          await get().getCurrentUser();
-        } catch (error) {
-          // If refresh fails, logout user
-          await get().logout();
-          throw error;
-        }
-      },
-
-      getCurrentUser: async () => {
-        set({ isLoading: true });
-        
-        try {
-          const response = await apiClient.getCurrentUser();
-          set({
-            user: response.data,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
-        } catch (error: any) {
-          set({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: error.message || 'Failed to get user',
-          });
-          throw error;
-        }
+      logout: () => {
+        void logoutSession().catch(() => {});
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null,
+        });
       },
 
       clearError: () => {
@@ -158,19 +128,21 @@ export const useAuthStore = create<AuthStore>()(
       hasPermission: (permission: string) => {
         const { user } = get();
         if (!user) return false;
-        
-        const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+        const role = normalizeBackendRole(user.role) as UserRole;
+        const userPermissions = ROLE_PERMISSIONS[role] || [];
         return userPermissions.includes(permission);
       },
 
       hasRole: (role: UserRole) => {
         const { user } = get();
-        return user?.role === role;
+        if (!user) return false;
+        return normalizeBackendRole(user.role) === role;
       },
 
       hasAnyRole: (roles: UserRole[]) => {
         const { user } = get();
-        return user ? roles.includes(user.role) : false;
+        if (!user) return false;
+        return roles.includes(normalizeBackendRole(user.role) as UserRole);
       },
     }),
     {
@@ -179,30 +151,51 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      merge: (persisted, current) => {
+        const p = persisted as { user?: User | null; isAuthenticated?: boolean };
+        const user = p.user
+          ? { ...p.user, role: normalizeBackendRole(p.user.role) as UserRole }
+          : null;
+        return { ...current, user, isAuthenticated: p.isAuthenticated ?? current.isAuthenticated };
+      },
+      onRehydrateStorage: () => (_state, error) => {
+        useAuthStore.setState({ hasHydrated: true });
+        if (!import.meta.env.DEV && !error) {
+          void initializeAuth();
+        }
+      },
     }
   )
 );
 
-// Auto-refresh token on app start
+/** Merge /auth/me with persisted user after rehydrate (production). */
 export const initializeAuth = async () => {
-  const { getCurrentUser, refreshToken } = useAuthStore.getState();
-  
-  // Check if we have a stored token
-  const token = localStorage.getItem('access_token');
-  const refreshTokenValue = localStorage.getItem('refresh_token');
-  
-  if (token && refreshTokenValue) {
-    try {
-      // Try to get current user with existing token
-      await getCurrentUser();
-    } catch (error) {
-      try {
-        // If that fails, try to refresh the token
-        await refreshToken();
-      } catch (refreshError) {
-        // If refresh also fails, clear everything
-        useAuthStore.getState().logout();
-      }
-    }
+  const state = useAuthStore.getState();
+
+  try {
+    const me = await getCurrentUser();
+    const prev = state.user;
+    const mappedUser: User = {
+      id: me.id,
+      name: prev?.name ?? '',
+      email: prev?.email ?? '',
+      phone: prev?.phone,
+      role: normalizeBackendRole(me.role),
+      store_id: prev?.store_id,
+      status: prev?.status ?? 'active',
+      created_at: prev?.created_at ?? new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    useAuthStore.setState({
+      user: mappedUser,
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+    });
+
+    return { user: mappedUser, isAuthenticated: true };
+  } catch {
+    return { user: state.user, isAuthenticated: state.isAuthenticated };
   }
 };
