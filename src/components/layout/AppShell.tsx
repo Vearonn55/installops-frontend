@@ -19,6 +19,7 @@ import {
   LogOut,
   HelpCircle,
   Keyboard,
+  Building2,
 } from 'lucide-react';
 
 import CommandPalette, { type CommandPaletteItem, type CommandPaletteRef } from '../CommandPalette';
@@ -76,6 +77,12 @@ const navigation: NavigationItem[] = [
     labelKey: 'nav.integrations',
     href: '/app/admin/integrations',
     icon: Settings,
+    roles: ['ADMIN'],
+  },
+  {
+    labelKey: 'nav.storesNetsis',
+    href: '/app/admin/stores',
+    icon: Building2,
     roles: ['ADMIN'],
   },
   {

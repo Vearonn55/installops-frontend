@@ -10,6 +10,7 @@ const trCommon = {
     reports: 'Raporlar',
     usersAndRoles: 'Kullanıcılar',
     integrations: 'Entegrasyonlar',
+    storesNetsis: 'Mağazalar ve Netsis',
     audit: 'Denetim',
 
     crewHome: 'Ana Sayfa',

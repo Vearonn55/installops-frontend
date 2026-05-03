@@ -134,14 +134,12 @@ src/
 
 ## API Integration
 
-The frontend communicates with a REST API following these patterns:
+The app talks to the **InstallOps backend** over REST (`src/api/*` uses Axios with **`withCredentials: true`**).
 
-- **Base URL**: `/api/v1`
-- **Authentication**: JWT Bearer tokens
-- **Error Handling**: RFC 7807 Problem Details
-- **Data Format**: JSON
-- **Pagination**: Cursor-based pagination
-- **Filtering**: Query parameter-based
+- **Base URL**: `VITE_API_BASE_URL` (default `/api/v1` — same origin when served behind nginx with `/api` → Node).
+- **Authentication**: **Session cookie** `sid` after `POST /auth/login` — not JWT. Do not send `Authorization: Bearer` for the main API.
+- **Errors**: JSON bodies such as `{ error, message, request_id? }` from the backend.
+- **Netsis**: Live order search uses `GET /integrations/netsis/orders/search` (see backend `docs/NETSIS.md`). Admins configure per-store Netsis under **Stores & Netsis** in the UI.
 
 ## Offline Support
 
@@ -193,7 +191,7 @@ npm run build
 ### Environment Variables
 Create a `.env` file with:
 ```
-VITE_API_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
 
 ### Docker Support

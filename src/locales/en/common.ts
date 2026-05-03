@@ -10,6 +10,7 @@ const enCommon = {
     reports: 'Reports',
     usersAndRoles: 'Users',
     integrations: 'Integrations',
+    storesNetsis: 'Stores & Netsis',
     audit: 'Audit',
 
     crewHome: 'Home',

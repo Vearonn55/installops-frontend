@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { formatUiDate } from '../../lib/date-display';
 import { useDateDisplayStore } from '../../stores/date-display';
+import { OrderIdSearchCombobox } from '../../components/OrderIdSearchCombobox';
 
 // ---------- helpers ----------
 const toISODateTime = (date: string, time: string) => {
@@ -269,7 +270,7 @@ export default function CreateInstallationPage() {
             </div>
           </section>
 
-          {/* External Order ID (manual input only) */}
+          {/* External Order ID — Netsis-backed search when store is selected */}
           <section className="card">
             <div className="card-header">
               <h3 className="card-title">
@@ -280,18 +281,18 @@ export default function CreateInstallationPage() {
               </p>
             </div>
             <div className="card-content space-y-3">
-              <label className="flex flex-col gap-1">
-                <span className="text-sm font-medium text-gray-700">
-                  {t('createInstallationPage.order.externalIdLabel')}
-                </span>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder={t('createInstallationPage.order.externalIdPlaceholder')}
-                  value={externalOrderId}
-                  onChange={(e) => setExternalOrderId(e.target.value)}
-                />
-              </label>
+              <OrderIdSearchCombobox
+                storeId={(selectedStoreId || myStoreId || '') as any}
+                value={externalOrderId}
+                onChange={setExternalOrderId}
+                label={t('createInstallationPage.order.externalIdLabel')}
+                description={
+                  (selectedStoreId || myStoreId)
+                    ? undefined
+                    : 'Select a store above to enable live search from Netsis (or type an order ID manually).'
+                }
+                placeholder={t('createInstallationPage.order.externalIdPlaceholder')}
+              />
             </div>
           </section>
 

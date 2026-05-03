@@ -8,6 +8,8 @@ export interface User {
   email: string;
   phone?: string;
   role: UserRole;
+  /** Permissions from `GET /auth/me` when available (preferred over static role maps). */
+  permissions?: string[];
   store_id?: string;
   status: 'active' | 'inactive';
   created_at: string;

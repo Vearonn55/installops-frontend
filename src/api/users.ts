@@ -45,6 +45,8 @@ export type UserUpdate = {
 
 export type UserPasswordUpdate = {
   new_password: string;
+  /** Required when changing your own password. */
+  current_password?: string;
 };
 
 export type ListUsersParams = {

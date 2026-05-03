@@ -21,6 +21,8 @@ export type AuthMeResponse = {
   role_id: UUID;
   role: string;
   permissions: string[];
+  name?: string | null;
+  email?: string | null;
 };
 
 export type LogoutResponse = {

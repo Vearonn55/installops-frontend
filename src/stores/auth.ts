@@ -79,10 +79,11 @@ export const useAuthStore = create<AuthStore>()(
 
           const mappedUser: User = {
             id: me.id,
-            name: '',
-            email,
+            name: me.name || '',
+            email: me.email || email,
             phone: undefined,
             role: normalizeBackendRole(me.role),
+            permissions: Array.isArray(me.permissions) ? me.permissions : [],
             store_id: undefined,
             status: 'active',
             created_at: new Date().toISOString(),
@@ -128,6 +129,13 @@ export const useAuthStore = create<AuthStore>()(
       hasPermission: (permission: string) => {
         const { user } = get();
         if (!user) return false;
+        const fromApi = user.permissions;
+        if (fromApi && fromApi.length) {
+          if (fromApi.includes('admin:*')) return true;
+          if (fromApi.includes(permission)) return true;
+          const prefix = permission.includes(':') ? `${permission.split(':')[0]}:*` : '';
+          if (prefix && fromApi.includes(prefix)) return true;
+        }
         const role = normalizeBackendRole(user.role) as UserRole;
         const userPermissions = ROLE_PERMISSIONS[role] || [];
         return userPermissions.includes(permission);
@@ -148,13 +156,22 @@ export const useAuthStore = create<AuthStore>()(
     {
       name: 'auth-storage',
       partialize: (state) => ({
-        user: state.user,
+        user: state.user
+          ? {
+              ...state.user,
+              permissions: state.user.permissions,
+            }
+          : null,
         isAuthenticated: state.isAuthenticated,
       }),
       merge: (persisted, current) => {
         const p = persisted as { user?: User | null; isAuthenticated?: boolean };
         const user = p.user
-          ? { ...p.user, role: normalizeBackendRole(p.user.role) as UserRole }
+          ? {
+              ...p.user,
+              role: normalizeBackendRole(p.user.role) as UserRole,
+              permissions: p.user.permissions,
+            }
           : null;
         return { ...current, user, isAuthenticated: p.isAuthenticated ?? current.isAuthenticated };
       },
@@ -171,10 +188,11 @@ export const initializeAuth = async () => {
     const prev = state.user;
     const mappedUser: User = {
       id: me.id,
-      name: prev?.name ?? '',
-      email: prev?.email ?? '',
+      name: me.name || prev?.name || '',
+      email: me.email || prev?.email || '',
       phone: prev?.phone,
       role: normalizeBackendRole(me.role),
+      permissions: Array.isArray(me.permissions) ? me.permissions : prev?.permissions,
       store_id: prev?.store_id,
       status: prev?.status ?? 'active',
       created_at: prev?.created_at ?? new Date().toISOString(),

@@ -6,8 +6,14 @@ export type Store = {
   id: UUID;
   name: string;
   external_store_id?: string | null;
-  address_id: UUID;
+  address_id?: UUID | null;
   phone?: string | null;
+  timezone?: string | null;
+  netsis_base_url?: string | null;
+  netsis_order_search_path?: string | null;
+  netsis_username?: string | null;
+  netsis_password_configured?: boolean;
+  netsis_timeout_ms?: number;
   created_at: string;
   updated_at: string;
   address?: Address;
@@ -54,4 +60,25 @@ export async function updateStore(
   payload: StoreUpdate
 ): Promise<Store> {
   return apiPatch<Store>(`/stores/${id}`, payload);
+}
+
+export type StoreNetsisUpdate = {
+  netsis_base_url?: string | null;
+  netsis_order_search_path?: string | null;
+  netsis_username?: string | null;
+  netsis_password?: string | null;
+  netsis_timeout_ms?: number;
+};
+
+export async function patchStoreNetsis(
+  id: UUID,
+  payload: StoreNetsisUpdate
+): Promise<Store> {
+  return apiPatch<Store>(`/stores/${id}/netsis`, payload);
+}
+
+export type NetsisTestResponse = { ok: boolean; message: string };
+
+export async function testStoreNetsis(id: UUID): Promise<NetsisTestResponse> {
+  return apiPost<NetsisTestResponse>(`/stores/${id}/netsis/test`);
 }

@@ -26,6 +26,7 @@ import UsersPage from './pages/admin/UsersPage';
 import ReportsPage from './pages/admin/ReportsPage';
 import RolesPage from './pages/admin/RolesPage';
 import IntegrationsPage from './pages/admin/IntegrationsPage';
+import StoresAdminPage from './pages/admin/StoresAdminPage';
 import CapacitySettingsPage from './pages/admin/CapacitySettingsPage';
 
 // Manager pages
@@ -255,6 +256,14 @@ const getDefaultRoute = () => {
                   element={
                     <RoleGuard roles={['ADMIN']}>
                       <IntegrationsPage />
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="admin/stores"
+                  element={
+                    <RoleGuard roles={['ADMIN']}>
+                      <StoresAdminPage />
                     </RoleGuard>
                   }
                 />
