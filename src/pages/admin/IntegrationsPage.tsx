@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Plug, BookOpen, Building2 } from 'lucide-react';
+import { Plug, BookOpen, Building2, ExternalLink } from 'lucide-react';
 
 export default function IntegrationsPage() {
   return (
@@ -15,7 +15,7 @@ export default function IntegrationsPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           to="/app/admin/stores"
           className="flex flex-col gap-2 rounded-lg border bg-white p-4 shadow-sm transition hover:border-primary-300 hover:shadow"
@@ -27,15 +27,27 @@ export default function IntegrationsPage() {
           </p>
         </Link>
         <a
+          href="https://polaris.logo.cloud/docs/netsis-uyarlama-araclari/detail/external%3Fcid%3D733a2034-62db-4c83-add0-e164ce6af7ed&link%3D42eecc09-cbf0-48dd-a955-00656cb546b1&tenantId%3Dcdd87e13-3009-4dd1-a5b8-2a005c0e58da&hideName%3DTrue"
+          target="_blank"
+          rel="noreferrer"
+          className="flex flex-col gap-2 rounded-lg border bg-white p-4 shadow-sm transition hover:border-primary-300 hover:shadow"
+        >
+          <ExternalLink className="h-8 w-8 text-primary-600" />
+          <h2 className="text-lg font-semibold text-gray-900">Logo — Netsis docs</h2>
+          <p className="text-sm text-gray-600">
+            Official Logo Polaris documentation (Netsis uyarlama araçları). May require login.
+          </p>
+        </a>
+        <a
           href="https://github.com/Vearonn55/installops-backend/blob/main/docs/NETSIS.md"
           target="_blank"
           rel="noreferrer"
           className="flex flex-col gap-2 rounded-lg border bg-white p-4 shadow-sm transition hover:border-primary-300 hover:shadow"
         >
           <BookOpen className="h-8 w-8 text-primary-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Netsis contract</h2>
+          <h2 className="text-lg font-semibold text-gray-900">InstallOps ↔ Netsis</h2>
           <p className="text-sm text-gray-600">
-            Expected URL patterns and JSON response shapes (backend repo documentation).
+            How this app proxies Netsis: Host header, ping path, order search JSON shapes.
           </p>
         </a>
       </div>

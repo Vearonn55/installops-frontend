@@ -114,6 +114,11 @@ function StoreRow({
   const [username, setUsername] = useState(store.netsis_username || '');
   const [password, setPassword] = useState('');
   const [timeoutMs, setTimeoutMs] = useState(String(store.netsis_timeout_ms ?? 15000));
+  const [useHostHeader, setUseHostHeader] = useState(Boolean(store.netsis_request_host));
+  const [requestHost, setRequestHost] = useState(store.netsis_request_host || '');
+  const [pingPath, setPingPath] = useState(
+    store.netsis_ping_path || '/api/v2/public/Ping'
+  );
 
   useEffect(() => {
     setBaseUrl(store.netsis_base_url || '');
@@ -121,6 +126,9 @@ function StoreRow({
     setUsername(store.netsis_username || '');
     setPassword('');
     setTimeoutMs(String(store.netsis_timeout_ms ?? 15000));
+    setUseHostHeader(Boolean(store.netsis_request_host));
+    setRequestHost(store.netsis_request_host || '');
+    setPingPath(store.netsis_ping_path || '/api/v2/public/Ping');
   }, [store]);
 
   const saveMut = useMutation({
@@ -132,6 +140,8 @@ function StoreRow({
         netsis_username: username || null,
         netsis_password: password || undefined,
         netsis_timeout_ms: Number.isFinite(to) ? to : undefined,
+        netsis_request_host: useHostHeader ? (requestHost.trim() || null) : null,
+        netsis_ping_path: pingPath.trim() || null,
       });
     },
     onSuccess: () => {
@@ -223,6 +233,45 @@ function StoreRow({
                   className="mt-1 w-full max-w-xs rounded-md border px-2 py-1.5 text-sm"
                   value={timeoutMs}
                   onChange={(e) => setTimeoutMs(e.target.value)}
+                />
+              </label>
+
+              <div className="flex flex-col gap-2 rounded-md border border-gray-200 bg-white p-3 md:col-span-2">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={useHostHeader}
+                    onChange={(e) => setUseHostHeader(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Custom HTTP Host header (Netsis / Windows)
+                </label>
+                <p className="text-xs text-gray-500">
+                  Use when the API only responds if <code className="rounded bg-gray-100 px-1">Host</code> is{' '}
+                  <code className="rounded bg-gray-100 px-1">localhost:PORT</code> while you connect to the
+                  server IP (same as <code className="rounded bg-gray-100 px-1">curl -H &quot;Host: …&quot;</code>
+                  ).
+                </p>
+                {useHostHeader ? (
+                  <label className="text-xs font-medium text-gray-600">
+                    Host header value
+                    <input
+                      className="mt-1 w-full max-w-md rounded-md border px-2 py-1.5 text-sm font-mono"
+                      placeholder="localhost:7072"
+                      value={requestHost}
+                      onChange={(e) => setRequestHost(e.target.value)}
+                    />
+                  </label>
+                ) : null}
+              </div>
+
+              <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                Ping / health path (used by &quot;Test connection&quot; only)
+                <input
+                  className="mt-1 w-full max-w-xl rounded-md border px-2 py-1.5 text-sm font-mono"
+                  placeholder="/api/v2/public/Ping"
+                  value={pingPath}
+                  onChange={(e) => setPingPath(e.target.value)}
                 />
               </label>
               <div className="flex flex-wrap gap-2 md:col-span-2">

@@ -14,6 +14,10 @@ export type Store = {
   netsis_username?: string | null;
   netsis_password_configured?: boolean;
   netsis_timeout_ms?: number;
+  /** HTTP Host header override, e.g. localhost:7072 */
+  netsis_request_host?: string | null;
+  /** Path for connectivity test only (default /api/v2/public/Ping) */
+  netsis_ping_path?: string | null;
   created_at: string;
   updated_at: string;
   address?: Address;
@@ -68,6 +72,8 @@ export type StoreNetsisUpdate = {
   netsis_username?: string | null;
   netsis_password?: string | null;
   netsis_timeout_ms?: number;
+  netsis_request_host?: string | null;
+  netsis_ping_path?: string | null;
 };
 
 export async function patchStoreNetsis(
