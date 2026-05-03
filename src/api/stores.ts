@@ -18,6 +18,13 @@ export type Store = {
   netsis_request_host?: string | null;
   /** Path for connectivity test only (default /api/v2/public/Ping) */
   netsis_ping_path?: string | null;
+  netsis_auth_mode?: 'basic' | 'token_password' | null;
+  netsis_token_path?: string | null;
+  netsis_branch_code?: string | null;
+  netsis_db_name?: string | null;
+  netsis_db_user?: string | null;
+  netsis_db_password_configured?: boolean;
+  netsis_db_type?: string | null;
   created_at: string;
   updated_at: string;
   address?: Address;
@@ -74,6 +81,13 @@ export type StoreNetsisUpdate = {
   netsis_timeout_ms?: number;
   netsis_request_host?: string | null;
   netsis_ping_path?: string | null;
+  netsis_auth_mode?: 'basic' | 'token_password' | null;
+  netsis_token_path?: string | null;
+  netsis_branch_code?: string | null;
+  netsis_db_name?: string | null;
+  netsis_db_user?: string | null;
+  netsis_db_password?: string | null;
+  netsis_db_type?: string | null;
 };
 
 export async function patchStoreNetsis(

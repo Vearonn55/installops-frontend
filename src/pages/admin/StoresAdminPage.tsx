@@ -119,6 +119,15 @@ function StoreRow({
   const [pingPath, setPingPath] = useState(
     store.netsis_ping_path || '/api/v2/public/Ping'
   );
+  const [authMode, setAuthMode] = useState<'basic' | 'token_password'>(
+    store.netsis_auth_mode === 'token_password' ? 'token_password' : 'basic'
+  );
+  const [tokenPath, setTokenPath] = useState(store.netsis_token_path || '/api/v2/token');
+  const [branchCode, setBranchCode] = useState(store.netsis_branch_code || '0');
+  const [dbName, setDbName] = useState(store.netsis_db_name || '');
+  const [dbUser, setDbUser] = useState(store.netsis_db_user || '');
+  const [dbPassword, setDbPassword] = useState('');
+  const [dbType, setDbType] = useState(store.netsis_db_type || '0');
 
   useEffect(() => {
     setBaseUrl(store.netsis_base_url || '');
@@ -129,6 +138,13 @@ function StoreRow({
     setUseHostHeader(Boolean(store.netsis_request_host));
     setRequestHost(store.netsis_request_host || '');
     setPingPath(store.netsis_ping_path || '/api/v2/public/Ping');
+    setAuthMode(store.netsis_auth_mode === 'token_password' ? 'token_password' : 'basic');
+    setTokenPath(store.netsis_token_path || '/api/v2/token');
+    setBranchCode(store.netsis_branch_code || '0');
+    setDbName(store.netsis_db_name || '');
+    setDbUser(store.netsis_db_user || '');
+    setDbPassword('');
+    setDbType(store.netsis_db_type || '0');
   }, [store]);
 
   const saveMut = useMutation({
@@ -142,11 +158,19 @@ function StoreRow({
         netsis_timeout_ms: Number.isFinite(to) ? to : undefined,
         netsis_request_host: useHostHeader ? (requestHost.trim() || null) : null,
         netsis_ping_path: pingPath.trim() || null,
+        netsis_auth_mode: authMode,
+        netsis_token_path: tokenPath.trim() || null,
+        netsis_branch_code: branchCode.trim() || null,
+        netsis_db_name: dbName.trim() || null,
+        netsis_db_user: dbUser.trim() || null,
+        netsis_db_password: dbPassword || undefined,
+        netsis_db_type: dbType.trim() || null,
       });
     },
     onSuccess: () => {
       toast.success('Netsis settings saved');
       setPassword('');
+      setDbPassword('');
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -156,7 +180,10 @@ function StoreRow({
 
   const testMut = useMutation({
     mutationFn: () => testStoreNetsis(store.id),
-    onSuccess: () => toast.success('Netsis reachable'),
+    onSuccess: (data) =>
+      toast.success(
+        data?.message === 'token_ok' ? 'Netsis token OK' : 'Netsis reachable'
+      ),
     onError: (e: any) =>
       toast.error(e?.response?.data?.message || e?.message || 'Test failed'),
   });
@@ -174,8 +201,14 @@ function StoreRow({
           {store.netsis_base_url || '—'}
         </td>
         <td className="px-4 py-3 text-sm text-gray-600">
-          {store.netsis_username ? `${store.netsis_username} / ****` : '—'}
-          {store.netsis_password_configured ? ' (password set)' : ''}
+          <span className="font-mono text-xs text-gray-500">
+            {store.netsis_auth_mode === 'token_password' ? 'token' : 'basic'}
+          </span>
+          {store.netsis_username ? ` · ${store.netsis_username}` : ''}
+          {store.netsis_password_configured ? ' · pwd' : ''}
+          {store.netsis_auth_mode === 'token_password' && store.netsis_db_password_configured
+            ? ' · db-pwd'
+            : ''}
         </td>
         <td className="px-4 py-3 text-right text-sm">
           <button
@@ -191,6 +224,23 @@ function StoreRow({
         <tr>
           <td colSpan={4} className="bg-gray-50 px-4 py-4">
             <div className="mx-auto grid max-w-3xl gap-3 md:grid-cols-2">
+              <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                Netsis auth
+                <select
+                  className="mt-1 w-full max-w-md rounded-md border px-2 py-1.5 text-sm"
+                  value={authMode}
+                  onChange={(e) =>
+                    setAuthMode(e.target.value === 'token_password' ? 'token_password' : 'basic')
+                  }
+                >
+                  <option value="basic">HTTP Basic on each request</option>
+                  <option value="token_password">Logo token (POST /api/v2/token, then Bearer)</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Use <strong>Logo token</strong> when login is a form to <code className="rounded bg-gray-100 px-1">/api/v2/token</code> with{' '}
+                  <code className="rounded bg-gray-100 px-1">grant_type=password</code>, branch, DB fields — not HTTP Basic.
+                </p>
+              </label>
               <label className="block text-xs font-medium text-gray-600">
                 Netsis base URL
                 <input
@@ -210,7 +260,7 @@ function StoreRow({
                 />
               </label>
               <label className="block text-xs font-medium text-gray-600">
-                HTTP Basic username
+                {authMode === 'token_password' ? 'Token: username (form field)' : 'HTTP Basic username'}
                 <input
                   className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
                   value={username}
@@ -218,7 +268,7 @@ function StoreRow({
                 />
               </label>
               <label className="block text-xs font-medium text-gray-600">
-                HTTP Basic password (leave blank to keep)
+                {authMode === 'token_password' ? 'Token: password (form field)' : 'HTTP Basic password (leave blank to keep)'}
                 <input
                   type="password"
                   className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
@@ -227,6 +277,63 @@ function StoreRow({
                   autoComplete="new-password"
                 />
               </label>
+              {authMode === 'token_password' ? (
+                <>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Token path
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm font-mono"
+                      placeholder="/api/v2/token"
+                      value={tokenPath}
+                      onChange={(e) => setTokenPath(e.target.value)}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600">
+                    Branch code
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
+                      placeholder="0"
+                      value={branchCode}
+                      onChange={(e) => setBranchCode(e.target.value)}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600">
+                    DB name (dbname)
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
+                      value={dbName}
+                      onChange={(e) => setDbName(e.target.value)}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600">
+                    DB user (dbuser)
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
+                      value={dbUser}
+                      onChange={(e) => setDbUser(e.target.value)}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600">
+                    DB password (dbpassword, leave blank to keep)
+                    <input
+                      type="password"
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
+                      value={dbPassword}
+                      onChange={(e) => setDbPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600">
+                    DB type (dbtype)
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
+                      placeholder="0"
+                      value={dbType}
+                      onChange={(e) => setDbType(e.target.value)}
+                    />
+                  </label>
+                </>
+              ) : null}
               <label className="block text-xs font-medium text-gray-600 md:col-span-2">
                 Timeout (ms)
                 <input
@@ -247,10 +354,10 @@ function StoreRow({
                   Custom HTTP Host header (Netsis / Windows)
                 </label>
                 <p className="text-xs text-gray-500">
-                  Use when the API only responds if <code className="rounded bg-gray-100 px-1">Host</code> is{' '}
-                  <code className="rounded bg-gray-100 px-1">localhost:PORT</code> while you connect to the
-                  server IP (same as <code className="rounded bg-gray-100 px-1">curl -H &quot;Host: …&quot;</code>
-                  ).
+                  Use when the API only responds with a specific <code className="rounded bg-gray-100 px-1">Host</code> (e.g.{' '}
+                  <code className="rounded bg-gray-100 px-1">localhost:7072</code>,{' '}
+                  <code className="rounded bg-gray-100 px-1">192.168.250.11:7072</code>) while TCP goes to the
+                  base URL host (same as <code className="rounded bg-gray-100 px-1">curl -H &quot;Host: …&quot;</code>).
                 </p>
                 {useHostHeader ? (
                   <label className="text-xs font-medium text-gray-600">
@@ -266,12 +373,13 @@ function StoreRow({
               </div>
 
               <label className="block text-xs font-medium text-gray-600 md:col-span-2">
-                Ping / health path (used by &quot;Test connection&quot; only)
+                Ping / health path (used by &quot;Test connection&quot; only — skipped for Logo token mode)
                 <input
                   className="mt-1 w-full max-w-xl rounded-md border px-2 py-1.5 text-sm font-mono"
                   placeholder="/api/v2/public/Ping"
                   value={pingPath}
                   onChange={(e) => setPingPath(e.target.value)}
+                  disabled={authMode === 'token_password'}
                 />
               </label>
               <div className="flex flex-wrap gap-2 md:col-span-2">
