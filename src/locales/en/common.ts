@@ -381,11 +381,14 @@ installationsPage: {
 
   statusLabels: {
     pending: 'Pending',
+    scheduled: 'Scheduled',
     staged: 'Staged',
+    accepted: 'Accepted',
     in_progress: 'In progress',
     completed: 'Completed',
     failed: 'Failed',
     cancelled: 'Cancelled',
+    canceled: 'Canceled',
     after_sale_service: 'After-sale service',
   },
 

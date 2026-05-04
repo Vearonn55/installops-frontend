@@ -381,11 +381,14 @@ installationsPage: {
 
   statusLabels: {
     pending: 'Beklemede',
+    scheduled: 'Planlandı',
     staged: 'Hazırlandı',
+    accepted: 'Kabul edildi',
     in_progress: 'Devam ediyor',
     completed: 'Tamamlandı',
     failed: 'Başarısız',
     cancelled: 'İptal edildi',
+    canceled: 'İptal edildi',
     after_sale_service: 'Satış sonrası servis',
   },
 

@@ -96,7 +96,7 @@ const badge = (s: Installation['status']) =>
 export default function InstallationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
 
   // ---- Main installation (with items + crew embedded) ----
   const query = useQuery({
@@ -247,7 +247,11 @@ export default function InstallationDetailPage() {
 
   const statusLabel =
     inst?.status != null
-      ? t(`installationsPage.statusLabels.${inst.status}` as any)
+      ? (() => {
+          const key = `installationsPage.statusLabels.${inst.status}`;
+          if (i18n.exists(key)) return t(key);
+          return String(inst.status).replace(/_/g, ' ');
+        })()
       : '—';
 
   return (
