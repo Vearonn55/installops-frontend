@@ -18,9 +18,11 @@ import { useAuthStore } from '../../stores/auth';
 
 import {
   createInstallation,
+  addInstallationItem,
   assignCrew,
   type InstallationCreate,
 } from '../../api/installations';
+import { getNetsisOrderDetail } from '../../api/integrations';
 import { listUsers, type User } from '../../api/users';
 import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +30,7 @@ import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { formatUiDate } from '../../lib/date-display';
 import { useDateDisplayStore } from '../../stores/date-display';
 import { OrderIdSearchCombobox } from '../../components/OrderIdSearchCombobox';
+import type { UUID } from '../../api/http';
 
 // ---------- helpers ----------
 const toISODateTime = (date: string, time: string) => {
@@ -179,7 +182,34 @@ export default function CreateInstallationPage() {
       // 1) Create the installation
       const inst = await createInstallation(payload);
 
-      // 2) Assign crew (if any)
+      // 2) Best-effort: import products from Netsis order detail into installation items.
+      // This keeps Installation Detail "Ürünler" populated when creating from an ERP order.
+      try {
+        const orderRes = await getNetsisOrderDetail({
+          store_id: storeId as UUID,
+          order_id: externalOrderId,
+        });
+        const rows = (orderRes.data?.items ?? [])
+          .map((it) => ({
+            external_product_id: String(it.product_id || '').trim(),
+            quantity: Number(it.quantity) > 0 ? Number(it.quantity) : 1,
+          }))
+          .filter((it) => !!it.external_product_id);
+        if (rows.length) {
+          await Promise.all(
+            rows.map((row) =>
+              addInstallationItem(inst.id as UUID, {
+                external_product_id: row.external_product_id,
+                quantity: row.quantity,
+              })
+            )
+          );
+        }
+      } catch (e) {
+        console.warn('Could not import Netsis order items:', e);
+      }
+
+      // 3) Assign crew (if any)
       if (crewIds.length) {
         await Promise.all(
           crewIds.map((crewId) =>
