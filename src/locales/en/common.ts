@@ -524,6 +524,8 @@ installationDetailPage: {
       product: 'Product',
       room: 'Room',
       instructions: 'Instructions',
+      noProductTitle: 'No product title in ERP (code is in SKU)',
+      noProductDescription: 'No description in ERP',
     },
     none: 'No installation items.',
   },

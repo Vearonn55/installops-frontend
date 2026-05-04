@@ -524,6 +524,8 @@ installationDetailPage: {
       product: 'Ürün',
       room: 'Oda',
       instructions: 'Talimatlar',
+      noProductTitle: "ERP'de ürün adı yok (kod SKU sütununda)",
+      noProductDescription: "ERP'de açıklama yok",
     },
     none: 'Herhangi bir kurulum ürünü yok.',
   },

@@ -239,11 +239,17 @@ export default function InstallationDetailPage() {
       : 'Could not load photos for this installation.'
     : '';
 
-  const photos: MediaAsset[] = useMemo(
-    () =>
-      (mediaQuery.data?.data ?? []).filter((m) => m.type === 'photo'),
-    [mediaQuery.data]
-  );
+  const photos: MediaAsset[] = useMemo(() => {
+    const raw = mediaQuery.data?.data;
+    const list = Array.isArray(raw) ? raw : [];
+    return list.filter(
+      (m): m is MediaAsset =>
+        m != null &&
+        typeof m === 'object' &&
+        typeof (m as MediaAsset).type === 'string' &&
+        (m as MediaAsset).type === 'photo'
+    );
+  }, [mediaQuery.data]);
 
   const statusLabel =
     inst?.status != null
@@ -499,20 +505,40 @@ export default function InstallationDetailPage() {
                 const nameRaw = String(it.name ?? '').trim();
                 const descRaw = String(it.description ?? '').trim();
                 const instr = String(it.special_instructions ?? '').trim();
-                const name = nameRaw && nameRaw !== sku ? nameRaw : '—';
-                let description = '—';
+                const hasDistinctName = Boolean(nameRaw && nameRaw !== sku);
+                const name = hasDistinctName
+                  ? nameRaw
+                  : t('installationDetailPage.itemsCard.table.noProductTitle');
+                let description: string;
+                let descriptionIsPlaceholder = false;
                 if (descRaw && descRaw !== sku && descRaw !== nameRaw) description = descRaw;
                 else if (instr) description = instr;
                 else if (descRaw && descRaw !== sku) description = descRaw;
+                else {
+                  description = t(
+                    'installationDetailPage.itemsCard.table.noProductDescription'
+                  );
+                  descriptionIsPlaceholder = true;
+                }
                 return (
                 <tr key={it.id}>
                   <td className="px-4 py-3 text-sm font-mono text-gray-900">
                     {sku}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">
+                  <td
+                    className={cn(
+                      'px-4 py-3 text-sm text-gray-900',
+                      !hasDistinctName && 'text-gray-500 italic'
+                    )}
+                  >
                     {name}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
+                  <td
+                    className={cn(
+                      'px-4 py-3 text-sm text-gray-700',
+                      descriptionIsPlaceholder && 'text-gray-500 italic'
+                    )}
+                  >
                     {description}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
