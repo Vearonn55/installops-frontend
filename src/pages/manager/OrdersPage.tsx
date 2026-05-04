@@ -57,32 +57,33 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [ordersFetchError, setOrdersFetchError] = useState<string | null>(null);
 
-  // Fetch places & store
+  // Fetch stores + orders (each call isolated so Axios 404 never becomes an unhandled rejection)
   useEffect(() => {
     let cancelled = false;
+
     async function fetchData() {
+      setLoading(true);
+      setOrdersFetchError(null);
+
+      let nextStores: StoreType[] = [];
       try {
-        setLoading(true);
-        setOrdersFetchError(null);
+        const storeRes = await listStores({ limit: 200 });
+        if (!cancelled) nextStores = storeRes.data ?? [];
+      } catch (err) {
+        console.error("listStores failed:", err);
+        if (!cancelled) nextStores = [];
+      }
+      if (!cancelled) setStores(nextStores);
 
-        const [storesResult, ordersResult] = await Promise.allSettled([
-          listStores({ limit: 200 }),
-          listOrders({ limit: 300 }),
-        ]);
-
-        if (cancelled) return;
-
-        if (storesResult.status === "fulfilled") {
-          setStores(storesResult.value.data ?? []);
-        } else {
-          setStores([]);
+      try {
+        const orderRes = await listOrders({ limit: 300 });
+        if (!cancelled) {
+          setOrders(orderRes.data ?? []);
+          setOrdersFetchError(null);
         }
-
-        if (ordersResult.status === "fulfilled") {
-          setOrders(ordersResult.value.data ?? []);
-        } else {
+      } catch (err) {
+        if (!cancelled) {
           setOrders([]);
-          const err = ordersResult.reason;
           const status = isAxiosError(err) ? err.response?.status : undefined;
           const msg =
             (isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
@@ -100,7 +101,17 @@ export default function OrdersPage() {
         if (!cancelled) setLoading(false);
       }
     }
-    void fetchData();
+
+    fetchData().catch((err) => {
+      console.error("OrdersPage fetchData:", err);
+      if (!cancelled) {
+        setLoading(false);
+        setOrdersFetchError(
+          err instanceof Error ? err.message : "Failed to load orders page data."
+        );
+      }
+    });
+
     return () => {
       cancelled = true;
     };
