@@ -120,23 +120,29 @@ function mergeNetsisIntoOrder(
   base: ExtendedOrder | null | undefined,
   netsis: NetsisOrderDetailData | undefined,
   externalOrderId: string,
-  storeUuidFromQuery: string
+  storeUuidForNetsis: string
 ): ExtendedOrder | undefined {
   if (!netsis) return base ?? undefined;
-  const ni = netsisLinesToDisplayRows(netsis.lines);
+  const doc =
+    netsis.document != null && typeof netsis.document === 'object' && !Array.isArray(netsis.document)
+      ? netsis.document
+      : {};
+  const rawLines = netsis.lines;
+  const linesArr = Array.isArray(rawLines) ? rawLines : [];
+  const ni = netsisLinesToDisplayRows(linesArr);
   const nc = {
-    full_name: cariNameFromDoc(netsis.document) || '—',
-    phone: cariPhoneFromDoc(netsis.document) || '—',
-    email: cariEmailFromDoc(netsis.document) || '—',
-    address: cariAddressFromDoc(netsis.document) || '—',
-    region: cariRegionFromDoc(netsis.document) || '—',
+    full_name: cariNameFromDoc(doc) || '—',
+    phone: cariPhoneFromDoc(doc) || '—',
+    email: cariEmailFromDoc(doc) || '—',
+    address: cariAddressFromDoc(doc) || '—',
+    region: cariRegionFromDoc(doc) || '—',
   };
-  const placed = placedAtFromDoc(netsis.document);
-  const st = statusFromDoc(netsis.document);
+  const placed = placedAtFromDoc(doc);
+  const st = statusFromDoc(doc);
   if (!base) {
     return {
       id: externalOrderId,
-      store_uuid: storeUuidFromQuery || undefined,
+      store_uuid: storeUuidForNetsis || undefined,
       store_name: storeUuidFromQuery ? '—' : '—',
       placed_at: placed,
       status: st || 'pending',
@@ -235,7 +241,7 @@ export default function OrderDetailPage() {
   });
 
   const order = useMemo(() => {
-    const merged = mergeNetsisIntoOrder(orderQuery.data, netsisQuery.data, id || '', storeIdFromUrl);
+    const merged = mergeNetsisIntoOrder(orderQuery.data, netsisQuery.data, id || '', storeIdForNetsis);
     if (!merged) return merged;
     if (!netsisCustomerQuery.data) return merged;
     const bc = merged.customer || {};
@@ -250,7 +256,15 @@ export default function OrderDetailPage() {
         region: (nc.region !== '—' ? nc.region : bc.region || '—') || '—',
       },
     };
-  }, [orderQuery.data, netsisQuery.data, netsisCustomerQuery.data, id, storeIdFromUrl]);
+  }, [orderQuery.data, netsisQuery.data, netsisCustomerQuery.data, id, storeIdForNetsis]);
+
+  const showOrderMain =
+    Boolean(order) ||
+    (Boolean(storeIdForNetsis) &&
+      (netsisQuery.isLoading ||
+        netsisQuery.isFetching ||
+        netsisQuery.isError ||
+        netsisQuery.data != null));
 
   const timeline: TimelineEvent[] = useMemo(() => {
     if (!order?.timeline?.length) return [];
@@ -311,7 +325,7 @@ export default function OrderDetailPage() {
         </div>
       ) : null}
 
-      {(order || netsisQuery.isLoading) && (
+      {showOrderMain && (
         <>
           {netsisQuery.isLoading && (
             <div className="rounded-lg border bg-white p-3 text-sm text-gray-600">Loading Netsis order data…</div>

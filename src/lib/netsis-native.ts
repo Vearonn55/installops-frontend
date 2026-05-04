@@ -153,7 +153,7 @@ export function documentCustomerSparse(doc: NetsisJson | null | undefined): bool
 
 /** Map native lines to minimal rows for tables that still expect sku/name/qty. */
 export function netsisLinesToDisplayRows(lines: NetsisJson[] | undefined) {
-  if (!lines?.length) return [];
+  if (!Array.isArray(lines) || !lines.length) return [];
   return lines.map((line, idx) => {
     const sku = pickStokKoduFromLine(line);
     const nm = stokAdiFromLine(line);
