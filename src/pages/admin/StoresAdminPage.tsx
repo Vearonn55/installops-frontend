@@ -74,6 +74,7 @@ export default function StoresAdminPage() {
                 onToggle={() => setExpanded((v) => (v === s.id ? null : s.id))}
                 onSaved={() => {
                   void qc.invalidateQueries({ queryKey: ['stores'] });
+                  void qc.invalidateQueries({ queryKey: ['stores', 'admin'] });
                 }}
               />
             ))}
@@ -147,14 +148,28 @@ function StoreRow({
     setDbType(store.netsis_db_type || '0');
   }, [store]);
 
+  const hadApiPwStored =
+    Boolean(store.netsis_password_configured) || Boolean(String(store.netsis_password ?? '').length);
+  const hadDbPwStored =
+    Boolean(store.netsis_db_password_configured) ||
+    Boolean(String(store.netsis_db_password ?? '').length);
+
+  const applyStoreFromServer = (s: Store) => {
+    setPassword(s.netsis_password ?? '');
+    setDbPassword(s.netsis_db_password ?? '');
+  };
+
   const saveMut = useMutation({
     mutationFn: async () => {
       const to = Number(timeoutMs);
+      const apiPwTrim = password.trim();
+      const dbPwTrim = dbPassword.trim();
       return patchStoreNetsis(store.id, {
         netsis_base_url: baseUrl || null,
         netsis_order_search_path: pathTpl || null,
         netsis_username: username || null,
-        netsis_password: password || undefined,
+        netsis_password:
+          apiPwTrim !== '' ? apiPwTrim : hadApiPwStored ? null : undefined,
         netsis_timeout_ms: Number.isFinite(to) ? to : undefined,
         netsis_request_host: useHostHeader ? (requestHost.trim() || null) : null,
         netsis_ping_path: pingPath.trim() || null,
@@ -163,12 +178,18 @@ function StoreRow({
         netsis_branch_code: branchCode.trim() || null,
         netsis_db_name: dbName.trim() || null,
         netsis_db_user: dbUser.trim() || null,
-        ...(dbPassword.trim() ? { netsis_db_password: dbPassword } : {}),
+        ...(authMode === 'token_password'
+          ? {
+              netsis_db_password:
+                dbPwTrim !== '' ? dbPwTrim : hadDbPwStored ? null : undefined,
+            }
+          : {}),
         netsis_db_type: dbType.trim() || null,
       });
     },
-    onSuccess: () => {
+    onSuccess: (updated: Store) => {
       toast.success('Netsis settings saved');
+      applyStoreFromServer(updated);
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -178,8 +199,9 @@ function StoreRow({
 
   const clearApiPwMut = useMutation({
     mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_password: true }),
-    onSuccess: () => {
+    onSuccess: (updated: Store) => {
       toast.success('Saved Netsis API password removed');
+      applyStoreFromServer(updated);
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -189,8 +211,9 @@ function StoreRow({
 
   const clearDbPwMut = useMutation({
     mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_db_password: true }),
-    onSuccess: () => {
+    onSuccess: (updated: Store) => {
       toast.success('Saved DB password removed');
+      applyStoreFromServer(updated);
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -290,7 +313,11 @@ function StoreRow({
               <label className="block text-xs font-medium text-gray-600 md:col-span-2">
                 {authMode === 'token_password'
                   ? 'Token: password (form field)'
-                  : 'HTTP Basic password (leave blank on Save to keep stored value)'}
+                  : 'HTTP Basic password'}
+                <p className="mt-1 text-xs text-gray-500">
+                  Clear button, or delete the value and Save — removes the stored password when one exists. If none is
+                  stored yet, Save leaves it empty.
+                </p>
                 <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
                   <input
                     type="text"
@@ -300,7 +327,7 @@ function StoreRow({
                     autoComplete="off"
                     spellCheck={false}
                   />
-                  {store.netsis_password_configured ? (
+                  {hadApiPwStored || password.trim() !== '' ? (
                     <button
                       type="button"
                       disabled={clearApiPwMut.isPending}
@@ -349,7 +376,10 @@ function StoreRow({
                     />
                   </label>
                   <label className="block text-xs font-medium text-gray-600 md:col-span-2">
-                    DB password (dbpassword — leave blank on Save to keep stored value)
+                    DB password (dbpassword)
+                    <p className="mt-1 font-normal text-gray-500">
+                      Clear button or empty field + Save removes a stored DB password.
+                    </p>
                     <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <input
                         type="text"
@@ -359,7 +389,7 @@ function StoreRow({
                         autoComplete="off"
                         spellCheck={false}
                       />
-                      {store.netsis_db_password_configured ? (
+                      {hadDbPwStored || dbPassword.trim() !== '' ? (
                         <button
                           type="button"
                           disabled={clearDbPwMut.isPending}
