@@ -18,7 +18,12 @@ import {
   type OrderInstallationsResponse,
   type OrderTimelineResponse,
 } from '../../api/orders';
-import { getNetsisOrderDetail, type NetsisOrderDetailData } from '../../api/integrations';
+import {
+  getNetsisCustomerDetail,
+  getNetsisOrderDetail,
+  searchNetsisOrders,
+  type NetsisOrderDetailData,
+} from '../../api/integrations';
 import type { UUID } from '../../api/http';
 import { cn, formatDateTime } from '../../lib/utils';
 
@@ -166,6 +171,23 @@ function mergeNetsisIntoOrder(
   };
 }
 
+function hasSparseCustomer(c?: {
+  full_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  region?: string | null;
+}) {
+  if (!c) return true;
+  return !(
+    String(c.full_name || '').trim() ||
+    String(c.phone || '').trim() ||
+    String(c.email || '').trim() ||
+    String(c.address || '').trim() ||
+    String(c.region || '').trim()
+  );
+}
+
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -200,10 +222,60 @@ export default function OrderDetailPage() {
     retry: false,
   });
 
-  const order = useMemo(
-    () => mergeNetsisIntoOrder(orderQuery.data, netsisQuery.data, id || '', storeIdFromUrl),
-    [orderQuery.data, netsisQuery.data, id, storeIdFromUrl]
-  );
+  const searchHitQuery = useQuery({
+    queryKey: ['netsis-order-search-hit', id, storeIdForNetsis],
+    queryFn: async () => {
+      const res = await searchNetsisOrders({
+        store_id: storeIdForNetsis as UUID,
+        q: id as string,
+        limit: 5,
+      });
+      const rows = res.data ?? [];
+      const exact = rows.find((r) => String(r.order_id || '').trim() === String(id || '').trim());
+      return exact ?? rows[0] ?? null;
+    },
+    enabled:
+      Boolean(id && storeIdForNetsis) &&
+      Boolean(!netsisQuery.data || hasSparseCustomer(netsisQuery.data.customer)),
+    retry: false,
+  });
+
+  const cariKodForCustomer = String(
+    netsisQuery.data?.customer?.cari_kod || searchHitQuery.data?.cari_kod || ''
+  ).trim();
+
+  const netsisCustomerQuery = useQuery({
+    queryKey: ['netsis-customer-detail', storeIdForNetsis, cariKodForCustomer],
+    queryFn: async () => {
+      const res = await getNetsisCustomerDetail({
+        store_id: storeIdForNetsis as UUID,
+        cari_kod: cariKodForCustomer,
+      });
+      return res.data;
+    },
+    enabled:
+      Boolean(storeIdForNetsis && cariKodForCustomer) &&
+      Boolean(!netsisQuery.data || hasSparseCustomer(netsisQuery.data.customer)),
+    retry: false,
+  });
+
+  const order = useMemo(() => {
+    const merged = mergeNetsisIntoOrder(orderQuery.data, netsisQuery.data, id || '', storeIdFromUrl);
+    if (!merged) return merged;
+    if (!netsisCustomerQuery.data) return merged;
+    const bc = merged.customer || {};
+    const nc = netsisCustomerQuery.data;
+    return {
+      ...merged,
+      customer: {
+        full_name: nc.full_name || bc.full_name || '—',
+        phone: nc.phone || bc.phone || '—',
+        email: nc.email || bc.email || '—',
+        address: nc.address || bc.address || '—',
+        region: nc.region || bc.region || '—',
+      },
+    };
+  }, [orderQuery.data, netsisQuery.data, netsisCustomerQuery.data, id, storeIdFromUrl]);
 
   const timeline: TimelineEvent[] = useMemo(() => {
     if (!order?.timeline?.length) return [];
