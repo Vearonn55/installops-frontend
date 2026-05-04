@@ -87,6 +87,8 @@ export type StoreNetsisUpdate = {
   netsis_db_name?: string | null;
   netsis_db_user?: string | null;
   netsis_db_password?: string | null;
+  /** When true, removes stored SQL dbpassword (use after a mistaken save). */
+  netsis_clear_db_password?: boolean;
   netsis_db_type?: string | null;
 };
 

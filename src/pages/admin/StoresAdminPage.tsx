@@ -127,6 +127,7 @@ function StoreRow({
   const [dbName, setDbName] = useState(store.netsis_db_name || '');
   const [dbUser, setDbUser] = useState(store.netsis_db_user || '');
   const [dbPassword, setDbPassword] = useState('');
+  const [clearDbPassword, setClearDbPassword] = useState(false);
   const [dbType, setDbType] = useState(store.netsis_db_type || '0');
 
   useEffect(() => {
@@ -144,6 +145,7 @@ function StoreRow({
     setDbName(store.netsis_db_name || '');
     setDbUser(store.netsis_db_user || '');
     setDbPassword('');
+    setClearDbPassword(false);
     setDbType(store.netsis_db_type || '0');
   }, [store]);
 
@@ -163,7 +165,11 @@ function StoreRow({
         netsis_branch_code: branchCode.trim() || null,
         netsis_db_name: dbName.trim() || null,
         netsis_db_user: dbUser.trim() || null,
-        netsis_db_password: dbPassword || undefined,
+        ...(clearDbPassword && !dbPassword.trim()
+          ? { netsis_clear_db_password: true }
+          : dbPassword.trim()
+            ? { netsis_db_password: dbPassword }
+            : {}),
         netsis_db_type: dbType.trim() || null,
       });
     },
@@ -171,6 +177,7 @@ function StoreRow({
       toast.success('Netsis settings saved');
       setPassword('');
       setDbPassword('');
+      setClearDbPassword(false);
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -314,14 +321,27 @@ function StoreRow({
                     />
                   </label>
                   <label className="block text-xs font-medium text-gray-600">
-                    DB password (dbpassword — required if SQL user has a password; leave blank only to keep an already saved password)
+                    DB password (dbpassword — enter new value to replace; leave blank to keep saved)
                     <input
                       type="password"
                       className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
                       value={dbPassword}
                       onChange={(e) => setDbPassword(e.target.value)}
                       autoComplete="new-password"
+                      disabled={clearDbPassword}
                     />
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 md:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={clearDbPassword}
+                      onChange={(e) => {
+                        setClearDbPassword(e.target.checked);
+                        if (e.target.checked) setDbPassword('');
+                      }}
+                      className="rounded border-gray-300"
+                    />
+                    Clear saved DB password (removes wrong value from server; then type the correct password and Save)
                   </label>
                   <label className="block text-xs font-medium text-gray-600">
                     DB type (dbtype)
