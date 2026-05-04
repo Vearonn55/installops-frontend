@@ -70,7 +70,7 @@ const cornerToSide: Record<DevtoolsCorner, 'top' | 'bottom' | 'left' | 'right'> 
 function App() {
   const { isAuthenticated, user } = useAuthStore();
 
-  // React Query Devtools position (persisted by DevControls)
+  // React Query Devtools position (localStorage DEV_RQ_POS)
   const [rqPosition, setRqPosition] = useState<DevtoolsCorner>('bottom-right');
   useEffect(() => {
     const KEY = 'DEV_RQ_POS';

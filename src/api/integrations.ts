@@ -7,7 +7,7 @@ export type NetsisOrderHit = {
 
 export type NetsisOrderSearchResponse = {
   data: NetsisOrderHit[];
-  mock: boolean;
+  source?: 'http' | 'sql';
 };
 
 export async function searchNetsisOrders(params: {

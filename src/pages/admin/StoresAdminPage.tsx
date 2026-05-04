@@ -112,6 +112,14 @@ function StoreRow({
   const qc = useQueryClient();
   const [baseUrl, setBaseUrl] = useState(store.netsis_base_url || '');
   const [pathTpl, setPathTpl] = useState(store.netsis_order_search_path || '');
+  const [ordersSearchSource, setOrdersSearchSource] = useState<'http' | 'sql'>(
+    store.netsis_orders_search_source === 'sql' ? 'sql' : 'http'
+  );
+  const [sqlHost, setSqlHost] = useState(store.netsis_sql_host || '');
+  const [sqlPort, setSqlPort] = useState(String(store.netsis_sql_port ?? 1433));
+  const [sqlEncrypt, setSqlEncrypt] = useState(store.netsis_sql_encrypt !== false);
+  const [sqlTrustCert, setSqlTrustCert] = useState(Boolean(store.netsis_sql_trust_server_certificate));
+  const [orderSql, setOrderSql] = useState(store.netsis_order_sql || '');
   const [username, setUsername] = useState(store.netsis_username || '');
   const [password, setPassword] = useState('');
   const [timeoutMs, setTimeoutMs] = useState(String(store.netsis_timeout_ms ?? 15000));
@@ -133,6 +141,12 @@ function StoreRow({
   useEffect(() => {
     setBaseUrl(store.netsis_base_url || '');
     setPathTpl(store.netsis_order_search_path || '');
+    setOrdersSearchSource(store.netsis_orders_search_source === 'sql' ? 'sql' : 'http');
+    setSqlHost(store.netsis_sql_host || '');
+    setSqlPort(String(store.netsis_sql_port ?? 1433));
+    setSqlEncrypt(store.netsis_sql_encrypt !== false);
+    setSqlTrustCert(Boolean(store.netsis_sql_trust_server_certificate));
+    setOrderSql(store.netsis_order_sql || '');
     setUsername(store.netsis_username || '');
     setTimeoutMs(String(store.netsis_timeout_ms ?? 15000));
     setUseHostHeader(Boolean(store.netsis_request_host));
@@ -167,6 +181,12 @@ function StoreRow({
       return patchStoreNetsis(store.id, {
         netsis_base_url: baseUrl || null,
         netsis_order_search_path: pathTpl || null,
+        netsis_orders_search_source: ordersSearchSource,
+        netsis_sql_host: sqlHost.trim() || null,
+        netsis_sql_port: Number.isFinite(Number(sqlPort)) ? Math.floor(Number(sqlPort)) : 1433,
+        netsis_sql_encrypt: sqlEncrypt,
+        netsis_sql_trust_server_certificate: sqlTrustCert,
+        netsis_order_sql: orderSql.trim() ? orderSql : null,
         netsis_username: username || null,
         netsis_password:
           apiPwTrim !== '' ? apiPwTrim : hadApiPwStored ? null : undefined,
@@ -252,6 +272,7 @@ function StoreRow({
           {store.netsis_auth_mode === 'token_password' && store.netsis_db_password_configured
             ? ' · db-pwd'
             : ''}
+          {store.netsis_orders_search_source === 'sql' ? ' · orders:sql' : ''}
         </td>
         <td className="px-4 py-3 text-right text-sm">
           <button
@@ -293,15 +314,88 @@ function StoreRow({
                   onChange={(e) => setBaseUrl(e.target.value)}
                 />
               </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Order search path (optional, use {'{'}query{'}'} )
-                <input
-                  className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
-                  placeholder="/orders/search?q={query}"
-                  value={pathTpl}
-                  onChange={(e) => setPathTpl(e.target.value)}
-                />
+              <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                Order search (installation combobox)
+                <select
+                  className="mt-1 w-full max-w-md rounded-md border px-2 py-1.5 text-sm"
+                  value={ordersSearchSource}
+                  onChange={(e) => setOrdersSearchSource(e.target.value === 'sql' ? 'sql' : 'http')}
+                >
+                  <option value="http">HTTP — call Netsis path below (Bearer/Basic)</option>
+                  <option value="sql">SQL Server — query Netsis DB directly (TCP)</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  SQL mode uses <strong>DB name / DB user / DB password</strong> from Logo token fields below for the
+                  database connection (not the HTTP API).
+                </p>
               </label>
+              {ordersSearchSource === 'http' ? (
+                <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                  Order search path (optional, use {'{'}query{'}'} )
+                  <input
+                    className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
+                    placeholder="/orders/search?q={query}"
+                    value={pathTpl}
+                    onChange={(e) => setPathTpl(e.target.value)}
+                  />
+                </label>
+              ) : (
+                <>
+                  <label className="block text-xs font-medium text-gray-600">
+                    SQL Server host
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 font-mono text-sm"
+                      placeholder="192.168.1.10 or SERVER\\INSTANCE"
+                      value={sqlHost}
+                      onChange={(e) => setSqlHost(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600">
+                    SQL port
+                    <input
+                      className="mt-1 w-full max-w-xs rounded-md border px-2 py-1.5 font-mono text-sm"
+                      value={sqlPort}
+                      onChange={(e) => setSqlPort(e.target.value)}
+                    />
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 md:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={sqlEncrypt}
+                      onChange={(e) => setSqlEncrypt(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Encrypt SQL connection (TLS)
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 md:col-span-2">
+                    <input
+                      type="checkbox"
+                      checked={sqlTrustCert}
+                      onChange={(e) => setSqlTrustCert(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Trust server certificate (self-signed SQL — dev only)
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                    Order search SQL (SELECT only)
+                    <textarea
+                      className="mt-1 min-h-[140px] w-full rounded-md border px-2 py-1.5 font-mono text-xs"
+                      spellCheck={false}
+                      placeholder={`SELECT TOP (@netsis_limit) CAST(FISNO AS NVARCHAR(64)) AS order_id,\n  CAST(ISNULL(UNVAN,'') AS NVARCHAR(200)) AS label\nFROM ...\nWHERE CAST(FISNO AS NVARCHAR(64)) LIKE '%' + @netsis_q + '%'`}
+                      value={orderSql}
+                      onChange={(e) => setOrderSql(e.target.value)}
+                    />
+                    <span className="mt-1 block text-xs text-gray-500">
+                      Must bind <code className="rounded bg-gray-100 px-1">@netsis_q</code> (search text) and{' '}
+                      <code className="rounded bg-gray-100 px-1">@netsis_limit</code> (row cap). Result columns{' '}
+                      <code className="rounded bg-gray-100 px-1">order_id</code> and{' '}
+                      <code className="rounded bg-gray-100 px-1">label</code> (aliases OK). Adjust table/column names
+                      for your Netsis schema.
+                    </span>
+                  </label>
+                </>
+              )}
               <label className="block text-xs font-medium text-gray-600">
                 {authMode === 'token_password' ? 'Token: username (form field)' : 'HTTP Basic username'}
                 <input

@@ -456,7 +456,7 @@ export default function CrewChecklist() {
                   <button
                     type="button"
                     className="ml-auto inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
-                    onClick={() => toast('Opening QR generator (mock)…')}
+                    onClick={() => toast('Opening QR generator…')}
                   >
                     Open QR generator
                   </button>

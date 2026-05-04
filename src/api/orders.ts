@@ -1,6 +1,7 @@
-// src/api/orders.ts
+// /api/orders.ts
 import { apiGet, UUID } from './http';
 import type { Store } from './stores';
+import type { Installation } from './installations';
 
 export type OrderStatus = 'pending' | 'confirmed' | 'cancelled';
 
@@ -49,4 +50,58 @@ export async function listOrders(
   params?: ListOrdersParams
 ): Promise<OrderList> {
   return apiGet<OrderList>('/orders', { params });
+}
+
+export type OrderInstallationsResponse = {
+  order_id: string;
+  data: Installation[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type OrderTimelineAuditRow = {
+  id: string;
+  at: string;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  data?: Record<string, unknown> | null;
+  actor_id?: string | null;
+  installation_id?: string | null;
+  install_code?: string | null;
+};
+
+export type OrderTimelineResponse = {
+  order_id: string;
+  installations: Array<{
+    id: string;
+    install_code: string | null;
+    status: string;
+    created_at: string;
+  }>;
+  timeline: {
+    data: OrderTimelineAuditRow[];
+    total: number;
+    limit: number;
+    offset: number;
+  };
+};
+
+export async function getOrderInstallations(
+  externalOrderId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<OrderInstallationsResponse> {
+  const enc = encodeURIComponent(externalOrderId);
+  return apiGet<OrderInstallationsResponse>(`/orders/${enc}/installations`, {
+    params,
+  });
+}
+
+export async function getOrderTimeline(
+  externalOrderId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<OrderTimelineResponse> {
+  const enc = encodeURIComponent(externalOrderId);
+  return apiGet<OrderTimelineResponse>(`/orders/${enc}/timeline`, { params });
 }

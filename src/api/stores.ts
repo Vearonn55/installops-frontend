@@ -25,6 +25,13 @@ export type Store = {
   netsis_db_user?: string | null;
   netsis_db_password_configured?: boolean;
   netsis_db_type?: string | null;
+  /** Order combobox: HTTP path on Netsis API vs direct SQL Server query. */
+  netsis_orders_search_source?: 'http' | 'sql' | null;
+  netsis_sql_host?: string | null;
+  netsis_sql_port?: number | null;
+  netsis_sql_encrypt?: boolean | null;
+  netsis_sql_trust_server_certificate?: boolean | null;
+  netsis_order_sql?: string | null;
   /** Only when listing/GET with reveal_netsis_secrets (admins). */
   netsis_password?: string | null;
   netsis_db_password?: string | null;
@@ -97,6 +104,12 @@ export type StoreNetsisUpdate = {
   /** When true, removes stored Netsis API / token form password. */
   netsis_clear_password?: boolean;
   netsis_db_type?: string | null;
+  netsis_orders_search_source?: 'http' | 'sql' | null;
+  netsis_sql_host?: string | null;
+  netsis_sql_port?: number | null;
+  netsis_sql_encrypt?: boolean | null;
+  netsis_sql_trust_server_certificate?: boolean | null;
+  netsis_order_sql?: string | null;
 };
 
 export async function patchStoreNetsis(
