@@ -21,3 +21,16 @@ export function defaultDateRangeOneMonthAhead(
     to: toYmd(addCalendarMonths(now, 1)),
   };
 }
+
+/**
+ * Default range for the manager **Orders** list (installations aggregated by `external_order_id`).
+ * Must include **past** `placed_at` dates — a forward-only window hides all historical orders.
+ */
+export function defaultDateRangeOrdersList(
+  now: Date = new Date()
+): { from: string; to: string } {
+  return {
+    from: toYmd(addCalendarMonths(now, -12)),
+    to: toYmd(addCalendarMonths(now, 3)),
+  };
+}

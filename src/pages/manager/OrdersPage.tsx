@@ -13,7 +13,7 @@ import {
 
 import { cn } from "../../lib/utils";
 import { formatUiDateTime } from "../../lib/date-display";
-import { defaultDateRangeOneMonthAhead } from "../../lib/date-range";
+import { defaultDateRangeOrdersList } from "../../lib/date-range";
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
@@ -24,8 +24,8 @@ export default function OrdersPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
 
-  // 🔹 Local UI state — date range: today → one month ahead
-  const ordersRangeDefault = useMemo(() => defaultDateRangeOneMonthAhead(), []);
+  // 🔹 Local UI state — date range includes past orders (placed_at = installation created_at)
+  const ordersRangeDefault = useMemo(() => defaultDateRangeOrdersList(), []);
 
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
@@ -134,7 +134,10 @@ export default function OrdersPage() {
     const toD = new Date(to + "T23:59:59");
 
     list = list.filter((o) => {
-      const dt = new Date(o.placed_at ?? o.created_at ?? "");
+      const raw = o.placed_at ?? o.created_at;
+      if (!raw) return true;
+      const dt = new Date(raw);
+      if (Number.isNaN(dt.getTime())) return true;
       return dt >= fromD && dt <= toD;
     });
 
