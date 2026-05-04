@@ -11,11 +11,14 @@ import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
   type Installation,
-  type InstallStatus,
   type CrewAssignment,
 } from '../../api/installations';
-
-type JobStatus = 'scheduled' | 'in_progress' | 'completed' | 'failed';
+import { isoToLocalYmd, toLocalYmd } from '../../lib/local-date';
+import {
+  pickInstallationRecordStatus,
+  mapBackendInstallationToCrewUiStatus,
+  type CrewJobsUiStatus,
+} from '../../lib/installation-status';
 
 type CrewJob = {
   id: string;
@@ -24,7 +27,9 @@ type CrewJob = {
   start: string; // ISO
   end: string; // ISO
   zone: string;
-  status: JobStatus;
+  status: CrewJobsUiStatus;
+  /** True when no scheduled window — shown on calendar by created/anchor day */
+  timeTbd?: boolean;
 };
 
 
@@ -58,23 +63,9 @@ function dayKey(d: Date) {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
-// Map backend InstallStatus → UI JobStatus bucket
-function mapStatusToJobStatus(status: InstallStatus): JobStatus {
-  switch (status) {
-    case 'in_progress':
-      return 'in_progress';
-    case 'completed':
-      return 'completed';
-    case 'failed':
-      return 'failed';
-    // scheduled, staged, canceled, after_sale_service → treat as scheduled/awaiting
-    case 'scheduled':
-    case 'staged':
-    case 'canceled':
-    case 'after_sale_service':
-    default:
-      return 'scheduled';
-  }
+function homeJobStatusFromInstallation(inst: Installation): CrewJobsUiStatus {
+  const raw = pickInstallationRecordStatus(inst as unknown as Record<string, unknown>);
+  return mapBackendInstallationToCrewUiStatus(raw);
 }
 
 // Build address/zone from store + address relations (best-effort)
@@ -120,17 +111,23 @@ export default function CrewHome() {
       })
       .map((inst) => {
         const { customer, address, zone } = buildAddress(inst);
-        if (!inst.scheduled_start || !inst.scheduled_end) {
-          return null; // ignore unscheduled for week view
-        }
+        const hasSchedule = !!(inst.scheduled_start && inst.scheduled_end);
+        const startIso = hasSchedule ? inst.scheduled_start! : inst.created_at;
+        const endIso =
+          (hasSchedule ? inst.scheduled_end : null) ||
+          inst.scheduled_end ||
+          inst.scheduled_start ||
+          inst.created_at;
+        if (!startIso || !endIso) return null;
         return {
-          id: inst.id, // real installation ID (UUID)
+          id: inst.id,
           customer,
           address,
-          start: inst.scheduled_start,
-          end: inst.scheduled_end,
+          start: startIso,
+          end: endIso,
           zone,
-          status: mapStatusToJobStatus(inst.status),
+          status: homeJobStatusFromInstallation(inst),
+          timeTbd: !hasSchedule,
         } as CrewJob;
       })
       .filter(Boolean) as CrewJob[];
@@ -168,16 +165,10 @@ export default function CrewHome() {
     return map;
   }, [weekDays, weekJobs]);
 
-  // Today’s jobs (from weekly set)
+  // Today’s jobs (same local YMD rule as Jobs week strip)
   const todayJobs = useMemo(() => {
-    const d0 = new Date(now);
-    d0.setHours(0, 0, 0, 0);
-    const d1 = new Date(now);
-    d1.setHours(23, 59, 59, 999);
-    return weekJobs.filter((j) => {
-      const s = new Date(j.start);
-      return s >= d0 && s <= d1;
-    });
+    const todayYmd = toLocalYmd(now);
+    return weekJobs.filter((j) => isoToLocalYmd(j.start) === todayYmd);
   }, [weekJobs, now]);
 
   // Current Active Job:
@@ -207,13 +198,6 @@ export default function CrewHome() {
 
     return [...weekJobs].sort(byStart)[0];
   }, [weekJobs, todayJobs, now]);
-
-  const summary = {
-    weekTotal: weekJobs.length,
-    active: weekJobs.filter((j) => j.status === 'in_progress').length,
-    done: weekJobs.filter((j) => j.status === 'completed').length,
-    issues: weekJobs.filter((j) => j.status === 'failed').length,
-  };
 
   if (isLoading) {
     return (
@@ -251,15 +235,6 @@ export default function CrewHome() {
         <h1 className="text-lg font-bold text-gray-900">Crew Home</h1>
         <p className="text-xs text-gray-500">Your current job and weekly summary</p>
       </div>
-
-      {/* Optional summary cards – keep commented if not needed
-      <div className="mb-3 grid grid-cols-4 gap-2">
-        <SummaryCard label="Week" value={summary.weekTotal} />
-        <SummaryCard label="Active" value={summary.active} />
-        <SummaryCard label="Done" value={summary.done} />
-        <SummaryCard label="Issues" value={summary.issues} />
-      </div>
-      */}
 
       {/* Mini Weekly Calendar */}
       <div className="mb-3 rounded-xl border bg-white p-2 shadow-sm">
@@ -329,7 +304,13 @@ export default function CrewHome() {
                 {activeJob.customer}
               </div>
               <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
-                {activeJob.status === 'in_progress' ? 'In progress' : 'Next job'}
+                {activeJob.status === 'in_progress'
+                  ? 'In progress'
+                  : activeJob.status === 'staged'
+                    ? 'Staged'
+                    : activeJob.status === 'after_sale'
+                      ? 'After-sale'
+                      : 'Next job'}
               </span>
             </div>
 
@@ -337,7 +318,9 @@ export default function CrewHome() {
               <div className="flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5 text-gray-500" />
                 <span>
-                  {formatUiTime(activeJob.start)} – {formatUiTime(activeJob.end)}
+                  {activeJob.timeTbd
+                    ? 'Time TBD (not scheduled)'
+                    : `${formatUiTime(activeJob.start)} – ${formatUiTime(activeJob.end)}`}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -396,7 +379,9 @@ export default function CrewHome() {
                       <div className="mt-1 grid grid-cols-1 gap-3 text-sm text-gray-700 sm:grid-cols-2">
                         <span className="flex items-center gap-1.5 font-medium">
                           <Clock className="h-4 w-4" />
-                          {formatUiTime(j.start)} – {formatUiTime(j.end)}
+                          {j.timeTbd
+                            ? 'Time TBD'
+                            : `${formatUiTime(j.start)} – ${formatUiTime(j.end)}`}
                         </span>
                         <span className="flex items-center gap-1.5">
                           <MapPin className="h-4 w-4" />
@@ -427,26 +412,23 @@ export default function CrewHome() {
 
 /* ------------------------------ UI bits ------------------------------ */
 
-function SummaryCard({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-lg border bg-white px-2.5 py-2 text-center shadow-sm">
-      <div className="text-[11px] text-gray-500">{label}</div>
-      <div className="text-base font-semibold text-gray-900">{value}</div>
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: JobStatus }) {
-  const tone: Record<JobStatus, string> = {
-    scheduled: 'border-sky-200 bg-sky-50 text-sky-700',
+function StatusPill({ status }: { status: CrewJobsUiStatus }) {
+  const tone: Record<CrewJobsUiStatus, string> = {
+    pending: 'border-sky-200 bg-sky-50 text-sky-700',
+    staged: 'border-amber-200 bg-amber-50 text-amber-700',
     in_progress: 'border-amber-200 bg-amber-50 text-amber-700',
     completed: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     failed: 'border-rose-200 bg-rose-50 text-rose-700',
+    after_sale: 'border-violet-200 bg-violet-50 text-violet-800',
   };
   const label =
     status === 'in_progress'
       ? 'In progress'
-      : status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
+      : status === 'after_sale'
+        ? 'After-sale'
+        : status === 'pending'
+          ? 'Pending'
+          : status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
   return (
     <span
       className={cn(
@@ -468,16 +450,20 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function statusColor(s: JobStatus) {
+function statusColor(s: CrewJobsUiStatus) {
   switch (s) {
-    case 'scheduled':
+    case 'pending':
       return 'bg-sky-400';
+    case 'staged':
+      return 'bg-amber-300';
     case 'in_progress':
       return 'bg-amber-500';
     case 'completed':
       return 'bg-emerald-500';
     case 'failed':
       return 'bg-rose-500';
+    case 'after_sale':
+      return 'bg-violet-500';
     default:
       return 'bg-gray-300';
   }

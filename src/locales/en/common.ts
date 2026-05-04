@@ -16,6 +16,7 @@ const enCommon = {
     crewHome: 'Home',
     crewJobs: 'Jobs',
     crewIssues: 'Issues',
+    crewAfterSale: 'After-sale',
     crewSettings: 'Settings',
   },
 
@@ -505,6 +506,12 @@ installationDetailPage: {
     title: 'Notes',
     subtitle: 'Special instructions',
     none: 'No notes.',
+  },
+
+  crewNotesCard: {
+    title: 'Customer notes (crew)',
+    subtitle: 'Captured on site from the installation checklist',
+    none: 'No crew customer notes yet.',
   },
 
   itemsCard: {

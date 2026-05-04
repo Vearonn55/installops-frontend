@@ -26,9 +26,16 @@ import {
 } from '../../api/integrations';
 import type { UUID } from '../../api/http';
 import { cn, formatDateTime } from '../../lib/utils';
+import {
+  auditRowToOrderTimelineViewEvent,
+  orderTimelineTonePillClass,
+  orderTimelineToneShortLabel,
+  type OrderTimelineTone,
+  type OrderTimelineViewEvent,
+} from '../../lib/order-timeline-audit';
 
-type TimelineStatus = 'failed' | 'missing_part' | 'completed';
-type TimelineEvent = { id: string; date: string; status: TimelineStatus; note?: string };
+type TimelineEvent = OrderTimelineViewEvent;
+
 type ExtendedOrder = {
   id: string;
   /** Store UUID for Netsis proxy */
@@ -50,13 +57,6 @@ type ExtendedOrder = {
   status?: string;
   timeline?: TimelineEvent[];
 };
-
-function mapAuditActionToTimelineStatus(action: string): TimelineStatus {
-  const a = (action || '').toLowerCase();
-  if (a.includes('fail') || a.includes('decline') || a.includes('cancel')) return 'failed';
-  if (a.includes('missing') || a.includes('part')) return 'missing_part';
-  return 'completed';
-}
 
 function buildExtendedOrder(
   externalOrderId: string,
@@ -89,12 +89,9 @@ function buildExtendedOrder(
     status = 'pending';
   }
 
-  const timeline: TimelineEvent[] = (tlRes.timeline?.data ?? []).map((row) => ({
-    id: String(row.id),
-    date: row.at,
-    status: mapAuditActionToTimelineStatus(row.action),
-    note: row.action,
-  }));
+  const timeline: TimelineEvent[] = (tlRes.timeline?.data ?? []).map(
+    auditRowToOrderTimelineViewEvent
+  );
 
   const addressLine = [addr?.line1, addr?.line2, addr?.city, addr?.postal_code].filter(Boolean).join(', ');
 
@@ -168,6 +165,7 @@ function mergeNetsisIntoOrder(
       region: nc.region || bc.region,
     },
     netsis_items: ni.length ? ni : base.netsis_items,
+    timeline: base.timeline ?? [],
   };
 }
 
@@ -282,21 +280,18 @@ export default function OrderDetailPage() {
     return [...order.timeline].sort((a, b) => +new Date(a.date) - +new Date(b.date));
   }, [order]);
 
-  const statusIcon = (s: TimelineStatus) => {
-    switch (s) {
-      case 'failed':
-      case 'missing_part':
+  const toneIcon = (tone: OrderTimelineTone) => {
+    switch (tone) {
+      case 'danger':
         return <XCircle className="h-4 w-4" />;
-      case 'completed':
+      case 'success':
         return <CheckCircle2 className="h-4 w-4" />;
+      case 'warning':
+        return <XCircle className="h-4 w-4 text-amber-600" />;
+      default:
+        return <CheckCircle2 className="h-4 w-4 text-slate-400" />;
     }
   };
-  const statusLabel = (s: TimelineStatus) =>
-    s === 'failed' ? 'Failed attempt' : s === 'missing_part' ? 'Missing part' : 'Completed';
-  const statusPill = (s: TimelineStatus) =>
-    s === 'completed'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : 'border-rose-200 bg-rose-50 text-rose-700';
 
   return (
     <div className="space-y-6">
@@ -488,9 +483,10 @@ export default function OrderDetailPage() {
                         <span
                           className={cn(
                             'absolute left-0 mt-1 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border bg-white',
-                            (ev.status === 'failed' || ev.status === 'missing_part') &&
-                              'border-rose-300 text-rose-600',
-                            ev.status === 'completed' && 'border-emerald-300 text-emerald-600'
+                            ev.tone === 'danger' && 'border-rose-300 text-rose-600',
+                            ev.tone === 'success' && 'border-emerald-300 text-emerald-600',
+                            ev.tone === 'warning' && 'border-amber-300 text-amber-600',
+                            ev.tone === 'info' && 'border-slate-300 text-slate-500'
                           )}
                           aria-hidden
                         />
@@ -499,17 +495,20 @@ export default function OrderDetailPage() {
                           <span
                             className={cn(
                               'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]',
-                              statusPill(ev.status)
+                              orderTimelineTonePillClass(ev.tone)
                             )}
                           >
-                            {statusIcon(ev.status)}
-                            {statusLabel(ev.status)}
+                            {toneIcon(ev.tone)}
+                            {orderTimelineToneShortLabel(ev.tone)}
                           </span>
                           <span className="ml-2 text-[11px] text-gray-500">
                             {formatDateTime(ev.date)}
                           </span>
                         </div>
-                        {ev.note && <div className="text-sm text-gray-800">{ev.note}</div>}
+                        <div className="text-sm font-medium text-gray-900">{ev.headline}</div>
+                        {ev.detail ? (
+                          <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{ev.detail}</div>
+                        ) : null}
                       </li>
                     );
                   })}

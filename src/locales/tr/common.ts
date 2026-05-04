@@ -16,6 +16,7 @@ const trCommon = {
     crewHome: 'Ana Sayfa',
     crewJobs: 'İşler',
     crewIssues: 'Sorunlar',
+    crewAfterSale: 'Satış sonrası',
     crewSettings: 'Ayarlar',
   },
 
@@ -505,6 +506,12 @@ installationDetailPage: {
     title: 'Notlar',
     subtitle: 'Özel talimatlar',
     none: 'Herhangi bir not yok.',
+  },
+
+  crewNotesCard: {
+    title: 'Müşteri notları (ekip)',
+    subtitle: 'Kurulum kontrol listesinde sahadan alınan notlar',
+    none: 'Henüz ekip müşteri notu yok.',
   },
 
   itemsCard: {

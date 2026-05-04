@@ -9,15 +9,13 @@ import { formatUiDateTime } from '../../lib/date-display';
 import { getInstallation } from '../../api/installations';
 import { getOrderTimeline } from '../../api/orders';
 import type { UUID } from '../../api/http';
-
-type TimelineStatus = 'failed' | 'missing_part' | 'completed';
-
-type TimelineEvent = {
-  id: string;
-  date: string;
-  status: TimelineStatus;
-  note?: string;
-};
+import {
+  auditRowToOrderTimelineViewEvent,
+  orderTimelineTonePillClass,
+  orderTimelineToneShortLabel,
+  type OrderTimelineTone,
+  type OrderTimelineViewEvent,
+} from '../../lib/order-timeline-audit';
 
 type Customer = {
   name: string;
@@ -29,15 +27,8 @@ type OrderDetail = {
   orderId: string;
   orderNo: string;
   customer: Customer;
-  timeline: TimelineEvent[];
+  timeline: OrderTimelineViewEvent[];
 };
-
-function mapAuditActionToTimelineStatus(action: string): TimelineStatus {
-  const a = (action || '').toLowerCase();
-  if (a.includes('fail') || a.includes('decline') || a.includes('cancel')) return 'failed';
-  if (a.includes('missing') || a.includes('part')) return 'missing_part';
-  return 'completed';
-}
 
 async function loadOrderDetailForInstallation(installationId: string): Promise<OrderDetail> {
   const inst = await getInstallation(installationId as UUID);
@@ -46,12 +37,7 @@ async function loadOrderDetailForInstallation(installationId: string): Promise<O
   const addr = store?.address;
   const addressLine = [addr?.line1, addr?.line2, addr?.city, addr?.postal_code].filter(Boolean).join(', ') || '—';
 
-  const timeline: TimelineEvent[] = (tl.timeline?.data ?? []).map((row) => ({
-    id: row.id,
-    date: row.at,
-    status: mapAuditActionToTimelineStatus(row.action),
-    note: row.action,
-  }));
+  const timeline = (tl.timeline?.data ?? []).map(auditRowToOrderTimelineViewEvent);
 
   return {
     orderId: inst.id,
@@ -65,34 +51,16 @@ async function loadOrderDetailForInstallation(installationId: string): Promise<O
   };
 }
 
-function statusBadgeStyles(status: TimelineStatus) {
-  switch (status) {
-    case 'failed':
-    case 'missing_part':
-      return 'border-rose-200 bg-rose-50 text-rose-700';
-    case 'completed':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  }
-}
-
-function statusIcon(status: TimelineStatus) {
-  switch (status) {
-    case 'failed':
-    case 'missing_part':
+function toneIcon(tone: OrderTimelineTone) {
+  switch (tone) {
+    case 'danger':
       return <XCircle className="h-4 w-4" />;
-    case 'completed':
+    case 'success':
       return <CheckCircle2 className="h-4 w-4" />;
-  }
-}
-
-function statusLabel(status: TimelineStatus) {
-  switch (status) {
-    case 'failed':
-      return 'Failed attempt';
-    case 'missing_part':
-      return 'Missing part';
-    case 'completed':
-      return 'Completed';
+    case 'warning':
+      return <XCircle className="h-4 w-4 text-amber-600" />;
+    default:
+      return <CheckCircle2 className="h-4 w-4 text-slate-400" />;
   }
 }
 
@@ -185,14 +153,15 @@ export default function CrewOrderDetail() {
 
                         <span
                           className={cn(
-                            'absolute left-0 mt-1 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border bg-white text-gray-500',
-                            ev.status === 'completed' && 'border-emerald-300 text-emerald-600',
-                            ev.status === 'failed' && 'border-rose-300 text-rose-600',
-                            ev.status === 'missing_part' && 'border-amber-300 text-amber-600'
+                            'absolute left-0 mt-1 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border bg-white',
+                            ev.tone === 'danger' && 'border-rose-300 text-rose-600',
+                            ev.tone === 'success' && 'border-emerald-300 text-emerald-600',
+                            ev.tone === 'warning' && 'border-amber-300 text-amber-600',
+                            ev.tone === 'info' && 'border-slate-300 text-slate-500'
                           )}
                           aria-hidden
                         >
-                          <span className="sr-only">{statusLabel(ev.status)}</span>
+                          <span className="sr-only">{orderTimelineToneShortLabel(ev.tone)}</span>
                         </span>
 
                         <div className="mb-3 ml-1">
@@ -200,15 +169,18 @@ export default function CrewOrderDetail() {
                             <span
                               className={cn(
                                 'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]',
-                                statusBadgeStyles(ev.status)
+                                orderTimelineTonePillClass(ev.tone)
                               )}
                             >
-                              {statusIcon(ev.status)}
-                              {statusLabel(ev.status)}
+                              {toneIcon(ev.tone)}
+                              {orderTimelineToneShortLabel(ev.tone)}
                             </span>
                             <span className="text-[11px] text-gray-500">{formatUiDateTime(ev.date)}</span>
                           </div>
-                          {ev.note && <div className="mt-1 text-sm text-gray-800">{ev.note}</div>}
+                          <div className="mt-1 text-sm font-medium text-gray-900">{ev.headline}</div>
+                          {ev.detail ? (
+                            <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{ev.detail}</div>
+                          ) : null}
                         </div>
                       </li>
                     );

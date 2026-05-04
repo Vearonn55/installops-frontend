@@ -56,6 +56,7 @@ type CrewAssignmentDto = {
 type InstallationWithRelations = Installation & {
   /** API field (Netsis / ERP order id); may differ from legacy `order_id` on type `Installation`. */
   external_order_id?: string;
+  crew_after_installation_notes?: string | null;
   items?: InstallationItemDto[];
   crew?: CrewAssignmentDto[];
 };
@@ -333,15 +334,37 @@ export default function InstallationDetailPage() {
               {t('installationDetailPage.notesCard.subtitle')}
             </p>
           </div>
-          <div className="card-content">
-            <div className="rounded-md border bg-white p-3 text-sm text-gray-800 min-h-[64px]">
-              {inst?.notes?.trim() ? (
-                inst.notes
-              ) : (
-                <span className="text-gray-400">
-                  {t('installationDetailPage.notesCard.none')}
-                </span>
-              )}
+          <div className="card-content space-y-4">
+            <div>
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                {t('installationDetailPage.notesCard.title')}
+              </div>
+              <div className="rounded-md border bg-white p-3 text-sm text-gray-800 min-h-[64px]">
+                {inst?.notes?.trim() ? (
+                  inst.notes
+                ) : (
+                  <span className="text-gray-400">
+                    {t('installationDetailPage.notesCard.none')}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                {t('installationDetailPage.crewNotesCard.title')}
+              </div>
+              <p className="mb-2 text-xs text-gray-500">
+                {t('installationDetailPage.crewNotesCard.subtitle')}
+              </p>
+              <div className="rounded-md border border-primary-100 bg-primary-50/40 p-3 text-sm text-gray-900 min-h-[64px] whitespace-pre-wrap">
+                {String(inst?.crew_after_installation_notes || '').trim() ? (
+                  inst!.crew_after_installation_notes
+                ) : (
+                  <span className="text-gray-400">
+                    {t('installationDetailPage.crewNotesCard.none')}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

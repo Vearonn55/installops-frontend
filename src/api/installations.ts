@@ -55,6 +55,8 @@ export type Installation = {
   scheduled_end?: string | null;
   status: InstallStatus;
   notes?: string | null;
+  /** Crew checklist / site visit customer notes (persisted). */
+  crew_after_installation_notes?: string | null;
   created_by?: UUID;
   updated_by?: UUID;
   created_at: string;
@@ -154,6 +156,13 @@ export async function updateInstallationStatus(
   payload: UpdateStatusPayload
 ): Promise<Installation> {
   return apiPatch<Installation>(`/installations/${id}/status`, payload);
+}
+
+export async function updateCrewAfterInstallationNotes(
+  id: UUID,
+  payload: { crew_after_installation_notes: string | null }
+): Promise<Installation> {
+  return apiPatch<Installation>(`/installations/${id}/crew-after-notes`, payload);
 }
 
 // items

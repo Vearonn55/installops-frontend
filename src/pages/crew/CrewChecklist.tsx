@@ -6,7 +6,12 @@ import toast from 'react-hot-toast';
 
 import { cn } from '../../lib/utils';
 import { isAxiosError } from '../../api/http';
-import { updateInstallationStatus, type InstallStatus } from '../../api/installations';
+import type { UUID } from '../../api/http';
+import {
+  updateInstallationStatus,
+  updateCrewAfterInstallationNotes,
+  type InstallStatus,
+} from '../../api/installations';
 
 function storageKey(jobId: string) {
   return `crew_checklist_${jobId}`;
@@ -39,7 +44,6 @@ export default function CrewChecklist() {
 
   const [values, setValues] = useState<Values>({});
   const [submitting, setSubmitting] = useState(false);
-  const [submittingAfterSale, setSubmittingAfterSale] = useState(false);
 
   // local-only photos (will connect to /api/media later)
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
@@ -144,6 +148,11 @@ export default function CrewChecklist() {
         await updateInstallationStatus(jobId, { status: apiStatus });
       }
 
+      const siteNotes = String(values.customer_notes ?? '').trim();
+      await updateCrewAfterInstallationNotes(jobId as UUID, {
+        crew_after_installation_notes: siteNotes ? siteNotes : null,
+      });
+
       // NOTE: photos are still local-only.
       // Next step: upload files + call /installations/{id}/media using /api/media.ts.
 
@@ -152,47 +161,14 @@ export default function CrewChecklist() {
       navigate(`/crew/jobs/${jobId}`);
     } catch (err) {
       if (isAxiosError(err)) {
-        const msg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          'Failed to submit checklist';
+        const body = err.response?.data as { message?: string; error?: string } | undefined;
+        const msg = body?.message || body?.error || 'Failed to submit checklist';
         toast.error(msg);
       } else {
         toast.error('Failed to submit checklist');
       }
     } finally {
       setSubmitting(false);
-    }
-  }
-
-  // ---------------- after-sale status ----------------
-  async function markAfterSaleService() {
-    if (!jobId) {
-      toast.error('Missing job ID');
-      return;
-    }
-
-    setSubmittingAfterSale(true);
-    try {
-      await updateInstallationStatus(jobId, {
-        status: 'after_sale_service' as InstallStatus,
-      });
-
-      toast.success('Marked as after-sale service');
-      localStorage.removeItem(storageKey(jobId));
-      navigate(`/crew/jobs/${jobId}`);
-    } catch (err) {
-      if (isAxiosError(err)) {
-        const msg =
-          err.response?.data?.message ||
-          err.response?.data?.error ||
-          'Failed to mark after-sale service';
-        toast.error(msg);
-      } else {
-        toast.error('Failed to mark after-sale service');
-      }
-    } finally {
-      setSubmittingAfterSale(false);
     }
   }
 
@@ -453,9 +429,9 @@ export default function CrewChecklist() {
                     Confirmed
                   </label>
 
-                <button
+                  <button
                     type="button"
-                  className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:ml-auto sm:w-auto"
+                    className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:ml-auto sm:w-auto"
                     onClick={() => toast('Opening QR generator…')}
                   >
                     Open QR generator
@@ -486,23 +462,10 @@ export default function CrewChecklist() {
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-gray-500">
-                  If this job requires a follow-up visit, you can mark it as an after-sale
-                  service.
-                </p>
-                <button
-                  type="button"
-                  onClick={markAfterSaleService}
-                  disabled={submittingAfterSale}
-                  className="inline-flex items-center justify-center rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
-                >
-                  {submittingAfterSale && (
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  )}
-                  After-sale service
-                </button>
-              </div>
+              <p className="mt-3 text-xs text-gray-500">
+                For a follow-up visit, use <span className="font-medium">After-sale</span> in the
+                bottom menu (customer notes can be entered there).
+              </p>
             </section>
           )}
         </div>
@@ -520,7 +483,7 @@ export default function CrewChecklist() {
             Clear All
           </button>
           <button
-            disabled={submitting || submittingAfterSale}
+            disabled={submitting}
             className={cn(
               'inline-flex flex-1 items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50'
             )}

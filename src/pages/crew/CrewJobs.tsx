@@ -11,6 +11,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
+import { toLocalYmd, isoToLocalYmd } from '../../lib/local-date';
+import {
+  pickInstallationRecordStatus,
+  mapBackendInstallationToCrewUiStatus,
+  type CrewJobsUiStatus,
+} from '../../lib/installation-status';
 
 import {
   listInstallations,
@@ -23,7 +29,6 @@ import {
 
 /* --------------------------- Types & helpers --------------------------- */
 
-type CrewJobStatus = 'pending' | 'staged' | 'in_progress' | 'completed' | 'failed';
 // zone now comes from backend city/region
 type Zone = string;
 
@@ -35,7 +40,7 @@ type CrewJob = {
   customer: string;
   address: string;
   zone: Zone;
-  status: CrewJobStatus;
+  status: CrewJobsUiStatus;
   notes?: string;
 };
 
@@ -55,20 +60,6 @@ function addDays(date: Date, n: number) {
   return d;
 }
 
-function toLocalYmd(date: Date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function isoToLocalYmd(iso: string) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return '';
-  return toLocalYmd(parsed);
-}
-
 function fmtTimeRange(sISO: string, eISO: string) {
   const s = new Date(sISO);
   const e = new Date(eISO);
@@ -77,7 +68,7 @@ function fmtTimeRange(sISO: string, eISO: string) {
   return `${f(s)}–${f(e)}`;
 }
 
-function statusTone(s: CrewJobStatus) {
+function statusTone(s: CrewJobsUiStatus) {
   switch (s) {
     case 'completed':
       return 'border-emerald-200 bg-emerald-50 text-emerald-700';
@@ -87,12 +78,14 @@ function statusTone(s: CrewJobStatus) {
       return 'border-amber-200 bg-amber-50 text-amber-700';
     case 'failed':
       return 'border-red-200 bg-red-50 text-red-700';
+    case 'after_sale':
+      return 'border-violet-200 bg-violet-50 text-violet-800';
     default:
       return 'border-gray-200 bg-gray-50 text-gray-700';
   }
 }
 
-function statusLabel(s: CrewJobStatus) {
+function statusLabel(s: CrewJobsUiStatus) {
   switch (s) {
     case 'completed':
       return 'Completed';
@@ -102,30 +95,10 @@ function statusLabel(s: CrewJobStatus) {
       return 'Staged';
     case 'failed':
       return 'Failed';
+    case 'after_sale':
+      return 'After-sale';
     default:
       return 'Pending';
-  }
-}
-
-// Map backend installation.status to crew job UI status
-function mapBackendStatusToJobStatus(status: string): CrewJobStatus {
-  switch (status) {
-    case 'staged':
-      return 'staged';
-    case 'in_progress':
-      return 'in_progress';
-    case 'completed':
-      return 'completed';
-    case 'failed':
-      return 'failed';
-    // backend "scheduled" → UI "Pending"
-    case 'scheduled':
-      return 'pending';
-    // we don’t have a separate cancelled pill, show as failed for now
-    case 'canceled':
-      return 'failed';
-    default:
-      return 'pending';
   }
 }
 
@@ -180,19 +153,22 @@ export default function CrewJobs() {
     const weekEnd = addDays(weekStart, 7);
 
     for (const inst of insts) {
-      const startIso = inst.scheduled_start ?? null;
-      if (!startIso) continue;
+      const anchorIso = inst.scheduled_start || inst.created_at || null;
+      if (!anchorIso) continue;
 
-      const startDate = new Date(startIso);
+      const startDate = new Date(anchorIso);
       if (startDate < weekStart || startDate >= weekEnd) continue;
 
-      const endIso = inst.scheduled_end ?? startIso;
+      const startIso = inst.scheduled_start || inst.created_at;
+      const endIso = inst.scheduled_end ?? inst.scheduled_start ?? inst.created_at ?? startIso;
 
       const store = storesById.get(inst.store_id);
       const addr = store?.address;
 
       const city = addr?.city || addr?.region || '';
       const addressLine = addr?.line1 || '';
+
+      const rawStatus = pickInstallationRecordStatus(inst as unknown as Record<string, unknown>);
 
       jobs.push({
         id: inst.id,
@@ -202,7 +178,7 @@ export default function CrewJobs() {
         customer: store?.name ?? inst.store_id,
         address: city ? `${addressLine}, ${city}` : addressLine,
         zone: city || 'Unknown',
-        status: mapBackendStatusToJobStatus(inst.status),
+        status: mapBackendInstallationToCrewUiStatus(rawStatus),
         notes: inst.notes ?? undefined,
       });
     }

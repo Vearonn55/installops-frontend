@@ -8,8 +8,11 @@ import { cn } from '../../lib/utils';
 import { formatUiTime } from '../../lib/date-display';
 import { getInstallation, type Installation } from '../../api/installations';
 import type { UUID } from '../../api/http';
-
-type CrewJobStatus = 'pending' | 'staged' | 'in_progress' | 'completed' | 'failed';
+import {
+  pickInstallationRecordStatus,
+  mapBackendInstallationToCrewUiStatus,
+  type CrewJobsUiStatus,
+} from '../../lib/installation-status';
 
 type CrewJob = {
   id: string;
@@ -20,32 +23,13 @@ type CrewJob = {
   phone?: string;
   address: string;
   zone: string;
-  status: CrewJobStatus;
+  status: CrewJobsUiStatus;
   notes?: string;
   items?: Array<{ sku: string; name: string; qty: number }>;
 };
 
 function formatTimeRange(startISO: string, endISO: string) {
   return `${formatUiTime(startISO)}–${formatUiTime(endISO)}`;
-}
-
-function mapBackendStatusToJobStatus(status: string): CrewJobStatus {
-  switch (status) {
-    case 'staged':
-      return 'staged';
-    case 'in_progress':
-      return 'in_progress';
-    case 'completed':
-      return 'completed';
-    case 'failed':
-      return 'failed';
-    case 'canceled':
-      return 'failed';
-    case 'scheduled':
-      return 'pending';
-    default:
-      return 'pending';
-  }
 }
 
 function installationToCrewJob(inst: Installation): CrewJob {
@@ -65,7 +49,9 @@ function installationToCrewJob(inst: Installation): CrewJob {
     phone: store?.phone ?? undefined,
     address: city ? `${addressLine}, ${city}` : addressLine,
     zone: city || '—',
-    status: mapBackendStatusToJobStatus(inst.status),
+    status: mapBackendInstallationToCrewUiStatus(
+      pickInstallationRecordStatus(inst as unknown as Record<string, unknown>)
+    ),
     notes: inst.notes ?? undefined,
     items: (inst.items ?? []).map((it) => ({
       sku: it.external_product_id,
@@ -75,7 +61,7 @@ function installationToCrewJob(inst: Installation): CrewJob {
   };
 }
 
-function statusClass(s: CrewJobStatus) {
+function statusClass(s: CrewJobsUiStatus) {
   switch (s) {
     case 'completed':
       return 'border-emerald-200 bg-emerald-50 text-emerald-700';
@@ -85,12 +71,14 @@ function statusClass(s: CrewJobStatus) {
       return 'border-amber-200 bg-amber-50 text-amber-700';
     case 'failed':
       return 'border-red-200 bg-red-50 text-red-700';
+    case 'after_sale':
+      return 'border-violet-200 bg-violet-50 text-violet-800';
     default:
       return 'border-gray-200 bg-gray-50 text-gray-700';
   }
 }
 
-function statusLabel(s: CrewJobStatus) {
+function statusLabel(s: CrewJobsUiStatus) {
   switch (s) {
     case 'completed':
       return 'Completed';
@@ -100,6 +88,8 @@ function statusLabel(s: CrewJobStatus) {
       return 'Staged';
     case 'failed':
       return 'Failed';
+    case 'after_sale':
+      return 'After-sale';
     default:
       return 'Pending';
   }
@@ -144,7 +134,7 @@ export default function CrewJobDetail() {
         </div>
       </header>
 
-      <main className="space-y-4 p-3 pb-[calc(env(safe-area-inset-bottom)+92px)]">
+      <main className="space-y-4 p-3 pb-[calc(env(safe-area-inset-bottom)+100px)]">
         {instQuery.isLoading && (
           <div className="rounded-xl border bg-white p-4 text-sm text-gray-600">Loading job…</div>
         )}
@@ -212,10 +202,16 @@ export default function CrewJobDetail() {
                 ].map((s) => {
                   const active =
                     (s.key === 'staged' &&
-                      (job.status === 'staged' || job.status === 'in_progress' || job.status === 'completed')) ||
+                      (job.status === 'staged' ||
+                        job.status === 'in_progress' ||
+                        job.status === 'completed' ||
+                        job.status === 'after_sale')) ||
                     (s.key === 'in_progress' &&
-                      (job.status === 'in_progress' || job.status === 'completed')) ||
-                    (s.key === 'completed' && job.status === 'completed');
+                      (job.status === 'in_progress' ||
+                        job.status === 'completed' ||
+                        job.status === 'after_sale')) ||
+                    (s.key === 'completed' &&
+                      (job.status === 'completed' || job.status === 'after_sale'));
 
                   return (
                     <li
@@ -247,29 +243,26 @@ export default function CrewJobDetail() {
                 <ChevronRight className="h-5 w-5 text-gray-400" />
               </button>
             </section>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => navigate('/crew/jobs')}
+                className="btn-soft flex-1 min-h-11"
+              >
+                Back to Jobs
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                Open Checklist
+              </button>
+            </div>
           </>
         )}
       </main>
-      {job && (
-        <footer className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+8px)]">
-            <button
-              type="button"
-              onClick={() => navigate('/crew/jobs')}
-              className="btn-soft flex-1"
-            >
-              Back to Jobs
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}
-              className="inline-flex flex-1 items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
-            >
-              Open Checklist
-            </button>
-          </div>
-        </footer>
-      )}
     </div>
   );
 }
