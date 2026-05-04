@@ -314,7 +314,9 @@ export default function OrderDetailPage() {
           </div>
         </div>
         <Link
-          to="/app/installations/new"
+          to={`/app/installations/new?external_order_id=${encodeURIComponent(
+            id || ''
+          )}&store_id=${encodeURIComponent(storeIdForNetsis || storeIdFromUrl || '')}`}
           className="rounded-md bg-primary-600 px-3 py-2 text-sm text-white hover:bg-primary-700"
         >
           Create Installation

@@ -1,6 +1,6 @@
 // src/pages/manager/CreateInstallationPage.tsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   useQuery,
   useMutation,
@@ -70,15 +70,18 @@ type DifficultyValue = (typeof DIFFICULTIES)[number];
 
 export default function CreateInstallationPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { t } = useTranslation('common');
   useDateDisplayStore((s) => s.datePattern);
 
   const myStoreId = (user as any)?.store_id as string | undefined;
+  const prefillOrderId = (searchParams.get('external_order_id') || searchParams.get('order_id') || '').trim();
+  const prefillStoreId = (searchParams.get('store_id') || '').trim();
 
   // ----- form state -----
-  const [externalOrderId, setExternalOrderId] = useState<string>('');
+  const [externalOrderId, setExternalOrderId] = useState<string>(prefillOrderId);
   const [date, setDate] = useState<string>(
     () => defaultDateRangeOneMonthAhead().from
   );
@@ -86,8 +89,10 @@ export default function CreateInstallationPage() {
   const [zone, setZone] = useState<string>('');
   const [crewIds, setCrewIds] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>('');
-  const [difficulty, setDifficulty] = useState<DifficultyValue | ''>('');
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(myStoreId ?? '');
+  const [difficulty, setDifficulty] = useState<DifficultyValue | ''>(
+    prefillOrderId ? 'intermediate' : ''
+  );
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(prefillStoreId || myStoreId || '');
 
   // ----- data: stores (for admins / multi-store setups) -----
   const storesQuery = useQuery({
