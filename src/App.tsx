@@ -11,7 +11,6 @@ import { useAuthStore } from './stores/auth';
 // Layout & guards
 import AppShell from './components/layout/AppShell';
 import CrewShell from './components/layout/CrewShell';
-import CrewAfterSale from './pages/crew/CrewAfterSale';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import RoleGuard from './components/auth/RoleGuard';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -306,8 +305,7 @@ const getDefaultRoute = () => {
                 <Route path="jobs/:id/capture" element={<CrewCapture />} />
                 <Route path="jobs/:id/issues" element={<CrewIssues />} />
                 <Route path="jobs/:id/order" element={<CrewOrderDetail />} />
-                <Route path="after-sale" element={<CrewAfterSale />} />
-                <Route path="issues" element={<Navigate to="/crew/after-sale" replace />} />
+                <Route path="issues" element={<CrewIssues />} />
                 <Route path="settings" element={<CrewSettings />} />
               </Route>
 

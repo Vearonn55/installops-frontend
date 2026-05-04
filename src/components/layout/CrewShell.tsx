@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Home,
   ClipboardList,
-  LifeBuoy,
+  AlertTriangle,
   Settings as SettingsIcon,
   Wifi,
   WifiOff,
@@ -27,7 +27,7 @@ interface NavigationItem {
 const navigation: NavigationItem[] = [
   { labelKey: 'nav.crewHome', href: '/crew', icon: Home },
   { labelKey: 'nav.crewJobs', href: '/crew/jobs', icon: ClipboardList },
-  { labelKey: 'nav.crewAfterSale', href: '/crew/after-sale', icon: LifeBuoy },
+  { labelKey: 'nav.crewIssues', href: '/crew/issues', icon: AlertTriangle },
   { labelKey: 'nav.crewSettings', href: '/crew/settings', icon: SettingsIcon },
 ];
 
@@ -141,9 +141,7 @@ export default function CrewShell() {
       <div className="border-t border-gray-200 bg-white px-1 pt-1 pb-[max(0.35rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(0,0,0,0.06)]">
         <nav className="flex justify-around gap-0.5">
           {navigation.map((item) => {
-            const isActive =
-              location.pathname === item.href ||
-              (item.href === '/crew/after-sale' && location.pathname.startsWith('/crew/after-sale'));
+            const isActive = location.pathname === item.href;
             return (
               <Link
                 key={item.href}

@@ -40,6 +40,9 @@ type UserDto = {
 type InstallationItemDto = {
   id: string;
   external_product_id: string;
+  sku?: string | null;
+  name?: string | null;
+  description?: string | null;
   quantity?: number | null;
   room_tag?: string | null;
   special_instructions?: string | null;
@@ -57,6 +60,7 @@ type InstallationWithRelations = Installation & {
   /** API field (Netsis / ERP order id); may differ from legacy `order_id` on type `Installation`. */
   external_order_id?: string;
   crew_after_installation_notes?: string | null;
+  checklist_failure_reason?: string | null;
   items?: InstallationItemDto[];
   crew?: CrewAssignmentDto[];
 };
@@ -108,6 +112,9 @@ export default function InstallationDetailPage() {
       return (res.data?.items ?? []).map((it, idx) => ({
         id: `netsis-${idx}-${it.product_id}`,
         external_product_id: it.product_id,
+        sku: it.sku ?? it.product_id,
+        name: it.name ?? it.product_id,
+        description: it.description ?? it.name ?? it.product_id,
         quantity: it.quantity,
         room_tag: null,
         special_instructions: null,
@@ -366,6 +373,18 @@ export default function InstallationDetailPage() {
                 )}
               </div>
             </div>
+            <div>
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                Failure reason
+              </div>
+              <div className="rounded-md border border-rose-100 bg-rose-50/40 p-3 text-sm text-gray-900 min-h-[64px] whitespace-pre-wrap">
+                {String(inst?.checklist_failure_reason || '').trim() ? (
+                  inst!.checklist_failure_reason
+                ) : (
+                  <span className="text-gray-400">No failure reason recorded.</span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -386,7 +405,13 @@ export default function InstallationDetailPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  {t('installationDetailPage.itemsCard.table.product')}
+                  SKU
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Description
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Qty
@@ -402,8 +427,14 @@ export default function InstallationDetailPage() {
             <tbody className="divide-y divide-gray-200 bg-white">
               {displayItems.map((it) => (
                 <tr key={it.id}>
+                  <td className="px-4 py-3 text-sm font-mono text-gray-900">
+                    {it.sku ?? it.external_product_id}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {it.external_product_id}
+                    {it.name ?? it.external_product_id}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {it.description ?? it.name ?? it.external_product_id}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {it.quantity ?? 1}
@@ -419,7 +450,7 @@ export default function InstallationDetailPage() {
               {displayItems.length === 0 && (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={7}
                     className="px-4 py-6 text-center text-sm text-gray-500"
                   >
                     {t('installationDetailPage.itemsCard.none')}

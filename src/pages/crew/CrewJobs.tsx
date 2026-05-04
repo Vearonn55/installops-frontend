@@ -10,7 +10,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
-import { formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
+import { formatUiDateTime, formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
 import { toLocalYmd, isoToLocalYmd } from '../../lib/local-date';
 import {
   pickInstallationRecordStatus,
@@ -304,6 +304,7 @@ export default function CrewJobs() {
                     <div className="mt-1 flex items-center gap-2 text-xs text-gray-700">
                       <Clock className="h-4 w-4" />
                       <span>{fmtTimeRange(j.start, j.end)}</span>
+                      <span className="text-gray-500">({formatUiDateTime(j.start)})</span>
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-gray-700">
                       <MapPin className="h-4 w-4" />

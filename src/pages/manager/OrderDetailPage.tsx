@@ -39,9 +39,9 @@ type ExtendedOrder = {
     address?: string;
     region?: string;
   };
-  items?: Array<{ id: string; product_id: string; quantity: number; name?: string; sku?: string }>;
+  items?: Array<{ id: string; product_id: string; quantity: number; name?: string; description?: string; sku?: string }>;
   /** Line items from Netsis REST (when configured) */
-  netsis_items?: Array<{ id: string; product_id: string; quantity: number; name?: string; sku?: string }>;
+  netsis_items?: Array<{ id: string; product_id: string; quantity: number; name?: string; description?: string; sku?: string }>;
   placed_at?: string;
   store_id?: string | number;
   status?: string;
@@ -67,6 +67,7 @@ function buildExtendedOrder(
       product_id: it.external_product_id,
       quantity: it.quantity,
       name: it.external_product_id,
+      description: it.external_product_id,
       sku: it.external_product_id,
     }))
   );
@@ -108,6 +109,7 @@ function netsisItemsToRows(items: NetsisOrderDetailData['items']) {
     product_id: it.product_id,
     quantity: it.quantity,
     name: it.name ?? it.product_id,
+    description: it.description ?? it.name ?? it.product_id,
     sku: it.sku ?? it.product_id,
   }));
 }
@@ -327,40 +329,7 @@ export default function OrderDetailPage() {
           {netsisQuery.isLoading && (
             <div className="rounded-lg border bg-white p-3 text-sm text-gray-600">Loading Netsis order data…</div>
           )}
-          <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
-            <div className="card relative h-full">
-              <div className="card-header">
-                <h3 className="card-title">Status</h3>
-                <p className="card-description">Order state</p>
-              </div>
-
-              <div className="card-content space-y-3">
-                <div className="text-sm text-gray-600">
-                  Placed: {order?.placed_at ? formatDateTime(order.placed_at) : '—'}
-                </div>
-                <div className="text-sm text-gray-600">Store: {order?.store_name ?? order?.store_id ?? '—'}</div>
-
-                <div className="pt-2">
-                  <span
-                    className={cn(
-                      'inline-flex items-center justify-center rounded-full border px-5 py-1.5 text-base font-semibold tracking-wide shadow-sm',
-                      order?.status === 'confirmed'
-                        ? 'border border-blue-200 bg-blue-100 text-blue-800'
-                        : order?.status === 'pending'
-                          ? 'border border-amber-200 bg-amber-100 text-amber-800'
-                          : order?.status === 'cancelled'
-                            ? 'border border-rose-200 bg-rose-100 text-rose-800'
-                            : 'border border-gray-200 bg-gray-100 text-gray-800'
-                    )}
-                  >
-                    {order?.status
-                      ? `${order.status.charAt(0).toUpperCase()}${order.status.slice(1)}`
-                      : '—'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-1 items-stretch gap-6">
             <div className="card h-full">
               <div className="card-header">
                 <h3 className="card-title flex items-center gap-2">
@@ -400,6 +369,10 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
               </div>
+              <div className="border-t px-6 py-3 text-sm text-gray-600">
+                Placed: {order?.placed_at ? formatDateTime(order.placed_at) : '—'} · Store:{' '}
+                {order?.store_name ?? order?.store_id ?? '—'}
+              </div>
             </div>
           </div>
 
@@ -415,7 +388,8 @@ export default function OrderDetailPage() {
                 <table className="w-full min-w-[480px] text-left text-sm">
                   <thead>
                     <tr className="border-b text-xs text-gray-500">
-                      <th className="py-2 pr-3 font-medium">SKU / code</th>
+                      <th className="py-2 pr-3 font-medium">SKU</th>
+                      <th className="py-2 pr-3 font-medium">Name</th>
                       <th className="py-2 pr-3 font-medium">Description</th>
                       <th className="py-2 font-medium">Qty</th>
                     </tr>
@@ -423,8 +397,9 @@ export default function OrderDetailPage() {
                   <tbody>
                     {(order.netsis_items?.length ? order.netsis_items : order.items ?? []).map((row) => (
                       <tr key={row.id} className="border-b border-gray-100">
-                        <td className="py-2 pr-3 font-mono text-xs">{row.product_id}</td>
-                        <td className="py-2 pr-3">{row.name ?? '—'}</td>
+                        <td className="py-2 pr-3 font-mono text-xs">{row.sku ?? row.product_id}</td>
+                        <td className="py-2 pr-3">{row.name ?? row.product_id}</td>
+                        <td className="py-2 pr-3">{row.description ?? row.name ?? row.product_id}</td>
                         <td className="py-2">{row.quantity}</td>
                       </tr>
                     ))}

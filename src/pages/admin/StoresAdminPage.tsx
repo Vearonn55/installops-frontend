@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 import {
   listStores,
+  createStore,
   patchStoreNetsis,
   testStoreNetsis,
   type Store,
@@ -15,6 +16,9 @@ import { cn } from '../../lib/utils';
 export default function StoresAdminPage() {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<UUID | null>(null);
+  const [newStoreName, setNewStoreName] = useState('');
+  const [newStoreExternalId, setNewStoreExternalId] = useState('');
+  const [newStoreTimezone, setNewStoreTimezone] = useState('');
 
   const storesQuery = useQuery({
     queryKey: ['stores', 'admin'],
@@ -25,6 +29,24 @@ export default function StoresAdminPage() {
   });
 
   const stores = storesQuery.data ?? [];
+  const createStoreMut = useMutation({
+    mutationFn: () =>
+      createStore({
+        name: newStoreName.trim(),
+        external_store_id: newStoreExternalId.trim() || null,
+        timezone: newStoreTimezone.trim() || null,
+      }),
+    onSuccess: () => {
+      toast.success('Store created');
+      setNewStoreName('');
+      setNewStoreExternalId('');
+      setNewStoreTimezone('');
+      void qc.invalidateQueries({ queryKey: ['stores'] });
+      void qc.invalidateQueries({ queryKey: ['stores', 'admin'] });
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || 'Create store failed'),
+  });
 
   return (
     <div className="space-y-6">
@@ -45,6 +67,46 @@ export default function StoresAdminPage() {
           <RefreshCw className={cn('h-4 w-4', storesQuery.isFetching && 'animate-spin')} />
           Refresh
         </button>
+      </div>
+
+      <div className="rounded-lg border bg-white p-4 shadow-sm">
+        <h2 className="mb-3 text-base font-semibold text-gray-900">Register new store</h2>
+        <div className="grid gap-3 md:grid-cols-3">
+          <input
+            className="rounded-md border px-3 py-2 text-sm"
+            placeholder="Store name"
+            value={newStoreName}
+            onChange={(e) => setNewStoreName(e.target.value)}
+          />
+          <input
+            className="rounded-md border px-3 py-2 text-sm"
+            placeholder="External store ID (optional)"
+            value={newStoreExternalId}
+            onChange={(e) => setNewStoreExternalId(e.target.value)}
+          />
+          <input
+            className="rounded-md border px-3 py-2 text-sm"
+            placeholder="Timezone (optional)"
+            value={newStoreTimezone}
+            onChange={(e) => setNewStoreTimezone(e.target.value)}
+          />
+        </div>
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => {
+              if (!newStoreName.trim()) {
+                toast.error('Store name is required');
+                return;
+              }
+              createStoreMut.mutate();
+            }}
+            disabled={createStoreMut.isPending}
+            className="inline-flex items-center rounded-md bg-primary-600 px-3 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50"
+          >
+            Create store
+          </button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-lg border bg-white shadow-sm">

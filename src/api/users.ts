@@ -1,5 +1,5 @@
 // /api/users.ts
-import { apiGet, apiPost, apiPatch, UUID } from './http';
+import { apiDelete, apiGet, apiPost, apiPatch, UUID } from './http';
 
 export type UserStatus = 'active' | 'disabled';
 
@@ -88,4 +88,8 @@ export async function updateUserPassword(
   payload: UserPasswordUpdate
 ): Promise<PasswordUpdateResponse> {
   return apiPatch<PasswordUpdateResponse>(`/users/${id}/password`, payload);
+}
+
+export async function deleteUser(id: UUID): Promise<void> {
+  await apiDelete<void>(`/users/${id}`);
 }

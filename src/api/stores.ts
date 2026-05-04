@@ -53,8 +53,9 @@ export type StoreList = {
 export type StoreCreate = {
   name: string;
   external_store_id?: string | null;
-  address_id: UUID;
+  address_id?: UUID | null;
   phone?: string | null;
+  timezone?: string | null;
 };
 
 export type StoreUpdate = Partial<StoreCreate>;

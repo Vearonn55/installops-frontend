@@ -43,6 +43,7 @@ export type NetsisOrderDetailItem = {
   product_id: string;
   quantity: number;
   name?: string | null;
+  description?: string | null;
   sku?: string | null;
   room_tag?: string | null;
 };

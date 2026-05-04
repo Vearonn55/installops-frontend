@@ -190,6 +190,16 @@ export default function UsersPage() {
     });
   };
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: ID) => usersApi.deleteUser(id as UUID),
+    onSuccess: () => {
+      toast.success('User deleted');
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.message || err?.message || 'Delete failed'),
+  });
+
   /** ----- Handlers ----- */
 
   const handleCreate = (e: FormEvent<HTMLFormElement>) => {
@@ -411,6 +421,18 @@ export default function UsersPage() {
                         {u.status === 'active'
                           ? t('usersPage.actions.disable')
                           : t('usersPage.actions.activate')}
+                      </button>
+                    )}
+                    {u.id !== me?.id && (
+                      <button
+                        className="rounded-md border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
+                        onClick={() => {
+                          if (!window.confirm(`Delete user ${u.name}?`)) return;
+                          deleteMutation.mutate(u.id);
+                        }}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Delete
                       </button>
                     )}
                   </div>

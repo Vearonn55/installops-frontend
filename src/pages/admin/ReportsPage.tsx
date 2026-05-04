@@ -59,23 +59,16 @@ function installationCity(inst: Installation): string | null {
   return city ?? null;
 }
 
-// difficulty meta encoded in notes like: [Difficulty: Easy]
-function extractDifficulty(notes?: string | null): Difficulty | null {
-  if (!notes) return null;
-  const m = notes.match(/Difficulty:\s*(Easy|Intermediate|Hard)/i);
-  if (!m) return null;
-  const val = m[1].toLowerCase();
-  if (val === 'easy') return 'Easy';
-  if (val === 'intermediate') return 'Intermediate';
-  if (val === 'hard') return 'Hard';
+function extractDifficulty(inst: Installation): Difficulty | null {
+  const v = String((inst as any).difficulty || '').toLowerCase();
+  if (v === 'easy') return 'Easy';
+  if (v === 'intermediate') return 'Intermediate';
+  if (v === 'hard') return 'Hard';
   return null;
 }
 
-// Service After Installation flag, based on notes convention
-// Example: [ServiceAfter: yes]
 function hasServiceAfter(inst: Installation): boolean {
-  const notes = inst.notes ?? '';
-  return /\[ServiceAfter:\s*(yes|true|1)\]/i.test(notes);
+  return String(inst.status || '').toLowerCase() === 'after_sale_service';
 }
 
 /* ---------- Component ---------- */
@@ -205,7 +198,7 @@ export default function ReportsPage() {
     weightedSum = 0;
 
   for (const inst of filtered) {
-    const diff = extractDifficulty(inst.notes);
+    const diff = extractDifficulty(inst);
     if (!diff) continue;
 
     if (diff === 'Easy') easyCount++;

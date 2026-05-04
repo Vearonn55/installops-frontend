@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Clock, MapPin, Phone, ChevronRight } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
-import { formatUiTime } from '../../lib/date-display';
+import { formatUiDateTime, formatUiTime } from '../../lib/date-display';
 import { getInstallation, type Installation } from '../../api/installations';
 import type { UUID } from '../../api/http';
 import {
@@ -153,6 +153,7 @@ export default function CrewJobDetail() {
                   <Clock className="h-4 w-4 text-gray-500" />
                   <span>{formatTimeRange(job.start, job.end)}</span>
                 </div>
+                <div className="text-xs text-gray-500">{formatUiDateTime(job.start)}</div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-gray-500" />
                   <span className="break-words">{job.address} • {job.zone}</span>

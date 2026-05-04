@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { CalendarDays, MapPin, Clock, ClipboardCheck, User2 } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
-import { formatUiFullFromDate, formatUiTime } from '../../lib/date-display';
+import { formatUiDateTime, formatUiFullFromDate, formatUiTime } from '../../lib/date-display';
 import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
@@ -323,6 +323,9 @@ export default function CrewHome() {
                     : `${formatUiTime(activeJob.start)} – ${formatUiTime(activeJob.end)}`}
                 </span>
               </div>
+              <div className="text-xs text-gray-500">
+                {formatUiDateTime(activeJob.start)}
+              </div>
               <div className="flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-gray-500" />
                 <span>{activeJob.zone}</span>
@@ -383,6 +386,7 @@ export default function CrewHome() {
                             ? 'Time TBD'
                             : `${formatUiTime(j.start)} – ${formatUiTime(j.end)}`}
                         </span>
+                        <span className="text-xs text-gray-500">{formatUiDateTime(j.start)}</span>
                         <span className="flex items-center gap-1.5">
                           <MapPin className="h-4 w-4" />
                           {j.zone}

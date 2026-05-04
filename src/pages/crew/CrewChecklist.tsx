@@ -9,6 +9,7 @@ import { isAxiosError } from '../../api/http';
 import type { UUID } from '../../api/http';
 import {
   updateInstallationStatus,
+  updateInstallationChecklistResult,
   updateCrewAfterInstallationNotes,
   type InstallStatus,
 } from '../../api/installations';
@@ -29,6 +30,7 @@ type Values = {
   google_reco_given?: boolean;
 
   failure_reason?: string;
+  mark_after_sale?: boolean;
 };
 
 type LocalPhoto = {
@@ -44,6 +46,7 @@ export default function CrewChecklist() {
 
   const [values, setValues] = useState<Values>({});
   const [submitting, setSubmitting] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
 
   // local-only photos (will connect to /api/media later)
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
@@ -56,6 +59,7 @@ export default function CrewChecklist() {
   const paymentNotes = values.payment_notes ?? '';
   const googleRecoGiven = values.google_reco_given ?? false;
   const failureReason = values.failure_reason ?? '';
+  const markAfterSale = values.mark_after_sale ?? false;
 
   // ------------------ load + autosave draft ------------------
   useEffect(() => {
@@ -68,17 +72,19 @@ export default function CrewChecklist() {
       }
     } catch {
       // ignore malformed drafts
+    } finally {
+      setDraftHydrated(true);
     }
   }, [jobId]);
 
   useEffect(() => {
-    if (!jobId) return;
+    if (!jobId || !draftHydrated) return;
     try {
       localStorage.setItem(storageKey(jobId), JSON.stringify(values));
     } catch {
       // ignore quota errors
     }
-  }, [values, jobId]);
+  }, [values, jobId, draftHydrated]);
 
   // clean up object URLs on unmount
   useEffect(() => {
@@ -95,6 +101,7 @@ export default function CrewChecklist() {
     if (!jobId) return;
     localStorage.removeItem(storageKey(jobId));
     setValues({});
+    setDraftHydrated(true);
     setPhotos((prev) => {
       prev.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       return [];
@@ -143,14 +150,36 @@ export default function CrewChecklist() {
 
     setSubmitting(true);
     try {
+      if (installStatus === 'failed' && !String(failureReason).trim()) {
+        toast.error('Please write a failure reason');
+        return;
+      }
+
       if (installStatus === 'successful' || installStatus === 'failed') {
-        const apiStatus = mapInstallStatusForApi(installStatus);
+        const apiStatus =
+          installStatus === 'failed' && markAfterSale
+            ? ('after_sale_service' as InstallStatus)
+            : mapInstallStatusForApi(installStatus);
         await updateInstallationStatus(jobId, { status: apiStatus });
       }
 
       const siteNotes = String(values.customer_notes ?? '').trim();
       await updateCrewAfterInstallationNotes(jobId as UUID, {
         crew_after_installation_notes: siteNotes ? siteNotes : null,
+      });
+      await updateInstallationChecklistResult(jobId as UUID, {
+        checklist_result:
+          installStatus === 'successful'
+            ? 'success'
+            : installStatus === 'failed'
+              ? 'failed'
+              : null,
+        checklist_failure_reason:
+          installStatus === 'failed' ? String(failureReason).trim() || null : null,
+        checklist_completed_at:
+          installStatus === 'successful' || installStatus === 'failed'
+            ? new Date().toISOString()
+            : null,
       });
 
       // NOTE: photos are still local-only.
@@ -251,8 +280,7 @@ export default function CrewChecklist() {
           <section className="rounded-xl border bg-white p-3 shadow-sm">
             <div className="text-sm font-medium text-gray-900">Photos</div>
             <div className="mt-0.5 text-xs text-gray-500">
-              Take a quick photo or pick from your gallery. Your browser will ask for
-              camera / photo permissions if needed.
+              Take a quick photo or pick from your gallery.
             </div>
 
             {/* Hidden inputs */}
@@ -428,14 +456,6 @@ export default function CrewChecklist() {
                     />
                     Confirmed
                   </label>
-
-                  <button
-                    type="button"
-                    className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:ml-auto sm:w-auto"
-                    onClick={() => toast('Opening QR generator…')}
-                  >
-                    Open QR generator
-                  </button>
                 </div>
               </section>
             </>
@@ -462,10 +482,18 @@ export default function CrewChecklist() {
                 </div>
               </div>
 
-              <p className="mt-3 text-xs text-gray-500">
-                For a follow-up visit, use <span className="font-medium">After-sale</span> in the
-                bottom menu (customer notes can be entered there).
-              </p>
+              <label className="mt-3 inline-flex w-full items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <input
+                  type="checkbox"
+                  checked={markAfterSale}
+                  onChange={(e) => update('mark_after_sale', e.target.checked)}
+                  className="mt-0.5"
+                />
+                <span>
+                  Mark as <span className="font-semibold">After-sale service</span> (follow-up visit
+                  required)
+                </span>
+              </label>
             </section>
           )}
         </div>
