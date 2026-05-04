@@ -112,6 +112,7 @@ function StoreRow({
   const qc = useQueryClient();
   const [baseUrl, setBaseUrl] = useState(store.netsis_base_url || '');
   const [pathTpl, setPathTpl] = useState(store.netsis_order_search_path || '');
+  const [searchQLikeCol, setSearchQLikeCol] = useState(store.netsis_search_q_like_column || '');
   const [detailPathTpl, setDetailPathTpl] = useState(store.netsis_order_detail_path || '');
   const [linesPathTpl, setLinesPathTpl] = useState(store.netsis_order_lines_path || '');
   const [ordersSearchSource, setOrdersSearchSource] = useState<'http' | 'sql'>(
@@ -143,6 +144,7 @@ function StoreRow({
   useEffect(() => {
     setBaseUrl(store.netsis_base_url || '');
     setPathTpl(store.netsis_order_search_path || '');
+    setSearchQLikeCol(store.netsis_search_q_like_column || '');
     setDetailPathTpl(store.netsis_order_detail_path || '');
     setLinesPathTpl(store.netsis_order_lines_path || '');
     setOrdersSearchSource(store.netsis_orders_search_source === 'sql' ? 'sql' : 'http');
@@ -185,6 +187,7 @@ function StoreRow({
       return patchStoreNetsis(store.id, {
         netsis_base_url: baseUrl || null,
         netsis_order_search_path: pathTpl || null,
+        netsis_search_q_like_column: searchQLikeCol.trim() || null,
         netsis_order_detail_path: detailPathTpl.trim() || null,
         netsis_order_lines_path: linesPathTpl.trim() || null,
         netsis_orders_search_source: ordersSearchSource,
@@ -336,21 +339,43 @@ function StoreRow({
                 </p>
               </label>
               {ordersSearchSource === 'http' ? (
-                <label className="block text-xs font-medium text-gray-600 md:col-span-2">
-                  Order search path (optional, use {'{'}query{'}'} )
-                  <input
-                    className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
-                    placeholder="/orders/search?q={query}"
-                    value={pathTpl}
-                    onChange={(e) => setPathTpl(e.target.value)}
-                  />
-                </label>
+                <>
+                  <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                    Order search path (optional: {'{'}query{'}'} or NetOpenX {'{'}query_sql{'}'} in{' '}
+                    <code className="rounded bg-gray-100 px-1">q=</code>)
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm font-mono"
+                      placeholder="/api/v2/ItemSlips?docType=ftSSip&limit=20&q={query_sql}"
+                      value={pathTpl}
+                      onChange={(e) => setPathTpl(e.target.value)}
+                    />
+                    <span className="mt-1 block text-xs text-gray-500">
+                      NetOpenX list APIs expect <code className="rounded bg-gray-100 px-1">q</code> as a SQL WHERE
+                      fragment. Use <code className="rounded bg-gray-100 px-1">{'{'}query_sql{'}'}</code> to build{' '}
+                      <code className="rounded bg-gray-100 px-1">COL LIKE &apos;%…%&apos;</code> (see backend{' '}
+                      <code className="rounded bg-gray-100 px-1">docs/NETSIS.md</code>).
+                    </span>
+                  </label>
+                  <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                    Column for {'{'}query_sql{'}'} LIKE (optional)
+                    <input
+                      className="mt-1 w-full max-w-xs rounded-md border px-2 py-1.5 font-mono text-sm"
+                      placeholder="FISNO"
+                      value={searchQLikeCol}
+                      onChange={(e) => setSearchQLikeCol(e.target.value)}
+                      autoComplete="off"
+                    />
+                    <span className="mt-1 block text-xs text-gray-500">
+                      Default on the server is <strong>FISNO</strong> if empty. Identifier only (e.g. BELGENO).
+                    </span>
+                  </label>
+                </>
               ) : null}
               <label className="block text-xs font-medium text-gray-600 md:col-span-2">
                 Order detail path (optional — manager order page / Netsis REST)
                 <input
                   className="mt-1 w-full rounded-md border px-2 py-1.5 font-mono text-sm"
-                  placeholder="/api/v2/.../orders/{order_id}"
+                  placeholder="/api/v2/ItemSlips/{order_id}"
                   value={detailPathTpl}
                   onChange={(e) => setDetailPathTpl(e.target.value)}
                 />
