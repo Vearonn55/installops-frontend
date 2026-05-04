@@ -5,6 +5,7 @@ export type NetsisOrderHit = {
   label: string;
   placed_at?: string | null;
   customer_name?: string | null;
+  cari_kod?: string | null;
   items_count?: number | null;
 };
 
@@ -34,6 +35,7 @@ export type NetsisOrderDetailCustomer = {
   email?: string | null;
   address?: string | null;
   region?: string | null;
+  cari_kod?: string | null;
 };
 
 export type NetsisOrderDetailItem = {
@@ -66,6 +68,23 @@ export async function getNetsisOrderDetail(params: {
     params: {
       store_id: params.store_id,
       order_id: params.order_id,
+    },
+  });
+}
+
+export type NetsisCustomerDetailResponse = {
+  data: NetsisOrderDetailCustomer;
+  source: 'http';
+};
+
+export async function getNetsisCustomerDetail(params: {
+  store_id: UUID;
+  cari_kod: string;
+}): Promise<NetsisCustomerDetailResponse> {
+  return apiGet<NetsisCustomerDetailResponse>('/integrations/netsis/customers/detail', {
+    params: {
+      store_id: params.store_id,
+      cari_kod: params.cari_kod,
     },
   });
 }
