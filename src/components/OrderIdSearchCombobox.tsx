@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 
 import { searchNetsisOrders } from '../api/integrations';
 import type { UUID } from '../api/http';
+import { isAxiosError } from '../api/http';
 import { cn } from '../lib/utils';
 
 type Props = {
@@ -47,7 +48,7 @@ export function OrderIdSearchCombobox({
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const canSearch = Boolean(storeId) && debounced.length >= 2;
+  const canSearch = Boolean(storeId) && debounced.length >= 1;
 
   const searchQuery = useQuery({
     queryKey: ['netsis-orders', storeId, debounced],
@@ -63,6 +64,16 @@ export function OrderIdSearchCombobox({
 
   const hits = searchQuery.data?.data ?? [];
   const showPanel = open && canSearch;
+
+  const searchErrorMessage = useMemo(() => {
+    const e = searchQuery.error;
+    if (!e) return '';
+    if (isAxiosError(e)) {
+      const body = e.response?.data as { message?: string } | undefined;
+      return body?.message || e.message || 'Search failed';
+    }
+    return e instanceof Error ? e.message : 'Search failed';
+  }, [searchQuery.error]);
 
   return (
     <div ref={rootRef} className="flex flex-col gap-1">
@@ -95,7 +106,9 @@ export function OrderIdSearchCombobox({
             <li className="px-3 py-2 text-gray-500">Select a store first.</li>
           )}
           {storeId && searchQuery.isError && (
-            <li className="px-3 py-2 text-red-600">Search failed. You can still type an order ID manually.</li>
+            <li className="px-3 py-2 text-sm text-red-600">
+              {searchErrorMessage || 'Search failed.'} You can still enter an order ID manually.
+            </li>
           )}
           {storeId && !searchQuery.isError && !searchQuery.isFetching && hits.length === 0 && (
             <li className="px-3 py-2 text-gray-500">No matches — continue typing or use manual ID.</li>
