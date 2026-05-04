@@ -11,6 +11,8 @@ export type Store = {
   timezone?: string | null;
   netsis_base_url?: string | null;
   netsis_order_search_path?: string | null;
+  netsis_order_detail_path?: string | null;
+  netsis_order_lines_path?: string | null;
   netsis_username?: string | null;
   netsis_password_configured?: boolean;
   netsis_timeout_ms?: number;
@@ -88,6 +90,8 @@ export async function updateStore(
 export type StoreNetsisUpdate = {
   netsis_base_url?: string | null;
   netsis_order_search_path?: string | null;
+  netsis_order_detail_path?: string | null;
+  netsis_order_lines_path?: string | null;
   netsis_username?: string | null;
   netsis_password?: string | null;
   netsis_timeout_ms?: number;

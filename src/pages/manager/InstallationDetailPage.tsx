@@ -51,6 +51,8 @@ type CrewAssignmentDto = {
 };
 
 type InstallationWithRelations = Installation & {
+  /** API field (Netsis / ERP order id); may differ from legacy `order_id` on type `Installation`. */
+  external_order_id?: string;
   items?: InstallationItemDto[];
   crew?: CrewAssignmentDto[];
 };
@@ -178,7 +180,7 @@ export default function InstallationDetailPage() {
           </Link>
           {inst?.external_order_id && (
             <Link
-              to={`/app/orders/${inst.external_order_id}`}
+              to={`/app/orders/${encodeURIComponent(inst.external_order_id)}?store_id=${encodeURIComponent(inst.store_id)}`}
               className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50 inline-flex items-center gap-2"
             >
               <ClipboardList className="h-4 w-4" />

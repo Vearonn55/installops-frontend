@@ -152,7 +152,10 @@ export default function OrdersPage() {
     }
   };
 
-  const openDetail = (id: string) => navigate(`/app/orders/${id}`);
+  const openDetail = (id: string, storeId?: string | null) => {
+    const q = storeId ? `?store_id=${encodeURIComponent(storeId)}` : "";
+    navigate(`/app/orders/${encodeURIComponent(id)}${q}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -334,7 +337,7 @@ export default function OrdersPage() {
                   <td className="px-3 py-2 text-right">
                     <button
                       className="text-primary-600 hover:text-primary-800"
-                      onClick={() => openDetail(o.id)}
+                      onClick={() => openDetail(o.id, o.store_id)}
                     >
                       {t("ordersPage.actions.view")}
                     </button>

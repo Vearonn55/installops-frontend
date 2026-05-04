@@ -1,6 +1,6 @@
 // src/pages/manager/OrderDetailPage.tsx
 import { useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -18,12 +18,18 @@ import {
   type OrderInstallationsResponse,
   type OrderTimelineResponse,
 } from '../../api/orders';
+import { getNetsisOrderDetail, type NetsisOrderDetailData } from '../../api/integrations';
+import type { UUID } from '../../api/http';
 import { cn, formatDateTime } from '../../lib/utils';
 
 type TimelineStatus = 'failed' | 'missing_part' | 'completed';
 type TimelineEvent = { id: string; date: string; status: TimelineStatus; note?: string };
 type ExtendedOrder = {
   id: string;
+  /** Store UUID for Netsis proxy */
+  store_uuid?: string;
+  /** Display name */
+  store_name?: string;
   customer?: {
     full_name?: string;
     phone?: string;
@@ -32,6 +38,8 @@ type ExtendedOrder = {
     region?: string;
   };
   items?: Array<{ id: string; product_id: string; quantity: number; name?: string; sku?: string }>;
+  /** Line items from Netsis REST (when configured) */
+  netsis_items?: Array<{ id: string; product_id: string; quantity: number; name?: string; sku?: string }>;
   placed_at?: string;
   store_id?: string | number;
   status?: string;
@@ -77,7 +85,7 @@ function buildExtendedOrder(
   }
 
   const timeline: TimelineEvent[] = (tlRes.timeline?.data ?? []).map((row) => ({
-    id: row.id,
+    id: String(row.id),
     date: row.at,
     status: mapAuditActionToTimelineStatus(row.action),
     note: row.action,
@@ -89,6 +97,8 @@ function buildExtendedOrder(
     id: externalOrderId,
     status,
     placed_at: placed,
+    store_uuid: first.store_id,
+    store_name: store?.name ?? String(first.store_id),
     store_id: store?.name ?? first.store_id,
     customer: {
       full_name: store?.name ?? '—',
@@ -102,9 +112,65 @@ function buildExtendedOrder(
   };
 }
 
+function netsisItemsToRows(items: NetsisOrderDetailData['items']) {
+  return (items ?? []).map((it) => ({
+    id: it.id,
+    product_id: it.product_id,
+    quantity: it.quantity,
+    name: it.name ?? it.product_id,
+    sku: it.sku ?? it.product_id,
+  }));
+}
+
+function mergeNetsisIntoOrder(
+  base: ExtendedOrder | null | undefined,
+  netsis: NetsisOrderDetailData | undefined,
+  externalOrderId: string,
+  storeUuidFromQuery: string
+): ExtendedOrder | undefined {
+  if (!netsis) return base ?? undefined;
+  const ni = netsisItemsToRows(netsis.items);
+  const nc = netsis.customer || {};
+  if (!base) {
+    return {
+      id: externalOrderId,
+      store_uuid: storeUuidFromQuery || undefined,
+      store_name: storeUuidFromQuery ? '—' : '—',
+      placed_at: netsis.placed_at ?? undefined,
+      status: netsis.status || 'pending',
+      customer: {
+        full_name: nc.full_name ?? '—',
+        phone: nc.phone ?? '—',
+        email: nc.email ?? '—',
+        address: nc.address ?? '—',
+        region: nc.region ?? '—',
+      },
+      netsis_items: ni,
+      items: [],
+      timeline: [],
+    };
+  }
+  const bc = base.customer || {};
+  return {
+    ...base,
+    placed_at: netsis.placed_at || base.placed_at,
+    status: (netsis.status as string) || base.status,
+    customer: {
+      full_name: nc.full_name || bc.full_name,
+      phone: nc.phone || bc.phone,
+      email: nc.email || bc.email,
+      address: nc.address || bc.address,
+      region: nc.region || bc.region,
+    },
+    netsis_items: ni.length ? ni : base.netsis_items,
+  };
+}
+
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const storeIdFromUrl = (searchParams.get('store_id') || '').trim();
 
   const orderQuery = useQuery({
     queryKey: ['order-detail', id],
@@ -119,7 +185,25 @@ export default function OrderDetailPage() {
     enabled: !!id,
   });
 
-  const order = orderQuery.data ?? undefined;
+  const storeIdForNetsis = (orderQuery.data?.store_uuid || storeIdFromUrl || '').trim();
+
+  const netsisQuery = useQuery({
+    queryKey: ['netsis-order-detail', id, storeIdForNetsis],
+    queryFn: async () => {
+      const res = await getNetsisOrderDetail({
+        store_id: storeIdForNetsis as UUID,
+        order_id: id as string,
+      });
+      return res.data;
+    },
+    enabled: Boolean(id && storeIdForNetsis),
+    retry: false,
+  });
+
+  const order = useMemo(
+    () => mergeNetsisIntoOrder(orderQuery.data, netsisQuery.data, id || '', storeIdFromUrl),
+    [orderQuery.data, netsisQuery.data, id, storeIdFromUrl]
+  );
 
   const timeline: TimelineEvent[] = useMemo(() => {
     if (!order?.timeline?.length) return [];
@@ -173,14 +257,32 @@ export default function OrderDetailPage() {
           Could not load this order. Check the order ID or your permissions.
         </div>
       )}
-      {!orderQuery.isLoading && !orderQuery.isError && !order && (
+      {!orderQuery.isLoading && !orderQuery.isError && !order && !netsisQuery.isLoading && (
         <div className="rounded-lg border bg-white p-6 text-sm text-gray-600">
           No installations found for this order ID yet. Create an installation to attach work here.
+          {!storeIdFromUrl ? (
+            <span className="mt-2 block text-xs text-gray-500">
+              To load customer and products from Netsis without an installation, open this page with{' '}
+              <code className="rounded bg-gray-100 px-1">?store_id=</code> (store UUID) or open the order from the
+              orders list after an installation exists for that store.
+            </span>
+          ) : null}
         </div>
       )}
 
-      {order && (
+      {netsisQuery.isError && storeIdForNetsis ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Netsis order detail could not be loaded.{' '}
+          {(netsisQuery.error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Configure netsis_order_detail_path under Admin → Stores & Netsis, or check credentials.'}
+        </div>
+      ) : null}
+
+      {(order || netsisQuery.isLoading) && (
         <>
+          {netsisQuery.isLoading && (
+            <div className="rounded-lg border bg-white p-3 text-sm text-gray-600">Loading Netsis order data…</div>
+          )}
           <div className="grid grid-cols-1 items-stretch gap-6 md:grid-cols-2">
             <div className="card relative h-full">
               <div className="card-header">
@@ -192,7 +294,7 @@ export default function OrderDetailPage() {
                 <div className="text-sm text-gray-600">
                   Placed: {order?.placed_at ? formatDateTime(order.placed_at) : '—'}
                 </div>
-                <div className="text-sm text-gray-600">Store: {order?.store_id ?? '—'}</div>
+                <div className="text-sm text-gray-600">Store: {order?.store_name ?? order?.store_id ?? '—'}</div>
 
                 <div className="pt-2">
                   <span
@@ -256,6 +358,37 @@ export default function OrderDetailPage() {
               </div>
             </div>
           </div>
+
+          {order && (order.netsis_items?.length || order.items?.length) ? (
+            <div className="card">
+              <div className="card-header">
+                <h3 className="card-title">Products & line items</h3>
+                <p className="card-description">
+                  {order.netsis_items?.length ? 'From Netsis (when configured)' : 'From installations'}
+                </p>
+              </div>
+              <div className="card-content overflow-x-auto">
+                <table className="w-full min-w-[480px] text-left text-sm">
+                  <thead>
+                    <tr className="border-b text-xs text-gray-500">
+                      <th className="py-2 pr-3 font-medium">SKU / code</th>
+                      <th className="py-2 pr-3 font-medium">Description</th>
+                      <th className="py-2 font-medium">Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(order.netsis_items?.length ? order.netsis_items : order.items ?? []).map((row) => (
+                      <tr key={row.id} className="border-b border-gray-100">
+                        <td className="py-2 pr-3 font-mono text-xs">{row.product_id}</td>
+                        <td className="py-2 pr-3">{row.name ?? '—'}</td>
+                        <td className="py-2">{row.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
 
           <div className="card">
             <div className="card-header">

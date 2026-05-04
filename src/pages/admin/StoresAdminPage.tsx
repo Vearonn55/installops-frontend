@@ -112,6 +112,8 @@ function StoreRow({
   const qc = useQueryClient();
   const [baseUrl, setBaseUrl] = useState(store.netsis_base_url || '');
   const [pathTpl, setPathTpl] = useState(store.netsis_order_search_path || '');
+  const [detailPathTpl, setDetailPathTpl] = useState(store.netsis_order_detail_path || '');
+  const [linesPathTpl, setLinesPathTpl] = useState(store.netsis_order_lines_path || '');
   const [ordersSearchSource, setOrdersSearchSource] = useState<'http' | 'sql'>(
     store.netsis_orders_search_source === 'sql' ? 'sql' : 'http'
   );
@@ -141,6 +143,8 @@ function StoreRow({
   useEffect(() => {
     setBaseUrl(store.netsis_base_url || '');
     setPathTpl(store.netsis_order_search_path || '');
+    setDetailPathTpl(store.netsis_order_detail_path || '');
+    setLinesPathTpl(store.netsis_order_lines_path || '');
     setOrdersSearchSource(store.netsis_orders_search_source === 'sql' ? 'sql' : 'http');
     setSqlHost(store.netsis_sql_host || '');
     setSqlPort(String(store.netsis_sql_port ?? 1433));
@@ -181,6 +185,8 @@ function StoreRow({
       return patchStoreNetsis(store.id, {
         netsis_base_url: baseUrl || null,
         netsis_order_search_path: pathTpl || null,
+        netsis_order_detail_path: detailPathTpl.trim() || null,
+        netsis_order_lines_path: linesPathTpl.trim() || null,
         netsis_orders_search_source: ordersSearchSource,
         netsis_sql_host: sqlHost.trim() || null,
         netsis_sql_port: Number.isFinite(Number(sqlPort)) ? Math.floor(Number(sqlPort)) : 1433,
@@ -339,7 +345,30 @@ function StoreRow({
                     onChange={(e) => setPathTpl(e.target.value)}
                   />
                 </label>
-              ) : (
+              ) : null}
+              <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                Order detail path (optional — manager order page / Netsis REST)
+                <input
+                  className="mt-1 w-full rounded-md border px-2 py-1.5 font-mono text-sm"
+                  placeholder="/api/v2/.../orders/{order_id}"
+                  value={detailPathTpl}
+                  onChange={(e) => setDetailPathTpl(e.target.value)}
+                />
+                <span className="mt-1 block text-xs text-gray-500">
+                  GET on base URL with <code className="rounded bg-gray-100 px-1">{'{order_id}'}</code> replaced (same
+                  auth as search). From your Netsis / Logo Polaris API docs.
+                </span>
+              </label>
+              <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                Order lines path (optional — second GET if lines are not in detail JSON)
+                <input
+                  className="mt-1 w-full rounded-md border px-2 py-1.5 font-mono text-sm"
+                  placeholder="/api/v2/.../orders/{order_id}/lines"
+                  value={linesPathTpl}
+                  onChange={(e) => setLinesPathTpl(e.target.value)}
+                />
+              </label>
+              {ordersSearchSource === 'http' ? null : (
                 <>
                   <label className="block text-xs font-medium text-gray-600">
                     SQL Server host

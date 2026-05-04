@@ -139,7 +139,7 @@ The app talks to the **InstallOps backend** over REST (`src/api/*` uses Axios wi
 - **Base URL**: `VITE_API_BASE_URL` (default `/api/v1` — same origin when served behind nginx with `/api` → Node).
 - **Authentication**: **Session cookie** `sid` after `POST /auth/login` — not JWT. Do not send `Authorization: Bearer` for the main API.
 - **Errors**: JSON bodies such as `{ error, message, request_id? }` from the backend.
-- **Netsis**: Live order search uses `GET /integrations/netsis/orders/search` (see backend `docs/NETSIS.md`). Admins configure per-store Netsis under **Stores & Netsis** in the UI.
+- **Netsis**: Order combobox search uses `GET /integrations/netsis/orders/search`; order detail (customer + lines) uses `GET /integrations/netsis/orders/detail` when `netsis_order_detail_path` is set (see backend `docs/NETSIS.md`). Configure under **Admin → Stores & Netsis**.
 
 ## Offline Support
 
