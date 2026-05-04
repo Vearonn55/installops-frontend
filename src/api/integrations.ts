@@ -29,31 +29,21 @@ export async function searchNetsisOrders(params: {
   });
 }
 
-export type NetsisOrderDetailCustomer = {
-  full_name?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  address?: string | null;
-  region?: string | null;
-  cari_kod?: string | null;
-};
+/** NetOpenX slip header + merged Cari/FatUst; optional `ARP` after server-side cari lookup. */
+export type NetsisOrderDocument = Record<string, unknown>;
 
-export type NetsisOrderDetailItem = {
-  id: string;
-  product_id: string;
-  quantity: number;
-  name?: string | null;
-  description?: string | null;
-  sku?: string | null;
-  room_tag?: string | null;
-};
+/** One kalem row (Kalems / ItemSlipLines / …), with optional nested `Stok` from Items merge. */
+export type NetsisOrderLine = Record<string, unknown>;
 
+/**
+ * Live Netsis order detail: native NetOpenX field names (no InstallOps `product_id` / `full_name` remap).
+ * Use `src/lib/netsis-native.ts` to read common fields for UI.
+ */
 export type NetsisOrderDetailData = {
-  external_order_id: string;
-  placed_at?: string | null;
-  status?: string | null;
-  customer: NetsisOrderDetailCustomer;
-  items: NetsisOrderDetailItem[];
+  document: NetsisOrderDocument;
+  lines: NetsisOrderLine[];
+  /** Resolved document id (FATIRS_NO / INCKEYNO / …) for display and links. */
+  order_id: string;
 };
 
 export type NetsisOrderDetailResponse = {
@@ -73,8 +63,11 @@ export async function getNetsisOrderDetail(params: {
   });
 }
 
+/** Raw ARPs / Cari row from NetOpenX (field names as returned by the API). */
+export type NetsisCustomerDetailData = Record<string, unknown>;
+
 export type NetsisCustomerDetailResponse = {
-  data: NetsisOrderDetailCustomer;
+  data: NetsisCustomerDetailData;
   source: 'http';
 };
 

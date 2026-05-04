@@ -17,6 +17,19 @@ import {
   type NetsisOrderDetailData,
 } from '../../api/integrations';
 import type { UUID } from '../../api/http';
+import {
+  arpRowToCustomerFields,
+  cariKoduFromDoc,
+  cariNameFromDoc,
+  cariPhoneFromDoc,
+  cariEmailFromDoc,
+  cariAddressFromDoc,
+  cariRegionFromDoc,
+  documentCustomerSparse,
+  netsisLinesToDisplayRows,
+  placedAtFromDoc,
+  statusFromDoc,
+} from '../../lib/netsis-native';
 import { cn, formatDateTime } from '../../lib/utils';
 import {
   auditRowToOrderTrackingEvent,
@@ -103,17 +116,6 @@ function buildExtendedOrder(
   };
 }
 
-function netsisItemsToRows(items: NetsisOrderDetailData['items']) {
-  return (items ?? []).map((it) => ({
-    id: it.id,
-    product_id: it.product_id,
-    quantity: it.quantity,
-    name: it.name ?? it.product_id,
-    description: it.description ?? it.name ?? it.product_id,
-    sku: it.sku ?? it.product_id,
-  }));
-}
-
 function mergeNetsisIntoOrder(
   base: ExtendedOrder | null | undefined,
   netsis: NetsisOrderDetailData | undefined,
@@ -121,22 +123,24 @@ function mergeNetsisIntoOrder(
   storeUuidFromQuery: string
 ): ExtendedOrder | undefined {
   if (!netsis) return base ?? undefined;
-  const ni = netsisItemsToRows(netsis.items);
-  const nc = netsis.customer || {};
+  const ni = netsisLinesToDisplayRows(netsis.lines);
+  const nc = {
+    full_name: cariNameFromDoc(netsis.document) || '—',
+    phone: cariPhoneFromDoc(netsis.document) || '—',
+    email: cariEmailFromDoc(netsis.document) || '—',
+    address: cariAddressFromDoc(netsis.document) || '—',
+    region: cariRegionFromDoc(netsis.document) || '—',
+  };
+  const placed = placedAtFromDoc(netsis.document);
+  const st = statusFromDoc(netsis.document);
   if (!base) {
     return {
       id: externalOrderId,
       store_uuid: storeUuidFromQuery || undefined,
       store_name: storeUuidFromQuery ? '—' : '—',
-      placed_at: netsis.placed_at ?? undefined,
-      status: netsis.status || 'pending',
-      customer: {
-        full_name: nc.full_name ?? '—',
-        phone: nc.phone ?? '—',
-        email: nc.email ?? '—',
-        address: nc.address ?? '—',
-        region: nc.region ?? '—',
-      },
+      placed_at: placed,
+      status: st || 'pending',
+      customer: nc,
       netsis_items: ni,
       items: [],
       timeline: [],
@@ -145,35 +149,18 @@ function mergeNetsisIntoOrder(
   const bc = base.customer || {};
   return {
     ...base,
-    placed_at: netsis.placed_at || base.placed_at,
-    status: (netsis.status as string) || base.status,
+    placed_at: placed || base.placed_at,
+    status: st || base.status,
     customer: {
-      full_name: nc.full_name || bc.full_name,
-      phone: nc.phone || bc.phone,
-      email: nc.email || bc.email,
-      address: nc.address || bc.address,
-      region: nc.region || bc.region,
+      full_name: (nc.full_name !== '—' ? nc.full_name : bc.full_name || '—') || '—',
+      phone: (nc.phone !== '—' ? nc.phone : bc.phone || '—') || '—',
+      email: (nc.email !== '—' ? nc.email : bc.email || '—') || '—',
+      address: (nc.address !== '—' ? nc.address : bc.address || '—') || '—',
+      region: (nc.region !== '—' ? nc.region : bc.region || '—') || '—',
     },
     netsis_items: ni.length ? ni : base.netsis_items,
     timeline: base.timeline ?? [],
   };
-}
-
-function hasSparseCustomer(c?: {
-  full_name?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  address?: string | null;
-  region?: string | null;
-}) {
-  if (!c) return true;
-  return !(
-    String(c.full_name || '').trim() ||
-    String(c.phone || '').trim() ||
-    String(c.email || '').trim() ||
-    String(c.address || '').trim() ||
-    String(c.region || '').trim()
-  );
 }
 
 export default function OrderDetailPage() {
@@ -229,7 +216,7 @@ export default function OrderDetailPage() {
   });
 
   const cariKodForCustomer = String(
-    netsisQuery.data?.customer?.cari_kod || searchHitQuery.data?.cari_kod || ''
+    cariKoduFromDoc(netsisQuery.data?.document) || searchHitQuery.data?.cari_kod || ''
   ).trim();
 
   const netsisCustomerQuery = useQuery({
@@ -243,7 +230,7 @@ export default function OrderDetailPage() {
     },
     enabled:
       Boolean(storeIdForNetsis && cariKodForCustomer) &&
-      Boolean(!netsisQuery.data || hasSparseCustomer(netsisQuery.data.customer)),
+      Boolean(!netsisQuery.data || documentCustomerSparse(netsisQuery.data.document)),
     retry: false,
   });
 
@@ -252,15 +239,15 @@ export default function OrderDetailPage() {
     if (!merged) return merged;
     if (!netsisCustomerQuery.data) return merged;
     const bc = merged.customer || {};
-    const nc = netsisCustomerQuery.data;
+    const nc = arpRowToCustomerFields(netsisCustomerQuery.data);
     return {
       ...merged,
       customer: {
-        full_name: nc.full_name || bc.full_name || '—',
-        phone: nc.phone || bc.phone || '—',
-        email: nc.email || bc.email || '—',
-        address: nc.address || bc.address || '—',
-        region: nc.region || bc.region || '—',
+        full_name: (nc.full_name !== '—' ? nc.full_name : bc.full_name || '—') || '—',
+        phone: (nc.phone !== '—' ? nc.phone : bc.phone || '—') || '—',
+        email: (nc.email !== '—' ? nc.email : bc.email || '—') || '—',
+        address: (nc.address !== '—' ? nc.address : bc.address || '—') || '—',
+        region: (nc.region !== '—' ? nc.region : bc.region || '—') || '—',
       },
     };
   }, [orderQuery.data, netsisQuery.data, netsisCustomerQuery.data, id, storeIdFromUrl]);

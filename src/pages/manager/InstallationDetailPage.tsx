@@ -22,7 +22,14 @@ import {
   listInstallationMedia,
   type MediaAsset,
 } from '../../api/media';
-import { getNetsisOrderDetail, type NetsisOrderDetailItem } from '../../api/integrations';
+import { getNetsisOrderDetail, type NetsisOrderLine } from '../../api/integrations';
+import {
+  pickLineQuantity,
+  pickStokKoduFromLine,
+  stokAdiFromLine,
+  satirAciklamaFromLine,
+  lineRowId,
+} from '../../lib/netsis-native';
 
 // Minimal types from OpenAPI we actually use here
 type StoreDto = {
@@ -64,20 +71,19 @@ type InstallationWithRelations = Installation & {
   crew?: CrewAssignmentDto[];
 };
 
-/** Map Netsis KALEM lines by product id for merging onto local installation items. */
-function netsisItemsByProductId(items: NetsisOrderDetailItem[] | undefined) {
+/** Map NetOpenX kalem lines by stok kodu for merging onto local installation items. */
+function netsisLinesByStokKodu(lines: NetsisOrderLine[] | undefined) {
   const m = new Map<string, { sku: string; name: string; description: string }>();
-  if (!items?.length) return m;
-  for (const it of items) {
-    const pid = String(it.product_id ?? '').trim();
-    if (!pid) continue;
-    const sku = String(it.sku ?? it.product_id ?? '').trim() || pid;
-    const name = String(it.name ?? '').trim();
-    const desc = String(it.description ?? '').trim();
-    const nameOut = name && name !== sku ? name : sku;
+  if (!lines?.length) return m;
+  for (const line of lines) {
+    const sku = pickStokKoduFromLine(line);
+    if (!sku) continue;
+    const nameRaw = stokAdiFromLine(line);
+    const descRaw = satirAciklamaFromLine(line);
+    const nameOut = nameRaw && nameRaw !== sku ? nameRaw : sku;
     const description =
-      desc && desc !== sku && desc !== nameOut ? desc : nameOut;
-    m.set(pid, { sku, name: nameOut, description });
+      descRaw && descRaw !== sku && descRaw !== nameOut ? descRaw : nameOut;
+    m.set(sku, { sku, name: nameOut, description });
   }
   return m;
 }
@@ -125,31 +131,32 @@ export default function InstallationDetailPage() {
         store_id: String(inst!.store_id) as UUID,
         order_id: String(inst!.external_order_id || ''),
       });
-      return res.data?.items ?? [];
+      return res.data?.lines ?? [];
     },
     retry: false,
   });
 
   const displayItems = useMemo<InstallationItemDto[]>(() => {
     const netsisLines = netsisOrderItemsQuery.data ?? [];
-    const byPid = netsisItemsByProductId(netsisLines);
+    const byPid = netsisLinesByStokKodu(netsisLines);
 
     if (!items.length) {
-      return netsisLines.map((it, idx) => ({
-        id: `netsis-${idx}-${it.product_id}`,
-        external_product_id: it.product_id,
-        sku: it.sku ?? it.product_id,
-        name: it.name?.trim() ? it.name : it.product_id,
-        description:
-          (it.description?.trim() && it.description.trim() !== (it.name || '').trim()
-            ? it.description
-            : null) ??
-          it.name ??
-          it.product_id,
-        quantity: it.quantity,
-        room_tag: null,
-        special_instructions: null,
-      })) as InstallationItemDto[];
+      return netsisLines.map((line, idx) => {
+        const sku = pickStokKoduFromLine(line);
+        const nm = stokAdiFromLine(line);
+        const desc = satirAciklamaFromLine(line);
+        return {
+          id: lineRowId(line, idx),
+          external_product_id: sku,
+          sku,
+          name: nm?.trim() ? nm : sku,
+          description:
+            (desc?.trim() && desc.trim() !== (nm || '').trim() ? desc : null) ?? nm ?? sku,
+          quantity: pickLineQuantity(line),
+          room_tag: null,
+          special_instructions: null,
+        };
+      }) as InstallationItemDto[];
     }
 
     return items.map((row) => {

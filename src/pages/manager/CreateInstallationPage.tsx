@@ -23,6 +23,7 @@ import {
   type InstallationCreate,
 } from '../../api/installations';
 import { getNetsisOrderDetail } from '../../api/integrations';
+import { pickLineQuantity, pickStokKoduFromLine } from '../../lib/netsis-native';
 import { listUsers, type User } from '../../api/users';
 import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
@@ -189,10 +190,10 @@ export default function CreateInstallationPage() {
           store_id: storeId as UUID,
           order_id: externalOrderId,
         });
-        const rows = (orderRes.data?.items ?? [])
-          .map((it) => ({
-            external_product_id: String(it.product_id || '').trim(),
-            quantity: Number(it.quantity) > 0 ? Number(it.quantity) : 1,
+        const rows = (orderRes.data?.lines ?? [])
+          .map((line) => ({
+            external_product_id: pickStokKoduFromLine(line),
+            quantity: pickLineQuantity(line),
           }))
           .filter((it) => !!it.external_product_id);
         if (rows.length) {
