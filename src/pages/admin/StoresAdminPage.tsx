@@ -378,7 +378,9 @@ function StoreRow({
                   <label className="block text-xs font-medium text-gray-600 md:col-span-2">
                     DB password (dbpassword)
                     <p className="mt-1 font-normal text-gray-500">
-                      Clear button or empty field + Save removes a stored DB password.
+                      Clear button or empty field + Save removes a stored DB password. Leave empty if the SQL user has
+                      no password (e.g. TEMELSET) — the token request still sends{' '}
+                      <code className="rounded bg-gray-100 px-1">dbpassword=</code> empty.
                     </p>
                     <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <input
