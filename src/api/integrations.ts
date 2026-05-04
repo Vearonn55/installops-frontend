@@ -71,20 +71,3 @@ export async function getNetsisOrderDetail(params: {
     },
   });
 }
-
-export type NetsisCustomerDetailResponse = {
-  data: NetsisOrderDetailCustomer;
-  source: 'http';
-};
-
-export async function getNetsisCustomerDetail(params: {
-  store_id: UUID;
-  cari_kod: string;
-}): Promise<NetsisCustomerDetailResponse> {
-  return apiGet<NetsisCustomerDetailResponse>('/integrations/netsis/customers/detail', {
-    params: {
-      store_id: params.store_id,
-      cari_kod: params.cari_kod,
-    },
-  });
-}

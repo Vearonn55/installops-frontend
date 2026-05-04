@@ -17,11 +17,7 @@ import { defaultDateRangeOrdersList } from "../../lib/date-range";
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
-import {
-  getNetsisCustomerDetail,
-  searchNetsisOrders,
-  type NetsisOrderHit,
-} from "../../api/integrations";
+import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations";
 import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
@@ -114,40 +110,8 @@ export default function OrdersPage() {
             ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
             limit: 50,
           });
-          let hits = res.data ?? [];
-          const missingCodes = Array.from(
-            new Set(
-              hits
-                .filter((h) => !h.customer_name && h.cari_kod)
-                .map((h) => String(h.cari_kod || "").trim())
-                .filter(Boolean)
-            )
-          );
-          if (missingCodes.length) {
-            const resolved = await Promise.all(
-              missingCodes.map(async (cariKod) => {
-                try {
-                  const customerRes = await getNetsisCustomerDetail({
-                    store_id: sel.id as UUID,
-                    cari_kod: cariKod,
-                  });
-                  const fullName = String(customerRes.data?.full_name || "").trim();
-                  return [cariKod, fullName || null] as const;
-                } catch {
-                  return [cariKod, null] as const;
-                }
-              })
-            );
-            const byCode = new Map(resolved);
-            hits = hits.map((h) => {
-              const code = String(h.cari_kod || "").trim();
-              if (!code || h.customer_name) return h;
-              const nm = byCode.get(code);
-              return nm ? { ...h, customer_name: nm } : h;
-            });
-          }
           if (!cancelled) {
-            setOrders(netsisHitsToOrders(hits, sel));
+            setOrders(netsisHitsToOrders(res.data ?? [], sel));
             setOrdersSource("netsis");
             setOrdersFetchError(null);
           }
