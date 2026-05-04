@@ -2,15 +2,7 @@
 import { useMemo } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  User,
-  MapPin,
-  Phone,
-  AtSign,
-  CheckCircle2,
-  XCircle,
-} from 'lucide-react';
+import { ArrowLeft, User, MapPin, Phone, AtSign } from 'lucide-react';
 
 import {
   getOrderInstallations,
@@ -27,10 +19,8 @@ import {
 import type { UUID } from '../../api/http';
 import { cn, formatDateTime } from '../../lib/utils';
 import {
-  auditRowToOrderTimelineViewEvent,
-  orderTimelineTonePillClass,
-  orderTimelineToneShortLabel,
-  type OrderTimelineTone,
+  auditRowToOrderTrackingEvent,
+  orderTrackingAccentClass,
   type OrderTimelineViewEvent,
 } from '../../lib/order-timeline-audit';
 
@@ -89,9 +79,7 @@ function buildExtendedOrder(
     status = 'pending';
   }
 
-  const timeline: TimelineEvent[] = (tlRes.timeline?.data ?? []).map(
-    auditRowToOrderTimelineViewEvent
-  );
+  const timeline: TimelineEvent[] = (tlRes.timeline?.data ?? []).map(auditRowToOrderTrackingEvent);
 
   const addressLine = [addr?.line1, addr?.line2, addr?.city, addr?.postal_code].filter(Boolean).join(', ');
 
@@ -280,19 +268,6 @@ export default function OrderDetailPage() {
     return [...order.timeline].sort((a, b) => +new Date(a.date) - +new Date(b.date));
   }, [order]);
 
-  const toneIcon = (tone: OrderTimelineTone) => {
-    switch (tone) {
-      case 'danger':
-        return <XCircle className="h-4 w-4" />;
-      case 'success':
-        return <CheckCircle2 className="h-4 w-4" />;
-      case 'warning':
-        return <XCircle className="h-4 w-4 text-amber-600" />;
-      default:
-        return <CheckCircle2 className="h-4 w-4 text-slate-400" />;
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -305,7 +280,7 @@ export default function OrderDetailPage() {
           </button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Order #{id}</h1>
-            <p className="mt-1 text-sm text-gray-500">Installations & audit timeline</p>
+            <p className="mt-1 text-sm text-gray-500">Installations & order summary</p>
           </div>
         </div>
         <Link
@@ -461,58 +436,44 @@ export default function OrderDetailPage() {
 
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">Installation Timeline</h3>
-              <p className="card-description">Audit events for this order</p>
+              <h3 className="card-title">Installation tracking</h3>
+              <p className="card-description">
+                High-level milestones for this order only. For full technical history (payloads,
+                actors, every field), open{' '}
+                <Link to="/app/audit" className="font-medium text-primary-700 hover:underline">
+                  Audit
+                </Link>
+                .
+              </p>
             </div>
             <div className="card-content">
               {timeline.length === 0 ? (
-                <p className="text-sm text-gray-500">No audit events recorded yet.</p>
+                <p className="text-sm text-gray-500">No milestones recorded yet.</p>
               ) : (
-                <ol className="relative border-l border-gray-200 pl-5">
-                  {timeline.map((ev, idx) => {
-                    const isLast = idx === timeline.length - 1;
-                    return (
-                      <li key={ev.id} className="relative pb-4 pl-3">
-                        {!isLast && (
-                          <span
-                            className="absolute left-0 top-6 block h-[calc(100%-1.5rem)] w-px bg-gray-200"
-                            aria-hidden
-                          />
-                        )}
-
-                        <span
-                          className={cn(
-                            'absolute left-0 mt-1 flex h-4 w-4 -translate-x-1/2 items-center justify-center rounded-full border bg-white',
-                            ev.tone === 'danger' && 'border-rose-300 text-rose-600',
-                            ev.tone === 'success' && 'border-emerald-300 text-emerald-600',
-                            ev.tone === 'warning' && 'border-amber-300 text-amber-600',
-                            ev.tone === 'info' && 'border-slate-300 text-slate-500'
-                          )}
-                          aria-hidden
-                        />
-
-                        <div className="mb-1">
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]',
-                              orderTimelineTonePillClass(ev.tone)
-                            )}
-                          >
-                            {toneIcon(ev.tone)}
-                            {orderTimelineToneShortLabel(ev.tone)}
-                          </span>
-                          <span className="ml-2 text-[11px] text-gray-500">
-                            {formatDateTime(ev.date)}
-                          </span>
-                        </div>
-                        <div className="text-sm font-medium text-gray-900">{ev.headline}</div>
-                        {ev.detail ? (
-                          <div className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{ev.detail}</div>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ol>
+                <ul className="space-y-3">
+                  {timeline.map((ev) => (
+                    <li
+                      key={ev.id}
+                      className={cn(
+                        'border-l-2 pl-3',
+                        orderTrackingAccentClass(ev.tone)
+                      )}
+                    >
+                      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-3">
+                        <p className="text-sm font-medium leading-snug text-gray-900">{ev.headline}</p>
+                        <time
+                          className="shrink-0 text-xs tabular-nums text-gray-500 sm:text-right"
+                          dateTime={ev.date}
+                        >
+                          {formatDateTime(ev.date)}
+                        </time>
+                      </div>
+                      {ev.detail ? (
+                        <p className="mt-1 line-clamp-3 text-sm leading-snug text-gray-600">{ev.detail}</p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           </div>
