@@ -25,6 +25,9 @@ export type Store = {
   netsis_db_user?: string | null;
   netsis_db_password_configured?: boolean;
   netsis_db_type?: string | null;
+  /** Only when listing/GET with reveal_netsis_secrets (admins). */
+  netsis_password?: string | null;
+  netsis_db_password?: string | null;
   created_at: string;
   updated_at: string;
   address?: Address;
@@ -50,6 +53,8 @@ export type ListStoresParams = {
   external_store_id?: string;
   limit?: number;
   offset?: number;
+  /** Admin session only: response includes decrypted Netsis passwords. */
+  reveal_netsis_secrets?: boolean;
 };
 
 export async function listStores(
@@ -89,6 +94,8 @@ export type StoreNetsisUpdate = {
   netsis_db_password?: string | null;
   /** When true, removes stored SQL dbpassword (use after a mistaken save). */
   netsis_clear_db_password?: boolean;
+  /** When true, removes stored Netsis API / token form password. */
+  netsis_clear_password?: boolean;
   netsis_db_type?: string | null;
 };
 

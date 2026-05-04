@@ -19,7 +19,7 @@ export default function StoresAdminPage() {
   const storesQuery = useQuery({
     queryKey: ['stores', 'admin'],
     queryFn: async () => {
-      const res = await listStores({ limit: 100, offset: 0 });
+      const res = await listStores({ limit: 100, offset: 0, reveal_netsis_secrets: true });
       return res.data as Store[];
     },
   });
@@ -32,8 +32,8 @@ export default function StoresAdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Stores & Netsis</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Configure each store&apos;s Netsis base URL and search path. Passwords are stored
-            encrypted and never shown again.
+            Configure each store&apos;s Netsis base URL and search path. Passwords are stored encrypted;
+            on this admin page they are loaded in plain text for editing.
           </p>
         </div>
         <button
@@ -127,14 +127,12 @@ function StoreRow({
   const [dbName, setDbName] = useState(store.netsis_db_name || '');
   const [dbUser, setDbUser] = useState(store.netsis_db_user || '');
   const [dbPassword, setDbPassword] = useState('');
-  const [clearDbPassword, setClearDbPassword] = useState(false);
   const [dbType, setDbType] = useState(store.netsis_db_type || '0');
 
   useEffect(() => {
     setBaseUrl(store.netsis_base_url || '');
     setPathTpl(store.netsis_order_search_path || '');
     setUsername(store.netsis_username || '');
-    setPassword('');
     setTimeoutMs(String(store.netsis_timeout_ms ?? 15000));
     setUseHostHeader(Boolean(store.netsis_request_host));
     setRequestHost(store.netsis_request_host || '');
@@ -144,8 +142,8 @@ function StoreRow({
     setBranchCode(store.netsis_branch_code || '0');
     setDbName(store.netsis_db_name || '');
     setDbUser(store.netsis_db_user || '');
-    setDbPassword('');
-    setClearDbPassword(false);
+    setPassword(store.netsis_password ?? '');
+    setDbPassword(store.netsis_db_password ?? '');
     setDbType(store.netsis_db_type || '0');
   }, [store]);
 
@@ -165,24 +163,39 @@ function StoreRow({
         netsis_branch_code: branchCode.trim() || null,
         netsis_db_name: dbName.trim() || null,
         netsis_db_user: dbUser.trim() || null,
-        ...(clearDbPassword && !dbPassword.trim()
-          ? { netsis_clear_db_password: true }
-          : dbPassword.trim()
-            ? { netsis_db_password: dbPassword }
-            : {}),
+        ...(dbPassword.trim() ? { netsis_db_password: dbPassword } : {}),
         netsis_db_type: dbType.trim() || null,
       });
     },
     onSuccess: () => {
       toast.success('Netsis settings saved');
-      setPassword('');
-      setDbPassword('');
-      setClearDbPassword(false);
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
     onError: (e: any) =>
       toast.error(e?.response?.data?.message || e?.message || 'Save failed'),
+  });
+
+  const clearApiPwMut = useMutation({
+    mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_password: true }),
+    onSuccess: () => {
+      toast.success('Saved Netsis API password removed');
+      onSaved();
+      void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || 'Clear failed'),
+  });
+
+  const clearDbPwMut = useMutation({
+    mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_db_password: true }),
+    onSuccess: () => {
+      toast.success('Saved DB password removed');
+      onSaved();
+      void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || 'Clear failed'),
   });
 
   const testMut = useMutation({
@@ -274,15 +287,30 @@ function StoreRow({
                   onChange={(e) => setUsername(e.target.value)}
                 />
               </label>
-              <label className="block text-xs font-medium text-gray-600">
-                {authMode === 'token_password' ? 'Token: password (form field)' : 'HTTP Basic password (leave blank to keep)'}
-                <input
-                  type="password"
-                  className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="new-password"
-                />
+              <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                {authMode === 'token_password'
+                  ? 'Token: password (form field)'
+                  : 'HTTP Basic password (leave blank on Save to keep stored value)'}
+                <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    type="text"
+                    className="w-full flex-1 rounded-md border px-2 py-1.5 font-mono text-sm"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  {store.netsis_password_configured ? (
+                    <button
+                      type="button"
+                      disabled={clearApiPwMut.isPending}
+                      onClick={() => clearApiPwMut.mutate()}
+                      className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      Clear saved API password
+                    </button>
+                  ) : null}
+                </div>
               </label>
               {authMode === 'token_password' ? (
                 <>
@@ -320,28 +348,28 @@ function StoreRow({
                       onChange={(e) => setDbUser(e.target.value)}
                     />
                   </label>
-                  <label className="block text-xs font-medium text-gray-600">
-                    DB password (dbpassword — enter new value to replace; leave blank to keep saved)
-                    <input
-                      type="password"
-                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
-                      value={dbPassword}
-                      onChange={(e) => setDbPassword(e.target.value)}
-                      autoComplete="new-password"
-                      disabled={clearDbPassword}
-                    />
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 md:col-span-2">
-                    <input
-                      type="checkbox"
-                      checked={clearDbPassword}
-                      onChange={(e) => {
-                        setClearDbPassword(e.target.checked);
-                        if (e.target.checked) setDbPassword('');
-                      }}
-                      className="rounded border-gray-300"
-                    />
-                    Clear saved DB password (removes wrong value from server; then type the correct password and Save)
+                  <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                    DB password (dbpassword — leave blank on Save to keep stored value)
+                    <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
+                      <input
+                        type="text"
+                        className="w-full flex-1 rounded-md border px-2 py-1.5 font-mono text-sm"
+                        value={dbPassword}
+                        onChange={(e) => setDbPassword(e.target.value)}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      {store.netsis_db_password_configured ? (
+                        <button
+                          type="button"
+                          disabled={clearDbPwMut.isPending}
+                          onClick={() => clearDbPwMut.mutate()}
+                          className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                        >
+                          Clear saved DB password
+                        </button>
+                      ) : null}
+                    </div>
                   </label>
                   <label className="block text-xs font-medium text-gray-600">
                     DB type (dbtype)

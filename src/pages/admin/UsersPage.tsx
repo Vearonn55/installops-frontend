@@ -479,9 +479,11 @@ export default function UsersPage() {
                 />
                 <input
                   name="password"
-                  className="input w-full"
+                  className="input w-full font-mono"
                   placeholder={t('usersPage.form.initialPassword')}
-                  type="password"
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
                 />
                 <select
                   name="role_id"
