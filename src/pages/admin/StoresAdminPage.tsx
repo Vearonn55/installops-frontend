@@ -314,7 +314,7 @@ function StoreRow({
                     />
                   </label>
                   <label className="block text-xs font-medium text-gray-600">
-                    DB password (dbpassword, leave blank to keep)
+                    DB password (dbpassword — required if SQL user has a password; leave blank only to keep an already saved password)
                     <input
                       type="password"
                       className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
