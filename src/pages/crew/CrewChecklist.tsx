@@ -200,7 +200,7 @@ export default function CrewChecklist() {
     // root: flex column, main is scrollable, footer pinned at bottom
     <div className="flex h-full min-h-0 flex-1 flex-col bg-gray-50">
       {/* Header */}
-      <header className="border-b bg-white">
+      <header className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-screen-sm items-center gap-3 px-3 py-2">
           <button
             className="rounded-md p-1 hover:bg-gray-50"
@@ -221,7 +221,7 @@ export default function CrewChecklist() {
 
       {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-screen-sm space-y-3 p-3 pb-24">
+        <div className="mx-auto w-full max-w-screen-sm space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+112px)]">
           {/* Arrived on time */}
           <section className="rounded-xl border bg-white p-3 shadow-sm">
             <div className="text-sm font-medium text-gray-900">Arrived on time</div>
@@ -453,9 +453,9 @@ export default function CrewChecklist() {
                     Confirmed
                   </label>
 
-                  <button
+                <button
                     type="button"
-                    className="ml-auto inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
+                  className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:ml-auto sm:w-auto"
                     onClick={() => toast('Opening QR generator…')}
                   >
                     Open QR generator
@@ -509,8 +509,8 @@ export default function CrewChecklist() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-white">
-        <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-3">
+      <footer className="sticky bottom-0 border-t bg-white/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+10px)]">
           <button
             className="btn-soft flex-1"
             onClick={() => {

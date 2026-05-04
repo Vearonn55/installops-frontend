@@ -144,7 +144,7 @@ export default function CrewJobDetail() {
         </div>
       </header>
 
-      <main className="space-y-4 p-3">
+      <main className="space-y-4 p-3 pb-[calc(env(safe-area-inset-bottom)+92px)]">
         {instQuery.isLoading && (
           <div className="rounded-xl border bg-white p-4 text-sm text-gray-600">Loading job…</div>
         )}
@@ -165,9 +165,7 @@ export default function CrewJobDetail() {
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-gray-500" />
-                  <span className="truncate">
-                    {job.address} • {job.zone}
-                  </span>
+                  <span className="break-words">{job.address} • {job.zone}</span>
                 </div>
                 {job.phone && (
                   <a
@@ -244,7 +242,7 @@ export default function CrewJobDetail() {
               >
                 <div className="text-left">
                   <div className="text-xs uppercase tracking-wide text-gray-500">Order</div>
-                  <div className="font-mono text-sm text-gray-900">{job.order_id}</div>
+                  <div className="break-all font-mono text-sm text-gray-900">{job.order_id}</div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-400" />
               </button>
@@ -252,6 +250,26 @@ export default function CrewJobDetail() {
           </>
         )}
       </main>
+      {job && (
+        <footer className="fixed bottom-0 left-0 right-0 border-t bg-white/95 backdrop-blur">
+          <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+8px)]">
+            <button
+              type="button"
+              onClick={() => navigate('/crew/jobs')}
+              className="btn-soft flex-1"
+            >
+              Back to Jobs
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}
+              className="inline-flex flex-1 items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
+            >
+              Open Checklist
+            </button>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

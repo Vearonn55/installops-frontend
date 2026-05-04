@@ -145,8 +145,8 @@ export default function CrewJobs() {
   const todayKey = new Date().toDateString();
   const [selectedKey, setSelectedKey] = useState<string>(todayKey);
 
-  // UI state (search is wired to filtering, there is no input yet)
-  const [q, setQ] = useState('');
+  // UI state (placeholder for future local search)
+  const [q] = useState('');
 
   // Fetch installations and stores from backend (axios via /api/* helpers)
   const installationsQuery = useQuery<InstallationList>({
@@ -240,7 +240,7 @@ export default function CrewJobs() {
   }, [raw, q]);
 
   return (
-    <div className="mx-auto w-full max-w-screen-sm">
+    <div className="mx-auto w-full max-w-screen-sm pb-[calc(env(safe-area-inset-bottom)+84px)]">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60">
         <div className="px-3 py-2">
@@ -254,7 +254,8 @@ export default function CrewJobs() {
         </div>
 
         {/* Week strip */}
-        <div className="flex flex-wrap justify-center gap-1.5 overflow-x-hidden px-2 pb-2">
+        <div className="overflow-x-auto px-2 pb-2">
+          <div className="flex min-w-max gap-1.5">
           {weekDays.map((d) => {
             const isActive = d.toDateString() === selectedKey;
             return (
@@ -282,6 +283,7 @@ export default function CrewJobs() {
               </button>
             );
           })}
+          </div>
         </div>
       </header>
 
@@ -329,9 +331,7 @@ export default function CrewJobs() {
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-gray-700">
                       <MapPin className="h-4 w-4" />
-                      <span className="truncate">
-                        {j.address} • {j.zone}
-                      </span>
+                      <span className="line-clamp-2 break-words">{j.address} • {j.zone}</span>
                     </div>
                     {j.notes && (
                       <div className="mt-1 text-xs text-gray-500 line-clamp-2">

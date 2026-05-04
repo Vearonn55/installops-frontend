@@ -131,7 +131,7 @@ export default function CrewOrderDetail() {
         </div>
       </header>
 
-      <main className="space-y-3 p-3 pb-24">
+      <main className="space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+88px)]">
         {isLoading && (
           <section className="rounded-xl border bg-white p-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ export default function CrewOrderDetail() {
                 <div className="flex items-start justify-center pt-0.5">
                   <MapPin className="h-6 w-6 text-gray-700" />
                 </div>
-                <div className="min-w-0 text-[16px] leading-snug text-gray-900">{order.customer.address}</div>
+                <div className="min-w-0 break-words text-[16px] leading-snug text-gray-900">{order.customer.address}</div>
               </div>
             </section>
 
