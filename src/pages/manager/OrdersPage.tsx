@@ -1,5 +1,5 @@
 // src/pages/manager/OrdersPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -60,11 +60,23 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [ordersFetchError, setOrdersFetchError] = useState<string | null>(null);
   const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
+  const didAutoPickNetsisStore = useRef(false);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedFilterQ(q.trim()), 400);
     return () => window.clearTimeout(t);
   }, [q]);
+
+  /** Single store with ItemSlips Netsis path → select it so ERP orders load without an extra click. */
+  useEffect(() => {
+    if (didAutoPickNetsisStore.current) return;
+    if (store !== "all") return;
+    if (!stores.length) return;
+    const eligible = stores.filter(storeUsesNetsisItemSlipsList);
+    if (eligible.length !== 1) return;
+    didAutoPickNetsisStore.current = true;
+    setStore(eligible[0].id);
+  }, [stores, store]);
 
   useEffect(() => {
     setPage(1);

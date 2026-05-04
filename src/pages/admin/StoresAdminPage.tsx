@@ -360,13 +360,13 @@ function StoreRow({
                     Column for {'{'}query_sql{'}'} LIKE (optional)
                     <input
                       className="mt-1 w-full max-w-xs rounded-md border px-2 py-1.5 font-mono text-sm"
-                      placeholder="FISNO"
+                      placeholder="FATIRS_NO"
                       value={searchQLikeCol}
                       onChange={(e) => setSearchQLikeCol(e.target.value)}
                       autoComplete="off"
                     />
                     <span className="mt-1 block text-xs text-gray-500">
-                      Default on the server is <strong>FISNO</strong> if empty. Identifier only (e.g. BELGENO).
+                      Default on the server is <strong>FATIRS_NO</strong> if empty (ItemSlips). Identifier only (e.g. BELGENO).
                     </span>
                   </label>
                 </>
