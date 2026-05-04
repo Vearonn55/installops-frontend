@@ -14,16 +14,14 @@ import {
 import { cn } from "../../lib/utils";
 import { formatUiDateTime } from "../../lib/date-display";
 import { defaultDateRangeOneMonthAhead } from "../../lib/date-range";
-import { useAuthStore } from "../../stores/auth";
-
 // real API
-import { listOrders, type ListOrdersParams, type Order } from "../../api/orders";
+import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
+import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
 
 export default function OrdersPage() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
   const { t } = useTranslation("common");
 
   // 🔹 Local UI state — date range: today → one month ahead
@@ -57,25 +55,55 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersFetchError, setOrdersFetchError] = useState<string | null>(null);
 
   // Fetch places & store
   useEffect(() => {
+    let cancelled = false;
     async function fetchData() {
       try {
         setLoading(true);
+        setOrdersFetchError(null);
 
-        const [storeRes, orderRes] = await Promise.all([
+        const [storesResult, ordersResult] = await Promise.allSettled([
           listStores({ limit: 200 }),
           listOrders({ limit: 300 }),
         ]);
 
-        setStores(storeRes.data ?? []);
-        setOrders(orderRes.data ?? []);
+        if (cancelled) return;
+
+        if (storesResult.status === "fulfilled") {
+          setStores(storesResult.value.data ?? []);
+        } else {
+          setStores([]);
+        }
+
+        if (ordersResult.status === "fulfilled") {
+          setOrders(ordersResult.value.data ?? []);
+        } else {
+          setOrders([]);
+          const err = ordersResult.reason;
+          const status = isAxiosError(err) ? err.response?.status : undefined;
+          const msg =
+            (isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
+            (err instanceof Error ? err.message : "Request failed");
+          if (status === 404) {
+            setOrdersFetchError(
+              "Orders list is not available on this API (404). Deploy the latest installops-backend (GET /orders) and restart Node, or fix nginx so /api/v1 is proxied to the app."
+            );
+          } else {
+            setOrdersFetchError(msg);
+          }
+          console.error("listOrders failed:", err);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
-    fetchData();
+    void fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Derived store dropdown
@@ -168,6 +196,15 @@ export default function OrdersPage() {
           {t("ordersPage.subtitle")}
         </p>
       </div>
+
+      {ordersFetchError ? (
+        <div
+          className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="alert"
+        >
+          {ordersFetchError}
+        </div>
+      ) : null}
 
       {/* Filters */}
       <div className="grid grid-cols-1 gap-3 rounded-xl border bg-white p-3 shadow-sm md:grid-cols-6 md:items-end">
