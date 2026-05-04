@@ -415,7 +415,9 @@ installationsPage: {
 
 ordersPage: {
   title: "Siparişler",
-  subtitle: "Harici sistemden içe aktarılan yalnızca-okunur liste.",
+  subtitle: "Varsayılan: InstallOps kurulumları; mağazada Netsis tanımlıysa o mağaza için canlı ERP evrakları (ItemSlips).",
+  netsisListBanner:
+    "Liste Netsis NetOpenX (ItemSlips) üzerinden canlıdır. Sipariş numaraları ERP ile aynıdır. Detay için mağazada netsis_order_detail_path tanımlı olmalıdır.",
 
   filters: {
     searchLabel: "Arama",

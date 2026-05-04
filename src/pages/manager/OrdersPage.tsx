@@ -17,6 +17,8 @@ import { defaultDateRangeOrdersList } from "../../lib/date-range";
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
+import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations";
+import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
 
@@ -54,10 +56,21 @@ export default function OrdersPage() {
   // 🔹 Data state
   const [orders, setOrders] = useState<Order[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
+  const [ordersSource, setOrdersSource] = useState<"installations" | "netsis">("installations");
   const [loading, setLoading] = useState(true);
   const [ordersFetchError, setOrdersFetchError] = useState<string | null>(null);
+  const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
 
-  // Fetch stores + orders (each call isolated so Axios 404 never becomes an unhandled rejection)
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedFilterQ(q.trim()), 400);
+    return () => window.clearTimeout(t);
+  }, [q]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [store, debouncedFilterQ]);
+
+  // Stores + orders: NetOpenX ItemSlips when one store has HTTP Netsis + search path; else aggregated installations.
   useEffect(() => {
     let cancelled = false;
 
@@ -75,27 +88,48 @@ export default function OrdersPage() {
       }
       if (!cancelled) setStores(nextStores);
 
+      const sel = store !== "all" ? nextStores.find((s) => s.id === store) : null;
+      const useNetsis = Boolean(sel && storeUsesNetsisItemSlipsList(sel));
+
       try {
-        const orderRes = await listOrders({ limit: 300 });
-        if (!cancelled) {
-          setOrders(orderRes.data ?? []);
-          setOrdersFetchError(null);
+        if (useNetsis && sel) {
+          const res = await searchNetsisOrders({
+            store_id: sel.id as UUID,
+            ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
+            limit: 50,
+          });
+          if (!cancelled) {
+            setOrders(netsisHitsToOrders(res.data ?? [], sel));
+            setOrdersSource("netsis");
+            setOrdersFetchError(null);
+          }
+        } else {
+          const orderRes = await listOrders({
+            limit: 300,
+            ...(store !== "all" ? { store_id: store as UUID } : {}),
+          });
+          if (!cancelled) {
+            setOrders(orderRes.data ?? []);
+            setOrdersSource("installations");
+            setOrdersFetchError(null);
+          }
         }
       } catch (err) {
         if (!cancelled) {
           setOrders([]);
+          setOrdersSource("installations");
           const status = isAxiosError(err) ? err.response?.status : undefined;
           const msg =
             (isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
             (err instanceof Error ? err.message : "Request failed");
-          if (status === 404) {
+          if (status === 404 && !useNetsis) {
             setOrdersFetchError(
               "Orders list is not available on this API (404). Deploy the latest installops-backend (GET /orders) and restart Node, or fix nginx so /api/v1 is proxied to the app."
             );
           } else {
             setOrdersFetchError(msg);
           }
-          console.error("listOrders failed:", err);
+          console.error(useNetsis ? "searchNetsisOrders failed:" : "listOrders failed:", err);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -115,7 +149,7 @@ export default function OrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [store, debouncedFilterQ]);
 
   // Derived store dropdown
   const storeOptions = useMemo(() => {
@@ -141,8 +175,10 @@ export default function OrdersPage() {
       return dt >= fromD && dt <= toD;
     });
 
-    // Status filter
-    if (status !== "all") list = list.filter((o) => o.status === status);
+    // Status filter (Netsis slips are shown as confirmed; skip so filters do not hide the whole list)
+    if (ordersSource !== "netsis" && status !== "all") {
+      list = list.filter((o) => o.status === status);
+    }
 
     // Store filter
     if (store !== "all") list = list.filter((o) => o.store_id === store);
@@ -176,12 +212,12 @@ export default function OrdersPage() {
         case "items_count":
           return dir * ((a.items_count ?? 0) - (b.items_count ?? 0));
         case "status":
-          return dir * (statusRank(a.status as any) - statusRank(b.status as any));
+          return dir * (statusRank(String(a.status)) - statusRank(String(b.status)));
       }
     });
 
     return list;
-  }, [orders, q, status, store, from, to, sortBy, sortDir]);
+  }, [orders, q, status, store, from, to, sortBy, sortDir, ordersSource]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -217,6 +253,15 @@ export default function OrdersPage() {
           role="alert"
         >
           {ordersFetchError}
+        </div>
+      ) : null}
+
+      {ordersSource === "netsis" && !ordersFetchError ? (
+        <div
+          className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950"
+          role="status"
+        >
+          {t("ordersPage.netsisListBanner")}
         </div>
       ) : null}
 
@@ -382,7 +427,7 @@ export default function OrdersPage() {
                   </td>
 
                   <td className="px-3 py-2">
-                    <StatusPill status={o.status as any} />
+                    <StatusPill status={String(o.status)} />
                   </td>
 
                   <td className="px-3 py-2 text-right">
@@ -438,35 +483,67 @@ export default function OrdersPage() {
 
 /* ------------------------ Helpers & small components ------------------------ */
 
-function statusRank(s: "pending" | "confirmed" | "cancelled") {
-  return ["pending", "confirmed", "cancelled"].indexOf(s);
+function statusRank(s: string) {
+  const ix = ["pending", "confirmed", "cancelled"].indexOf(s);
+  return ix === -1 ? 1 : ix;
 }
 
-function StatusPill({ status }: { status: "pending" | "confirmed" | "cancelled" }) {
+function StatusPill({ status }: { status: string }) {
   const { t } = useTranslation("common");
 
   const styles: Record<string, string> = {
     pending: "border-amber-200 bg-amber-50 text-amber-700",
     confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
     cancelled: "border-rose-200 bg-rose-50 text-rose-700",
+    default: "border-gray-200 bg-gray-50 text-gray-700",
   };
 
+  const key =
+    status === "pending" || status === "confirmed" || status === "cancelled"
+      ? status
+      : "default";
   const labelMap: Record<"pending" | "confirmed" | "cancelled", string> = {
     pending: t("ordersPage.status.pending"),
     confirmed: t("ordersPage.status.confirmed"),
     cancelled: t("ordersPage.status.cancelled"),
   };
+  const label =
+    key === "default" ? status || "—" : labelMap[key as "pending" | "confirmed" | "cancelled"];
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px]",
-        styles[status]
+        styles[key]
       )}
     >
-      {labelMap[status]}
+      {label}
     </span>
   );
+}
+
+function storeUsesNetsisItemSlipsList(s: StoreType): boolean {
+  const src = String(s.netsis_orders_search_source || "http").trim().toLowerCase();
+  if (src === "sql") return false;
+  return Boolean(s.netsis_base_url?.trim() && s.netsis_order_search_path?.trim());
+}
+
+function netsisHitsToOrders(hits: NetsisOrderHit[], store: StoreType): Order[] {
+  return hits.map((h) => ({
+    id: h.order_id,
+    external_order_id: h.order_id,
+    store_id: store.id,
+    store: {
+      id: store.id,
+      name: store.name,
+      external_store_id: store.external_store_id ?? null,
+    },
+    customer_name: h.customer_name ?? h.label ?? null,
+    status: "confirmed",
+    items_count: h.items_count ?? null,
+    placed_at: h.placed_at ?? undefined,
+    created_at: h.placed_at ?? undefined,
+  }));
 }
 
 function FilterSelect({ label, icon: Icon, value, onChange, options }: any) {

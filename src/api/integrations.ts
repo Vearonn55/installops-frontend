@@ -3,6 +3,9 @@ import { apiGet, UUID } from './http';
 export type NetsisOrderHit = {
   order_id: string;
   label: string;
+  placed_at?: string | null;
+  customer_name?: string | null;
+  items_count?: number | null;
 };
 
 export type NetsisOrderSearchResponse = {

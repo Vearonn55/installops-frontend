@@ -415,7 +415,9 @@ installationsPage: {
 
 ordersPage: {
   title: "Orders",
-  subtitle: "Read-only list imported from external system.",
+  subtitle: "InstallOps installations by default; with Netsis configured on a store, live ERP slips (ItemSlips) for that store.",
+  netsisListBanner:
+    "Live list from Netsis NetOpenX (ItemSlips). Order numbers match your ERP. Open an order to load detail if netsis_order_detail_path is set.",
 
   filters: {
     searchLabel: "Search",
