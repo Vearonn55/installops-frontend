@@ -22,6 +22,8 @@ import {
   listInstallationMedia,
   type MediaAsset,
 } from '../../api/media';
+import { getNetsisOrderDetail } from '../../api/integrations';
+import type { UUID } from '../../api/http';
 
 // Minimal types from OpenAPI we actually use here
 type StoreDto = {
@@ -38,6 +40,7 @@ type UserDto = {
 type InstallationItemDto = {
   id: string;
   external_product_id: string;
+  quantity?: number | null;
   room_tag?: string | null;
   special_instructions?: string | null;
 };
@@ -91,6 +94,30 @@ export default function InstallationDetailPage() {
   const inst = query.data;
   const items = useMemo<InstallationItemDto[]>(() => inst?.items ?? [], [inst]);
   const crew = useMemo<CrewAssignmentDto[]>(() => inst?.crew ?? [], [inst]);
+  const netsisFallbackItemsQuery = useQuery({
+    queryKey: ['installation-netsis-items', inst?.id, inst?.store_id, inst?.external_order_id],
+    enabled:
+      Boolean(inst?.store_id && inst?.external_order_id) &&
+      Boolean((inst?.items ?? []).length === 0),
+    queryFn: async () => {
+      const res = await getNetsisOrderDetail({
+        store_id: String(inst!.store_id) as UUID,
+        order_id: String(inst!.external_order_id || ''),
+      });
+      return (res.data?.items ?? []).map((it, idx) => ({
+        id: `netsis-${idx}-${it.product_id}`,
+        external_product_id: it.product_id,
+        quantity: it.quantity,
+        room_tag: null,
+        special_instructions: null,
+      })) as InstallationItemDto[];
+    },
+    retry: false,
+  });
+  const displayItems = useMemo<InstallationItemDto[]>(
+    () => (items.length ? items : netsisFallbackItemsQuery.data ?? []),
+    [items, netsisFallbackItemsQuery.data]
+  );
 
   // ---- Store name lookup (instead of raw store_id) ----
   const storeQuery = useQuery({
@@ -339,6 +366,9 @@ export default function InstallationDetailPage() {
                   {t('installationDetailPage.itemsCard.table.product')}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Qty
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   {t('installationDetailPage.itemsCard.table.room')}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
@@ -347,10 +377,13 @@ export default function InstallationDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {items.map((it) => (
+              {displayItems.map((it) => (
                 <tr key={it.id}>
                   <td className="px-4 py-3 text-sm text-gray-900">
                     {it.external_product_id}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    {it.quantity ?? 1}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {it.room_tag ?? '—'}
@@ -360,10 +393,10 @@ export default function InstallationDetailPage() {
                   </td>
                 </tr>
               ))}
-              {items.length === 0 && (
+              {displayItems.length === 0 && (
                 <tr>
                   <td
-                    colSpan={3}
+                    colSpan={4}
                     className="px-4 py-6 text-center text-sm text-gray-500"
                   >
                     {t('installationDetailPage.itemsCard.none')}
@@ -373,12 +406,12 @@ export default function InstallationDetailPage() {
             </tbody>
           </table>
 
-          {query.isLoading && (
+          {(query.isLoading || netsisFallbackItemsQuery.isLoading) && (
             <div className="px-4 py-6 text-sm text-gray-500">
               {t('installationDetailPage.loading')}
             </div>
           )}
-          {query.isError && (
+          {(query.isError || netsisFallbackItemsQuery.isError) && (
             <div className="px-4 py-6 text-sm text-red-600">
               {t('installationDetailPage.loadError')}
             </div>
