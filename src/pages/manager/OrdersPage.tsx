@@ -67,13 +67,13 @@ export default function OrdersPage() {
     return () => window.clearTimeout(t);
   }, [q]);
 
-  /** Single store with ItemSlips Netsis path → select it so ERP orders load without an extra click. */
+  /** If the user left “All stores”, pick the first store that has Netsis ItemSlips so ERP orders load (e.g. Lajivert before Weltew when only one is configured). */
   useEffect(() => {
     if (didAutoPickNetsisStore.current) return;
     if (store !== "all") return;
     if (!stores.length) return;
     const eligible = stores.filter(storeUsesNetsisItemSlipsList);
-    if (eligible.length !== 1) return;
+    if (eligible.length < 1) return;
     didAutoPickNetsisStore.current = true;
     setStore(eligible[0].id);
   }, [stores, store]);
