@@ -16,14 +16,13 @@ import {
 import type { Installation } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatUiDateTime } from '../../lib/date-display';
-import { apiGet } from '../../api/http';
+import { apiGet, isAxiosError, type UUID } from '../../api/http';
 import { useTranslation } from 'react-i18next';
 import {
   listInstallationMedia,
   type MediaAsset,
 } from '../../api/media';
-import { getNetsisOrderDetail } from '../../api/integrations';
-import type { UUID } from '../../api/http';
+import { getNetsisOrderDetail, type NetsisOrderDetailItem } from '../../api/integrations';
 
 // Minimal types from OpenAPI we actually use here
 type StoreDto = {
@@ -65,6 +64,24 @@ type InstallationWithRelations = Installation & {
   crew?: CrewAssignmentDto[];
 };
 
+/** Map Netsis KALEM lines by product id for merging onto local installation items. */
+function netsisItemsByProductId(items: NetsisOrderDetailItem[] | undefined) {
+  const m = new Map<string, { sku: string; name: string; description: string }>();
+  if (!items?.length) return m;
+  for (const it of items) {
+    const pid = String(it.product_id ?? '').trim();
+    if (!pid) continue;
+    const sku = String(it.sku ?? it.product_id ?? '').trim() || pid;
+    const name = String(it.name ?? '').trim();
+    const desc = String(it.description ?? '').trim();
+    const nameOut = name && name !== sku ? name : sku;
+    const description =
+      desc && desc !== sku && desc !== nameOut ? desc : nameOut;
+    m.set(pid, { sku, name: nameOut, description });
+  }
+  return m;
+}
+
 const badge = (s: Installation['status']) =>
   s === 'completed'
     ? 'bg-emerald-100 text-emerald-800'
@@ -99,33 +116,62 @@ export default function InstallationDetailPage() {
   const inst = query.data;
   const items = useMemo<InstallationItemDto[]>(() => inst?.items ?? [], [inst]);
   const crew = useMemo<CrewAssignmentDto[]>(() => inst?.crew ?? [], [inst]);
-  const netsisFallbackItemsQuery = useQuery({
-    queryKey: ['installation-netsis-items', inst?.id, inst?.store_id, inst?.external_order_id],
-    enabled:
-      Boolean(inst?.store_id && inst?.external_order_id) &&
-      Boolean((inst?.items ?? []).length === 0),
+  /** Netsis order lines: used to enrich local items (SKU / name / description) and as fallback when there are no local rows. */
+  const netsisOrderItemsQuery = useQuery({
+    queryKey: ['installation-netsis-order-lines', inst?.id, inst?.store_id, inst?.external_order_id],
+    enabled: Boolean(inst?.store_id && inst?.external_order_id),
     queryFn: async () => {
       const res = await getNetsisOrderDetail({
         store_id: String(inst!.store_id) as UUID,
         order_id: String(inst!.external_order_id || ''),
       });
-      return (res.data?.items ?? []).map((it, idx) => ({
+      return res.data?.items ?? [];
+    },
+    retry: false,
+  });
+
+  const displayItems = useMemo<InstallationItemDto[]>(() => {
+    const netsisLines = netsisOrderItemsQuery.data ?? [];
+    const byPid = netsisItemsByProductId(netsisLines);
+
+    if (!items.length) {
+      return netsisLines.map((it, idx) => ({
         id: `netsis-${idx}-${it.product_id}`,
         external_product_id: it.product_id,
         sku: it.sku ?? it.product_id,
-        name: it.name ?? it.product_id,
-        description: it.description ?? it.name ?? it.product_id,
+        name: it.name?.trim() ? it.name : it.product_id,
+        description:
+          (it.description?.trim() && it.description.trim() !== (it.name || '').trim()
+            ? it.description
+            : null) ??
+          it.name ??
+          it.product_id,
         quantity: it.quantity,
         room_tag: null,
         special_instructions: null,
       })) as InstallationItemDto[];
-    },
-    retry: false,
-  });
-  const displayItems = useMemo<InstallationItemDto[]>(
-    () => (items.length ? items : netsisFallbackItemsQuery.data ?? []),
-    [items, netsisFallbackItemsQuery.data]
-  );
+    }
+
+    return items.map((row) => {
+      const pid = String(row.external_product_id ?? '').trim();
+      const n = byPid.get(pid);
+      if (n) {
+        return {
+          ...row,
+          sku: n.sku,
+          name: n.name,
+          description: n.description,
+        };
+      }
+      const sku = row.sku ?? pid;
+      return {
+        ...row,
+        sku,
+        name: row.name ?? null,
+        description: row.description ?? row.special_instructions ?? null,
+      };
+    });
+  }, [items, netsisOrderItemsQuery.data]);
 
   // ---- Store name lookup (instead of raw store_id) ----
   const storeQuery = useQuery({
@@ -169,10 +215,29 @@ export default function InstallationDetailPage() {
     enabled: !!id,
     queryFn: async () => {
       if (!id) throw new Error('Missing installation id');
-      const list = await listInstallationMedia(id, { limit: 50, offset: 0 });
-      return list;
+      try {
+        return await listInstallationMedia(id, { limit: 50, offset: 0 });
+      } catch (e) {
+        if (isAxiosError(e) && e.response?.status === 403) {
+          throw new Error(
+            (e.response.data as { message?: string })?.message ||
+              'You do not have permission to list installation media.'
+          );
+        }
+        if (isAxiosError(e) && e.response?.data && typeof (e.response.data as any).message === 'string') {
+          throw new Error((e.response.data as { message: string }).message);
+        }
+        throw e;
+      }
     },
+    retry: false,
   });
+
+  const mediaErrorText = mediaQuery.error
+    ? mediaQuery.error instanceof Error
+      ? mediaQuery.error.message
+      : 'Could not load photos for this installation.'
+    : '';
 
   const photos: MediaAsset[] = useMemo(
     () =>
@@ -425,16 +490,26 @@ export default function InstallationDetailPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {displayItems.map((it) => (
+              {displayItems.map((it) => {
+                const sku = String(it.sku ?? it.external_product_id ?? '').trim() || '—';
+                const nameRaw = String(it.name ?? '').trim();
+                const descRaw = String(it.description ?? '').trim();
+                const instr = String(it.special_instructions ?? '').trim();
+                const name = nameRaw && nameRaw !== sku ? nameRaw : '—';
+                let description = '—';
+                if (descRaw && descRaw !== sku && descRaw !== nameRaw) description = descRaw;
+                else if (instr) description = instr;
+                else if (descRaw && descRaw !== sku) description = descRaw;
+                return (
                 <tr key={it.id}>
                   <td className="px-4 py-3 text-sm font-mono text-gray-900">
-                    {it.sku ?? it.external_product_id}
+                    {sku}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {it.name ?? it.external_product_id}
+                    {name}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {it.description ?? it.name ?? it.external_product_id}
+                    {description}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {it.quantity ?? 1}
@@ -446,7 +521,8 @@ export default function InstallationDetailPage() {
                     {it.special_instructions ?? '—'}
                   </td>
                 </tr>
-              ))}
+              );
+              })}
               {displayItems.length === 0 && (
                 <tr>
                   <td
@@ -460,12 +536,12 @@ export default function InstallationDetailPage() {
             </tbody>
           </table>
 
-          {(query.isLoading || netsisFallbackItemsQuery.isLoading) && (
+          {(query.isLoading || netsisOrderItemsQuery.isLoading) && (
             <div className="px-4 py-6 text-sm text-gray-500">
               {t('installationDetailPage.loading')}
             </div>
           )}
-          {(query.isError || netsisFallbackItemsQuery.isError) && (
+          {(query.isError || netsisOrderItemsQuery.isError) && (
             <div className="px-4 py-6 text-sm text-red-600">
               {t('installationDetailPage.loadError')}
             </div>
@@ -491,7 +567,7 @@ export default function InstallationDetailPage() {
 
           {mediaQuery.isError && (
             <div className="text-sm text-red-600">
-              Could not load photos for this installation.
+              {mediaErrorText || 'Could not load photos for this installation.'}
             </div>
           )}
 
