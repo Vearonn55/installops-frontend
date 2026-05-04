@@ -48,14 +48,17 @@ export function OrderIdSearchCombobox({
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const canSearch = Boolean(storeId) && debounced.length >= 1;
+  /** HTTP Netsis may list slips without `q` (e.g. ItemSlips?docType=7); browse when panel is open and input is still empty after debounce. */
+  const canSearch =
+    Boolean(storeId) &&
+    (debounced.length >= 1 || (open && debounced === '' && input.trim() === ''));
 
   const searchQuery = useQuery({
     queryKey: ['netsis-orders', storeId, debounced],
     queryFn: () =>
       searchNetsisOrders({
         store_id: storeId as UUID,
-        q: debounced,
+        ...(debounced.length >= 1 ? { q: debounced } : {}),
         limit: 20,
       }),
     enabled: canSearch,
@@ -63,7 +66,7 @@ export function OrderIdSearchCombobox({
   });
 
   const hits = searchQuery.data?.data ?? [];
-  const showPanel = open && canSearch;
+  const showPanel = open && Boolean(storeId);
 
   const searchErrorMessage = useMemo(() => {
     const e = searchQuery.error;
