@@ -211,7 +211,7 @@ export default function OrderDetailPage() {
     },
     enabled:
       Boolean(id && storeIdForNetsis) &&
-      Boolean(!netsisQuery.data || hasSparseCustomer(netsisQuery.data.customer)),
+      Boolean(!netsisQuery.data || documentCustomerSparse(netsisQuery.data.document)),
     retry: false,
   });
 
