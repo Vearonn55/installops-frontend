@@ -1,5 +1,5 @@
 // src/pages/manager/OrdersPage.tsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -60,23 +60,11 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [ordersFetchError, setOrdersFetchError] = useState<string | null>(null);
   const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
-  const didAutoPickNetsisStore = useRef(false);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedFilterQ(q.trim()), 400);
     return () => window.clearTimeout(t);
   }, [q]);
-
-  /** If the user left “All stores”, pick the first store that has Netsis ItemSlips so ERP orders load (e.g. Lajivert before Weltew when only one is configured). */
-  useEffect(() => {
-    if (didAutoPickNetsisStore.current) return;
-    if (store !== "all") return;
-    if (!stores.length) return;
-    const eligible = stores.filter(storeUsesNetsisItemSlipsList);
-    if (eligible.length < 1) return;
-    didAutoPickNetsisStore.current = true;
-    setStore(eligible[0].id);
-  }, [stores, store]);
 
   useEffect(() => {
     setPage(1);
@@ -192,8 +180,10 @@ export default function OrdersPage() {
       list = list.filter((o) => o.status === status);
     }
 
-    // Store filter
-    if (store !== "all") list = list.filter((o) => o.store_id === store);
+    // Store filter (match top-level id or nested store; UUID serialization can differ)
+    if (store !== "all") {
+      list = list.filter((o) => orderMatchesStoreFilter(o, store));
+    }
 
     // Search query
     if (q.trim()) {
@@ -494,6 +484,13 @@ export default function OrdersPage() {
 }
 
 /* ------------------------ Helpers & small components ------------------------ */
+
+function orderMatchesStoreFilter(o: Order, storeId: string): boolean {
+  const sid = String(storeId).trim();
+  if (o.store_id != null && String(o.store_id) === sid) return true;
+  if (o.store?.id != null && String(o.store.id) === sid) return true;
+  return false;
+}
 
 function statusRank(s: string) {
   const ix = ["pending", "confirmed", "cancelled"].indexOf(s);
