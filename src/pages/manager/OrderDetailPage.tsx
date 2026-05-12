@@ -17,6 +17,7 @@ import {
   type NetsisOrderDetailData,
 } from '../../api/integrations';
 import type { UUID } from '../../api/http';
+import { getStore } from '../../api/stores';
 import {
   arpRowToCustomerFields,
   cariKoduFromDoc,
@@ -120,7 +121,8 @@ function mergeNetsisIntoOrder(
   base: ExtendedOrder | null | undefined,
   netsis: NetsisOrderDetailData | undefined,
   externalOrderId: string,
-  storeUuidForNetsis: string
+  storeUuidForNetsis: string,
+  storeDisplayName?: string | null
 ): ExtendedOrder | undefined {
   if (!netsis) return base ?? undefined;
   const doc =
@@ -143,7 +145,8 @@ function mergeNetsisIntoOrder(
     return {
       id: externalOrderId,
       store_uuid: storeUuidForNetsis || undefined,
-      store_name: storeUuidFromQuery ? '—' : '—',
+      store_name: storeDisplayName?.trim() || '—',
+      store_id: storeUuidForNetsis,
       placed_at: placed,
       status: st || 'pending',
       customer: nc,
@@ -189,6 +192,13 @@ export default function OrderDetailPage() {
   });
 
   const storeIdForNetsis = (orderQuery.data?.store_uuid || storeIdFromUrl || '').trim();
+
+  const storeMetaQuery = useQuery({
+    queryKey: ['order-store-meta', storeIdForNetsis],
+    queryFn: () => getStore(storeIdForNetsis as UUID),
+    enabled: Boolean(storeIdForNetsis),
+    retry: false,
+  });
 
   const netsisQuery = useQuery({
     queryKey: ['netsis-order-detail', id, storeIdForNetsis],
@@ -241,7 +251,14 @@ export default function OrderDetailPage() {
   });
 
   const order = useMemo(() => {
-    const merged = mergeNetsisIntoOrder(orderQuery.data, netsisQuery.data, id || '', storeIdForNetsis);
+    const storeLabel = storeMetaQuery.data?.name?.trim() || '';
+    const merged = mergeNetsisIntoOrder(
+      orderQuery.data,
+      netsisQuery.data,
+      id || '',
+      storeIdForNetsis,
+      storeLabel || null
+    );
     if (!merged) return merged;
     if (!netsisCustomerQuery.data) return merged;
     const bc = merged.customer || {};
@@ -256,7 +273,14 @@ export default function OrderDetailPage() {
         region: (nc.region !== '—' ? nc.region : bc.region || '—') || '—',
       },
     };
-  }, [orderQuery.data, netsisQuery.data, netsisCustomerQuery.data, id, storeIdForNetsis]);
+  }, [
+    orderQuery.data,
+    netsisQuery.data,
+    netsisCustomerQuery.data,
+    storeMetaQuery.data,
+    id,
+    storeIdForNetsis,
+  ]);
 
   const showOrderMain =
     Boolean(order) ||
