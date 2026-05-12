@@ -65,9 +65,103 @@ export function stokAdiFromLine(line: NetsisJson): string {
   ).trim();
 }
 
+/** Flatten `Stok` + `StokTemelBilgi` for reading özellik / renk fields on a line. */
+function mergedStokFieldsForLine(line: Record<string, unknown>): Record<string, unknown> {
+  const Stok =
+    line.Stok != null && typeof line.Stok === 'object' && !Array.isArray(line.Stok)
+      ? (line.Stok as Record<string, unknown>)
+      : {};
+  const temel = stokTemelBilgiFromStok(Stok);
+  return { ...Stok, ...temel };
+}
+
+function nonEmptyVariantToken(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'number') {
+    if (!Number.isFinite(v) || v === 0) return null;
+    return String(v);
+  }
+  const s = String(v).trim();
+  if (!s || s === '0') return null;
+  return s;
+}
+
+/**
+ * Renk / özellik / opsiyon from NetOpenX stok master (and line-level fallbacks).
+ * Live curls: kalemlerde `STra_ACIK` satır notu; stok kartında `Ozellik_Kodu*`, `Opsiyon_Kodu*`, `RENK` vb.
+ */
+export function lineVariantOrColorNote(line: NetsisJson): string {
+  const r = line as Record<string, unknown>;
+  const st = mergedStokFieldsForLine(r);
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  const push = (t: string | null) => {
+    if (!t) return;
+    const k = t.toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    parts.push(t);
+  };
+
+  for (let i = 1; i <= 5; i++) {
+    for (const base of ['Ozellik_Kodu', 'Opsiyon_Kodu', 'OZELLIK_KODU', 'OPSIYON_KODU']) {
+      push(nonEmptyVariantToken(st[`${base}${i}`] ?? r[`${base}${i}`]));
+    }
+  }
+  for (const k of [
+    'RENK',
+    'Renk',
+    'RenkKodu',
+    'RENK_KODU',
+    'Renk_Aciklama',
+    'RENK_ACIKLAMA',
+    'Stok_Renk',
+    'Kod_4',
+    'Kod_5',
+    'YapKod',
+  ]) {
+    push(nonEmptyVariantToken(st[k] ?? r[k]));
+  }
+
+  return parts.join(' · ');
+}
+
+/** NetOpenX satır açıklaması — özellikle `STra_ACIK` (Logo kalemi). */
 export function satirAciklamaFromLine(line: NetsisJson): string {
   const r = line as Record<string, unknown>;
-  return String(r.ACIKLAMA ?? r.SATIR_ACIKLAMA ?? r.STRA_ACIK ?? r.Stra_Acik ?? '').trim();
+  const direct = String(
+    r.ACIKLAMA ??
+      r.SATIR_ACIKLAMA ??
+      r.SATIRAC ??
+      r.SATIR_AC ??
+      r.SAT_IR_ACIK ??
+      r.STRA_ACIK ??
+      r.STra_ACIK ??
+      r.STrA_ACIK ??
+      r.Stra_Acik ??
+      r.STHAR_ACIKLAMA ??
+      r.Sthar_aciklama ??
+      ''
+  ).trim();
+  if (direct) return direct;
+
+  for (const key of Object.keys(r)) {
+    if (!/(ACIK|SATIR|SATAC|RENK|NOT)/i.test(key)) continue;
+    const v = r[key];
+    if (typeof v !== 'string') continue;
+    const t = v.trim();
+    if (!t) continue;
+    if (/^\d{1,2}\.\d{1,2}\.\d{4}/.test(t)) continue;
+    return t;
+  }
+  return '';
+}
+
+/** Satır notu + stok renk/özellik (Description sütunu için). */
+export function lineItemDescriptionFromLine(line: NetsisJson): string {
+  const satir = satirAciklamaFromLine(line);
+  const variant = lineVariantOrColorNote(line);
+  return [satir, variant].filter(Boolean).join(' · ');
 }
 
 export function lineRowId(line: NetsisJson, index: number): string {
@@ -198,7 +292,7 @@ export function netsisLinesToDisplayRows(lines: NetsisJson[] | undefined) {
   return lines.map((line, idx) => {
     const sku = pickStokKoduFromLine(line);
     const nm = stokAdiFromLine(line);
-    const desc = satirAciklamaFromLine(line);
+    const desc = lineItemDescriptionFromLine(line);
     return {
       id: lineRowId(line, idx),
       product_id: sku,

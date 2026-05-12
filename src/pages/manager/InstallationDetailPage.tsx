@@ -27,7 +27,7 @@ import {
   pickLineQuantity,
   pickStokKoduFromLine,
   stokAdiFromLine,
-  satirAciklamaFromLine,
+  lineItemDescriptionFromLine,
   lineRowId,
 } from '../../lib/netsis-native';
 
@@ -79,7 +79,7 @@ function netsisLinesByStokKodu(lines: NetsisOrderLine[] | undefined) {
     const sku = pickStokKoduFromLine(line);
     if (!sku) continue;
     const nameRaw = stokAdiFromLine(line);
-    const descRaw = satirAciklamaFromLine(line);
+    const descRaw = lineItemDescriptionFromLine(line);
     const nameOut = nameRaw && nameRaw !== sku ? nameRaw : sku;
     const description =
       descRaw && descRaw !== sku && descRaw !== nameOut ? descRaw : nameOut;
@@ -144,7 +144,7 @@ export default function InstallationDetailPage() {
       return netsisLines.map((line, idx) => {
         const sku = pickStokKoduFromLine(line);
         const nm = stokAdiFromLine(line);
-        const desc = satirAciklamaFromLine(line);
+        const desc = lineItemDescriptionFromLine(line);
         return {
           id: lineRowId(line, idx),
           external_product_id: sku,
