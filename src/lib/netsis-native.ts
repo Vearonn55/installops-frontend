@@ -36,17 +36,29 @@ export function pickLineQuantity(line: NetsisJson): number {
   return Number.isFinite(n) && n >= 1 ? n : 1;
 }
 
+function stokTemelBilgiFromStok(Stok: Record<string, unknown>): Record<string, unknown> {
+  const t = Stok.StokTemelBilgi ?? Stok.stokTemelBilgi;
+  if (t != null && typeof t === 'object' && !Array.isArray(t)) return t as Record<string, unknown>;
+  return {};
+}
+
 export function stokAdiFromLine(line: NetsisJson): string {
   const r = line as Record<string, unknown>;
   const Stok =
     r.Stok != null && typeof r.Stok === 'object' && !Array.isArray(r.Stok)
       ? (r.Stok as Record<string, unknown>)
       : {};
+  const temel = stokTemelBilgiFromStok(Stok);
   return String(
-    Stok.STOK_ADI ??
+    temel.Stok_Adi ??
+      temel.STOK_ADI ??
+      temel.STK_ADI ??
+      temel.stok_adi ??
+      Stok.STOK_ADI ??
       Stok.STK_ADI ??
       r.STOK_ADI ??
       r.STK_ADI ??
+      r.Stok_Adi ??
       r.STRA_STKADI ??
       r.Stra_StkAdi ??
       ''
@@ -65,6 +77,12 @@ export function lineRowId(line: NetsisJson, index: number): string {
   return `netsis-line-${index}-${pickStokKoduFromLine(line) || index}`;
 }
 
+function cariTemelFromRecord(src: Record<string, unknown>): Record<string, unknown> {
+  const t = src.CariTemelBilgi ?? src.cariTemelBilgi;
+  if (t != null && typeof t === 'object' && !Array.isArray(t)) return t as Record<string, unknown>;
+  return {};
+}
+
 export function cariNameFromDoc(doc: NetsisJson | null | undefined): string {
   if (!doc || typeof doc !== 'object') return '';
   const d = doc as Record<string, unknown>;
@@ -73,7 +91,17 @@ export function cariNameFromDoc(doc: NetsisJson | null | undefined): string {
       ? (d.ARP as Record<string, unknown>)
       : null;
   const src = arp || d;
-  return String(src.UNVAN ?? src.UNVAN1 ?? src.CARI_ISIM ?? src.CARI_UNVAN ?? '').trim();
+  const temel = cariTemelFromRecord(src);
+  return String(
+    src.UNVAN ??
+      src.UNVAN1 ??
+      src.CARI_ISIM ??
+      src.CARI_UNVAN ??
+      temel.UNVAN ??
+      temel.CARI_ISIM ??
+      temel.CARI_UNVAN ??
+      ''
+  ).trim();
 }
 
 export function cariKoduFromDoc(doc: NetsisJson | null | undefined): string {
@@ -83,7 +111,10 @@ export function cariKoduFromDoc(doc: NetsisJson | null | undefined): string {
     d.ARP != null && typeof d.ARP === 'object' && !Array.isArray(d.ARP)
       ? (d.ARP as Record<string, unknown>)
       : d;
-  return String(src.CARI_KOD ?? src.CariKod ?? src.cari_kod ?? '').trim();
+  const temel = cariTemelFromRecord(src);
+  return String(
+    src.CARI_KOD ?? src.CariKod ?? src.cari_kod ?? temel.CARI_KOD ?? temel.CariKod ?? ''
+  ).trim();
 }
 
 export function cariPhoneFromDoc(doc: NetsisJson | null | undefined): string {
@@ -93,7 +124,10 @@ export function cariPhoneFromDoc(doc: NetsisJson | null | undefined): string {
     d.ARP != null && typeof d.ARP === 'object' && !Array.isArray(d.ARP)
       ? (d.ARP as Record<string, unknown>)
       : d;
-  return String(src.TEL ?? src.CEP_TEL ?? src.GSM ?? src.CARI_TEL ?? '').trim();
+  const temel = cariTemelFromRecord(src);
+  return String(
+    src.TEL ?? src.CEP_TEL ?? src.GSM ?? src.CARI_TEL ?? temel.TEL ?? temel.CEP_TEL ?? temel.GSM ?? ''
+  ).trim();
 }
 
 export function cariEmailFromDoc(doc: NetsisJson | null | undefined): string {
@@ -103,7 +137,8 @@ export function cariEmailFromDoc(doc: NetsisJson | null | undefined): string {
     d.ARP != null && typeof d.ARP === 'object' && !Array.isArray(d.ARP)
       ? (d.ARP as Record<string, unknown>)
       : d;
-  return String(src.email ?? src.EMAIL ?? src.eMail ?? '').trim();
+  const temel = cariTemelFromRecord(src);
+  return String(src.email ?? src.EMAIL ?? src.eMail ?? temel.email ?? temel.EMAIL ?? '').trim();
 }
 
 export function cariAddressFromDoc(doc: NetsisJson | null | undefined): string {
@@ -113,7 +148,10 @@ export function cariAddressFromDoc(doc: NetsisJson | null | undefined): string {
     d.ARP != null && typeof d.ARP === 'object' && !Array.isArray(d.ARP)
       ? (d.ARP as Record<string, unknown>)
       : d;
-  return String(src.ADRES ?? src.CARI_ADRES ?? '').trim();
+  const temel = cariTemelFromRecord(src);
+  return String(
+    src.ADRES ?? src.CARI_ADRES ?? temel.ADRES ?? temel.CARI_ADRES ?? ''
+  ).trim();
 }
 
 export function cariRegionFromDoc(doc: NetsisJson | null | undefined): string {
@@ -123,7 +161,10 @@ export function cariRegionFromDoc(doc: NetsisJson | null | undefined): string {
     d.ARP != null && typeof d.ARP === 'object' && !Array.isArray(d.ARP)
       ? (d.ARP as Record<string, unknown>)
       : d;
-  return String(src.SEHIR ?? src.CARI_IL ?? src.CARI_ILCE ?? '').trim();
+  const temel = cariTemelFromRecord(src);
+  return String(
+    src.SEHIR ?? src.CARI_IL ?? src.CARI_ILCE ?? temel.SEHIR ?? temel.CARI_IL ?? temel.CARI_ILCE ?? ''
+  ).trim();
 }
 
 export function placedAtFromDoc(doc: NetsisJson | null | undefined): string | undefined {
