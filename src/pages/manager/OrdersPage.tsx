@@ -22,6 +22,8 @@ import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../stores/auth";
+import { useManagerStoreId } from "../../hooks/use-manager-store-id";
+import { inferManagerStoreId } from "../../lib/manager-store";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -84,10 +86,7 @@ export default function OrdersPage() {
     setPage(1);
   }, [store, debouncedFilterQ, from, to, status]);
 
-  const managerStoreId = useMemo(
-    () => (isAdmin ? null : inferManagerStoreId(stores, user?.email)),
-    [isAdmin, stores, user?.email]
-  );
+  const managerStoreId = useManagerStoreId(stores);
 
   useEffect(() => {
     if (!isAdmin && managerStoreId && store === "all") {
@@ -164,7 +163,9 @@ export default function OrdersPage() {
       }
       if (!cancelled) setStores(nextStores);
 
-      const mgrStoreId = !isAdmin ? inferManagerStoreId(nextStores, user?.email) : null;
+      const mgrStoreId = !isAdmin
+        ? inferManagerStoreId(nextStores, user?.email, user?.store_id)
+        : null;
       if (!isAdmin && !mgrStoreId) {
         if (!cancelled) {
           setOrders([]);
@@ -692,26 +693,6 @@ function dedupeOrders(list: Order[]): Order[] {
   return out;
 }
 
-function inferManagerStoreId(stores: StoreType[], email?: string | null): string | null {
-  const netsisStores = stores.filter(storeUsesNetsisItemSlipsList);
-  if (netsisStores.length === 1) return netsisStores[0].id;
-  const em = (email || "").toLowerCase();
-  for (const s of netsisStores) {
-    const name = (s.name || "").toLowerCase();
-    const ext = (s.external_store_id || "").toLowerCase();
-    if (name && em.includes(name)) return s.id;
-    if (ext && em.includes(ext)) return s.id;
-  }
-  if (em.includes("weltew") || em.includes("weltev")) {
-    const hit = netsisStores.find((s) => /weltew|weltev/i.test(s.name || ""));
-    if (hit) return hit.id;
-  }
-  if (em.includes("lajivert")) {
-    const hit = netsisStores.find((s) => /lajivert/i.test(s.name || ""));
-    if (hit) return hit.id;
-  }
-  return netsisStores[0]?.id ?? stores[0]?.id ?? null;
-}
 
 function orderMatchesStoreFilter(o: Order, storeId: string): boolean {
   const sid = String(storeId).trim();

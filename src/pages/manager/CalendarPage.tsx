@@ -19,7 +19,7 @@ import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../stores/auth';
 import { listInstallations, type Installation as ApiInstallation } from '../../api/installations';
 import { listStores } from '../../api/stores';
-import { inferManagerStoreId } from '../../lib/manager-store';
+import { useManagerStoreId } from '../../hooks/use-manager-store-id';
 import { useTranslation } from 'react-i18next';
 import { formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
 
@@ -211,14 +211,7 @@ export default function CalendarPage() {
     },
   });
 
-  const managerStoreId = useMemo(
-    () =>
-      isAdmin
-        ? undefined
-        : inferManagerStoreId(storesQuery.data ?? [], user?.email, user?.store_id) ?? undefined,
-    [isAdmin, storesQuery.data, user?.email]
-  );
-
+  const managerStoreId = useManagerStoreId(storesQuery.data ?? []);
   const storeFilter = managerStoreId;
 
   const storeFilterLabel = useMemo(() => {

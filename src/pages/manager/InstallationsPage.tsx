@@ -28,7 +28,7 @@ import {
   defaultDateRangeInstallationsList,
   installationInDateRange,
 } from '../../lib/date-range';
-import { inferManagerStoreId } from '../../lib/manager-store';
+import { useManagerStoreId } from '../../hooks/use-manager-store-id';
 import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
@@ -219,13 +219,7 @@ export default function InstallationsPage() {
     queryFn: async () => listStores({ limit: 200, offset: 0 }),
   });
 
-  const managerStoreId = useMemo(
-    () =>
-      isAdmin
-        ? null
-        : inferManagerStoreId(storesQuery.data?.data ?? [], user?.email, user?.store_id),
-    [isAdmin, storesQuery.data, user?.email]
-  );
+  const managerStoreId = useManagerStoreId(storesQuery.data?.data ?? []);
 
   const installationsQuery = useInfiniteQuery({
     queryKey: ['installations', { store_id: managerStoreId ?? 'all' }],

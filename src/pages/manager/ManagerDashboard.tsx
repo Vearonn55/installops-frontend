@@ -22,6 +22,7 @@ import { listStores, type Store as ApiStore } from '../../api/stores';
 import { apiGet } from '../../api/http';
 import { formatUiDateTime } from '../../lib/date-display';
 import { useDateDisplayStore } from '../../stores/date-display';
+import { useManagerStoreId } from '../../hooks/use-manager-store-id';
 
 /* ---------- Period metrics & KPI helpers ---------- */
 
@@ -293,18 +294,9 @@ export default function ManagerDashboard() {
     return m;
   }, [storesQuery.data]);
 
-  // Determine manager's primary store:
-  //  - If only one store exists, use that
-  //  - Else use store_id from the first installation
-  const primaryStoreId: string | null = useMemo(() => {
-    if (storesQuery.data && storesQuery.data.length === 1) {
-      return storesQuery.data[0].id;
-    }
-    if (installationsQuery.data && installationsQuery.data.length > 0) {
-      return installationsQuery.data[0].store_id;
-    }
-    return null;
-  }, [storesQuery.data, installationsQuery.data]);
+  const managerStoreId = useManagerStoreId(storesQuery.data ?? []);
+
+  const primaryStoreId: string | null = managerStoreId;
 
   const primaryStoreName =
     (primaryStoreId && storeNameById.get(primaryStoreId)) ||
