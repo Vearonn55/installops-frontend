@@ -130,7 +130,6 @@ function applyInstallationFilters(
   rows: Row[],
   opts: {
     q: string;
-    serverSearch: boolean;
     status: InstallationStatus | 'all';
     zone: Zone | 'all';
     from: string;
@@ -149,7 +148,7 @@ function applyInstallationFilters(
     );
   }
 
-  if (opts.q.trim() && !opts.serverSearch) {
+  if (opts.q.trim()) {
     list = list.filter(
       (r) =>
         textMatchesSearch(r.id, opts.q) ||
@@ -198,7 +197,6 @@ export default function InstallationsPage() {
 
   // Filters
   const [q, setQ] = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
   const [status, setStatus] = useState<InstallationStatus | 'all'>('all');
   const [zone, setZone] = useState<Zone | 'all'>('all');
 
@@ -210,11 +208,6 @@ export default function InstallationsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const pageSize = 10;
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setDebouncedQ(q.trim()), 400);
-    return () => window.clearTimeout(t);
-  }, [q]);
 
   useEffect(() => {
     setPage(1);
@@ -229,7 +222,7 @@ export default function InstallationsPage() {
   const managerStoreId = useManagerStoreId(storesQuery.data?.data ?? []);
 
   const installationsQuery = useInfiniteQuery({
-    queryKey: ['installations', { store_id: managerStoreId ?? 'all', q: debouncedQ }],
+    queryKey: ['installations', { store_id: managerStoreId ?? 'all' }],
     enabled:
       storesQuery.isSuccess && (isAdmin || Boolean(managerStoreId)),
     queryFn: async ({ pageParam }) => {
@@ -238,7 +231,6 @@ export default function InstallationsPage() {
         limit: INSTALLATIONS_PAGE_SIZE,
         offset,
         ...(managerStoreId ? { store_id: managerStoreId as UUID } : {}),
-        ...(debouncedQ ? { q: debouncedQ } : {}),
       });
     },
     initialPageParam: 0,
@@ -270,21 +262,20 @@ export default function InstallationsPage() {
   }, [allInstallations, storesById]);
 
   const filterOpts = useMemo(
-    () => ({ q, serverSearch: Boolean(debouncedQ), status, zone, from, to }),
-    [q, debouncedQ, status, zone, from, to]
+    () => ({ q, status, zone, from, to }),
+    [q, status, zone, from, to]
   );
 
   const rowsForStatusCounts = useMemo(
     () =>
       applyInstallationFilters(allRows, {
         q: filterOpts.q,
-        serverSearch: filterOpts.serverSearch,
         status: 'all',
         zone: filterOpts.zone,
         from: filterOpts.from,
         to: filterOpts.to,
       }),
-    [allRows, filterOpts.q, filterOpts.serverSearch, filterOpts.zone, filterOpts.from, filterOpts.to]
+    [allRows, filterOpts.q, filterOpts.zone, filterOpts.from, filterOpts.to]
   );
 
   const filtered = useMemo(() => {

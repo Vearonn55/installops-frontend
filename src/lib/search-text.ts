@@ -1,22 +1,16 @@
-/** Fold Turkish letters so "oz" matches "öz", etc. */
-export function foldForSearch(raw: string | null | undefined): string {
-  return String(raw ?? '')
-    .toLocaleLowerCase('tr')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c');
+/** Turkish-aware lowercase for substring search (ı≠i, ö≠o, etc.). */
+export function normalizeForSearch(raw: string | null | undefined): string {
+  return String(raw ?? '').toLocaleLowerCase('tr');
 }
 
+/** Case-insensitive substring; characters must match (sal → salih, salıh ↛ salih). */
 export function textMatchesSearch(
   haystack: string | null | undefined,
   needle: string
 ): boolean {
-  const n = foldForSearch(needle);
+  const n = normalizeForSearch(needle);
   if (!n) return true;
-  return foldForSearch(haystack).includes(n);
+  return normalizeForSearch(haystack).includes(n);
 }
 
 /**

@@ -99,9 +99,9 @@ export default function OrdersPage() {
     const useNetsis =
       (isAdmin && store === "all" && netsisStores.length > 0) ||
       Boolean(sel && storeUsesNetsisItemSlipsList(sel));
-    const searchPart = useNetsis ? netsisApiQ : debouncedFilterQ;
+    const searchPart = useNetsis ? netsisApiQ : '';
     return `${store}:${effectiveStoreId ?? "all"}:${searchPart}`;
-  }, [store, stores, isAdmin, managerStoreId, netsisApiQ, debouncedFilterQ]);
+  }, [store, stores, isAdmin, managerStoreId, netsisApiQ]);
 
   useEffect(() => {
     if (!isAdmin && managerStoreId && store === "all") {
@@ -225,7 +225,6 @@ export default function OrdersPage() {
           const orderRes = await listOrders({
             limit: 300,
             ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
-            ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
           });
           if (!cancelled) {
             setOrders(orderRes.data ?? []);
@@ -272,7 +271,7 @@ export default function OrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, [ordersFetchKey, isAdmin, user?.email, user?.store_id, fetchNetsisForStores, netsisApiQ, debouncedFilterQ]);
+  }, [ordersFetchKey, isAdmin, user?.email, user?.store_id, fetchNetsisForStores, netsisApiQ]);
 
   const loadMoreNetsis = useCallback(async () => {
     if (!hasMore || loadingMore || loading) return;
