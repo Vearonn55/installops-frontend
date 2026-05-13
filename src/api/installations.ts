@@ -49,12 +49,16 @@ export type CrewAssignmentCreate = {
 
 export type Installation = {
   id: UUID;
+  install_code?: string;
   external_order_id: string;
   store_id: UUID;
   scheduled_start?: string | null;
   scheduled_end?: string | null;
   status: InstallStatus;
   notes?: string | null;
+  location?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
   checklist_result?: 'success' | 'failed' | null;
   checklist_failure_reason?: string | null;
   checklist_completed_at?: string | null;
@@ -84,6 +88,9 @@ export type InstallationCreate = {
   status?: InstallStatus;
   difficulty?: 'easy' | 'intermediate' | 'hard' | null;
   notes?: string | null;
+  location?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
 };
 
 export type ListInstallationsParams = {

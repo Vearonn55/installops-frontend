@@ -23,7 +23,7 @@ import {
   type InstallationCreate,
 } from '../../api/installations';
 import { getNetsisOrderDetail } from '../../api/integrations';
-import { pickLineQuantity, pickStokKoduFromLine } from '../../lib/netsis-native';
+import { pickLineQuantity, pickStokKoduFromLine, cariNameFromDoc, cariPhoneFromDoc } from '../../lib/netsis-native';
 import { listUsers, type User } from '../../api/users';
 import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
@@ -171,6 +171,31 @@ export default function CreateInstallationPage() {
         throw new Error(t('createInstallationPage.validation.difficultyRequired'));
       }
 
+      const zoneLabel =
+        ZONES.find((z) => z.value === zone)?.label || (zone ? zone : null);
+
+      let customerName: string | null = null;
+      let customerPhone: string | null = null;
+      let orderLines: Array<{ external_product_id: string; quantity: number }> = [];
+
+      try {
+        const orderRes = await getNetsisOrderDetail({
+          store_id: storeId as UUID,
+          order_id: externalOrderId,
+        });
+        const doc = orderRes.data?.document;
+        customerName = cariNameFromDoc(doc) || null;
+        customerPhone = cariPhoneFromDoc(doc) || null;
+        orderLines = (orderRes.data?.lines ?? [])
+          .map((line) => ({
+            external_product_id: pickStokKoduFromLine(line),
+            quantity: pickLineQuantity(line),
+          }))
+          .filter((it) => !!it.external_product_id);
+      } catch (e) {
+        console.warn('Could not load Netsis order detail for create:', e);
+      }
+
       const payload: InstallationCreate = {
         external_order_id: externalOrderId,
         store_id: storeId,
@@ -178,36 +203,28 @@ export default function CreateInstallationPage() {
         scheduled_end,
         notes: notes || null,
         difficulty: difficulty as DifficultyValue,
+        location: zoneLabel,
+        customer_name: customerName,
+        customer_phone: customerPhone,
       };
 
       // 1) Create the installation
       const inst = await createInstallation(payload);
 
       // 2) Best-effort: import products from Netsis order detail into installation items.
-      // This keeps Installation Detail "Ürünler" populated when creating from an ERP order.
-      try {
-        const orderRes = await getNetsisOrderDetail({
-          store_id: storeId as UUID,
-          order_id: externalOrderId,
-        });
-        const rows = (orderRes.data?.lines ?? [])
-          .map((line) => ({
-            external_product_id: pickStokKoduFromLine(line),
-            quantity: pickLineQuantity(line),
-          }))
-          .filter((it) => !!it.external_product_id);
-        if (rows.length) {
+      if (orderLines.length) {
+        try {
           await Promise.all(
-            rows.map((row) =>
+            orderLines.map((row) =>
               addInstallationItem(inst.id as UUID, {
                 external_product_id: row.external_product_id,
                 quantity: row.quantity,
               })
             )
           );
+        } catch (e) {
+          console.warn('Could not import Netsis order items:', e);
         }
-      } catch (e) {
-        console.warn('Could not import Netsis order items:', e);
       }
 
       // 3) Assign crew (if any)
@@ -373,7 +390,7 @@ export default function CreateInstallationPage() {
             </div>
           </section>
 
-          {/* Zone (front-end only for now) */}
+          {/* Zone → persisted as installation `location` */}
           <section className="card">
             <div className="card-header">
               <h3 className="card-title">

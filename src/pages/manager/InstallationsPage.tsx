@@ -55,14 +55,18 @@ type Zone = string;
 
 type Row = {
   id: string;
+  installCode: string;
   status: InstallationStatus;
   start: string | null;
   end: string | null;
   createdAt: string;
   externalOrderId: string;
   storeName: string;
+  location?: string;
   city?: string;
   addressLine?: string;
+  customerName?: string;
+  customerPhone?: string;
   crewCount: number;
 };
 
@@ -118,14 +122,18 @@ function makeRow(inst: Installation, store?: Store): Row {
 
   return {
     id: inst.id,
+    installCode: inst.install_code ?? inst.id,
     status: uiStatus,
     start: inst.scheduled_start ?? null,
     end: inst.scheduled_end ?? null,
     createdAt: inst.created_at,
     externalOrderId: inst.external_order_id,
     storeName: resolvedStore?.name ?? inst.store_id,
+    location: inst.location ?? undefined,
     city: addr?.city,
     addressLine: addr?.line1,
+    customerName: inst.customer_name ?? undefined,
+    customerPhone: inst.customer_phone ?? undefined,
     crewCount: Array.isArray(inst.crew) ? inst.crew.length : 0,
   };
 }
@@ -157,9 +165,13 @@ function applyInstallationFilters(
     list = list.filter(
       (r) =>
         r.id.toLowerCase().includes(s) ||
+        r.installCode.toLowerCase().includes(s) ||
         r.externalOrderId.toLowerCase().includes(s) ||
         r.storeName.toLowerCase().includes(s) ||
+        (r.customerName ?? '').toLowerCase().includes(s) ||
+        (r.customerPhone ?? '').toLowerCase().includes(s) ||
         (r.addressLine ?? '').toLowerCase().includes(s) ||
+        (r.location ?? '').toLowerCase().includes(s) ||
         (r.city ?? '').toLowerCase().includes(s)
     );
   }
@@ -169,7 +181,7 @@ function applyInstallationFilters(
   }
 
   if (opts.zone !== 'all') {
-    list = list.filter((r) => r.city === opts.zone);
+    list = list.filter((r) => (r.location || r.city) === opts.zone);
   }
 
   return list;
@@ -310,8 +322,8 @@ export default function InstallationsPage() {
           return sortDir === 'asc' ? an.localeCompare(bn) : bn.localeCompare(an);
         }
         case 'zone': {
-          const az = a.city ?? '';
-          const bz = b.city ?? '';
+          const az = a.location ?? a.city ?? '';
+          const bz = b.location ?? b.city ?? '';
           return sortDir === 'asc' ? az.localeCompare(bz) : bz.localeCompare(az);
         }
         case 'status': {
@@ -329,7 +341,8 @@ export default function InstallationsPage() {
   const zoneOptions: Zone[] = useMemo(() => {
     const set = new Set<string>();
     for (const r of allRows) {
-      if (r.city) set.add(r.city);
+      if (r.location) set.add(r.location);
+      else if (r.city) set.add(r.city);
     }
     return Array.from(set).sort();
   }, [allRows]);
@@ -698,6 +711,9 @@ export default function InstallationsPage() {
                 dir={sortDir}
                 onClick={() => toggleSort('customer')}
               />
+              <th className="px-3 py-2 text-left">
+                {t('installationsPage.table.customer')}
+              </th>
               <Th
                 label={t('installationsPage.table.zone')}
                 active={sortBy === 'zone'}
@@ -717,7 +733,7 @@ export default function InstallationsPage() {
           <tbody className="divide-y">
             {isLoadingList ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
                   {t('installationsPage.loading')}
                 </td>
               </tr>
@@ -729,7 +745,7 @@ export default function InstallationsPage() {
               </tr>
             ) : paged.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
                   {filteredEmptyWithData
                     ? t('installationsPage.noResultsInRange', { loaded: allRows.length })
                     : t('installationsPage.noResults')}
@@ -745,20 +761,24 @@ export default function InstallationsPage() {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <div className="font-medium text-gray-900">
-                      {r.externalOrderId || r.id}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {t('installationsPage.table.idPrefix')} {r.id}
-                    </div>
+                    <div className="font-medium text-gray-900">{r.installCode}</div>
+                    <div className="text-xs text-gray-500">{r.externalOrderId || '—'}</div>
                   </td>
                   <td className="px-3 py-2">
                     <div className="font-medium text-gray-900">{r.storeName}</div>
-                    <div className="text-xs text-gray-500 truncate max-w-[220px]">
-                      {r.addressLine || r.city || '—'}
-                    </div>
+                    {r.addressLine ? (
+                      <div className="text-xs text-gray-500 truncate max-w-[220px]">
+                        {r.addressLine}
+                      </div>
+                    ) : null}
                   </td>
-                  <td className="px-3 py-2">{r.city ?? '—'}</td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-gray-900">{r.customerName || '—'}</div>
+                    {r.customerPhone ? (
+                      <div className="text-xs text-gray-500">{r.customerPhone}</div>
+                    ) : null}
+                  </td>
+                  <td className="px-3 py-2">{r.location || r.city || '—'}</td>
                   <td className="px-3 py-2">
                     <StatusPill
                       status={r.status}

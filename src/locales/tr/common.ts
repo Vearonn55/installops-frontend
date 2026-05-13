@@ -352,6 +352,7 @@ installationsPage: {
       completed: 'Tamamlandı',
       failed: 'Başarısız',
       cancelled: 'İptal edildi',
+      after_sale_service: 'Satış sonrası servis',
     },
     zoneLabel: 'Bölge (şehir)',
     allZones: 'Tüm bölgeler',
@@ -367,12 +368,14 @@ installationsPage: {
     completed: 'Tamamlandı',
     failed: 'Başarısız',
     cancelled: 'İptal edildi',
+    after_sale_service: 'Satış sonrası servis',
   },
 
   table: {
     start: 'Başlangıç',
     installation: 'Kurulum',
     store: 'Mağaza',
+    customer: 'Müşteri',
     zone: 'Bölge',
     status: 'Durum',
     crew: 'Ekip',
