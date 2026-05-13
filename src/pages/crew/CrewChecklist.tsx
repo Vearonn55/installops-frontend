@@ -8,6 +8,7 @@ import { cn } from '../../lib/utils';
 import { isAxiosError } from '../../api/http';
 import type { UUID } from '../../api/http';
 import {
+  getInstallation,
   updateInstallationStatus,
   updateInstallationChecklistResult,
   updateCrewAfterInstallationNotes,
@@ -160,6 +161,12 @@ export default function CrewChecklist() {
           installStatus === 'failed' && markAfterSale
             ? ('after_sale_service' as InstallStatus)
             : mapInstallStatusForApi(installStatus);
+
+        const inst = await getInstallation(jobId as UUID);
+        const current = String(inst.status || '').toLowerCase();
+        if (current === 'staged') {
+          await updateInstallationStatus(jobId as UUID, { status: 'in_progress' });
+        }
         await updateInstallationStatus(jobId, { status: apiStatus });
       }
 
