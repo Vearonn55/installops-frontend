@@ -23,6 +23,9 @@ export type AuthMeResponse = {
   permissions: string[];
   name?: string | null;
   email?: string | null;
+  phone?: string | null;
+  store_id?: UUID | null;
+  store?: { id: UUID; name: string } | null;
 };
 
 export type LogoutResponse = {

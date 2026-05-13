@@ -1,6 +1,8 @@
 // /api/users.ts
 import { apiDelete, apiGet, apiPost, apiPatch, UUID } from './http';
 
+import type { Store } from './stores';
+
 export type UserStatus = 'active' | 'disabled';
 
 export type RoleSummary = {
@@ -15,10 +17,12 @@ export type User = {
   email: string;
   phone?: string | null;
   role_id: UUID;
+  store_id?: UUID | null;
   status: UserStatus;
   created_at: string;
   updated_at: string;
   role?: RoleSummary | null;
+  store?: Pick<Store, 'id' | 'name'> | null;
 };
 
 export type UserList = {
@@ -33,6 +37,7 @@ export type UserCreate = {
   password: string;
   role_id: UUID;
   phone?: string | null;
+  store_id?: UUID | null;
 };
 
 export type UserUpdate = {
@@ -41,6 +46,7 @@ export type UserUpdate = {
   role_id?: UUID;
   status?: UserStatus;
   phone?: string | null;
+  store_id?: UUID | null;
 };
 
 export type UserPasswordUpdate = {
@@ -52,6 +58,7 @@ export type UserPasswordUpdate = {
 export type ListUsersParams = {
   q?: string;
   role_id?: UUID;
+  store_id?: UUID;
   status?: UserStatus;
   limit?: number;
   offset?: number;

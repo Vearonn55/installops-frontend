@@ -215,7 +215,7 @@ export default function CalendarPage() {
     () =>
       isAdmin
         ? undefined
-        : inferManagerStoreId(storesQuery.data ?? [], user?.email) ?? undefined,
+        : inferManagerStoreId(storesQuery.data ?? [], user?.email, user?.store_id) ?? undefined,
     [isAdmin, storesQuery.data, user?.email]
   );
 

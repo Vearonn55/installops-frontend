@@ -3,8 +3,12 @@ import type { Store } from '../api/stores';
 /** Pick the single store a store manager should see (Weltew vs Lajivert, etc.). */
 export function inferManagerStoreId(
   stores: Store[],
-  email?: string | null
+  email?: string | null,
+  userStoreId?: string | null
 ): string | null {
+  if (userStoreId && stores.some((s) => s.id === userStoreId)) {
+    return userStoreId;
+  }
   if (stores.length === 1) return stores[0].id;
   const em = (email || '').toLowerCase();
   for (const s of stores) {

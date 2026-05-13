@@ -152,8 +152,10 @@ adminDashboard: {
       searchLabel: 'Search',
       allRoles: 'All roles',
       allStatuses: 'All statuses',
+      allStores: 'All stores',
       roleLabel: 'Role',
       statusLabel: 'Status',
+      storeLabel: 'Store',
     },
 
     status: {
@@ -165,6 +167,7 @@ adminDashboard: {
       name: 'Name',
       email: 'Email',
       role: 'Role',
+      store: 'Store',
       status: 'Status',
       actions: 'Actions',
     },
@@ -175,6 +178,7 @@ adminDashboard: {
       activate: 'Activate',
       create: 'Create',
       saveChanges: 'Save changes',
+      delete: 'Delete',
     },
 
     noUsers: 'No users found.',
@@ -186,12 +190,17 @@ adminDashboard: {
       createFailed: 'Failed to create user',
       userUpdated: 'User updated',
       updateFailed: 'Failed to update user',
+      userDeleted: 'User deleted',
+      deleteFailed: 'Failed to delete user',
     },
 
     validation: {
       missingRequired:
         'Name, email, password and role are required',
+      storeRequired: 'Store is required for manager and crew users',
     },
+
+    confirmDelete: 'Delete user {{name}}?',
 
     create: {
       title: 'New User',
@@ -209,6 +218,8 @@ adminDashboard: {
       phoneOptional: 'Phone (optional)',
       initialPassword: 'Initial password',
       selectRolePlaceholder: 'Select role…',
+      store: 'Store',
+      selectStorePlaceholder: 'Select store…',
     },
   },
   

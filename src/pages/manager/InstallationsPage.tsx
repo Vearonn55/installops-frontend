@@ -223,7 +223,7 @@ export default function InstallationsPage() {
     () =>
       isAdmin
         ? null
-        : inferManagerStoreId(storesQuery.data?.data ?? [], user?.email),
+        : inferManagerStoreId(storesQuery.data?.data ?? [], user?.email, user?.store_id),
     [isAdmin, storesQuery.data, user?.email]
   );
 

@@ -152,8 +152,10 @@ usersPage: {
       searchLabel: 'Arama',
       allRoles: 'Tüm roller',
       allStatuses: 'Tüm durumlar',
+      allStores: 'Tüm mağazalar',
       roleLabel: 'Rol',
       statusLabel: 'Durum',
+      storeLabel: 'Mağaza',
     },
 
     status: {
@@ -165,6 +167,7 @@ usersPage: {
       name: 'Ad',
       email: 'E-posta',
       role: 'Rol',
+      store: 'Mağaza',
       status: 'Durum',
       actions: 'İşlemler',
     },
@@ -175,6 +178,7 @@ usersPage: {
       activate: 'Aktifleştir',
       create: 'Oluştur',
       saveChanges: 'Değişiklikleri kaydet',
+      delete: 'Sil',
     },
 
     noUsers: 'Kullanıcı bulunamadı.',
@@ -186,12 +190,17 @@ usersPage: {
       createFailed: 'Kullanıcı oluşturulamadı',
       userUpdated: 'Kullanıcı güncellendi',
       updateFailed: 'Kullanıcı güncellenemedi',
+      userDeleted: 'Kullanıcı silindi',
+      deleteFailed: 'Kullanıcı silinemedi',
     },
 
     validation: {
       missingRequired:
         'İsim, e-posta, şifre ve rol zorunludur.',
+      storeRequired: 'Yönetici ve ekip kullanıcıları için mağaza seçimi zorunludur',
     },
+
+    confirmDelete: '{{name}} kullanıcısı silinsin mi?',
 
     create: {
       title: 'Yeni Kullanıcı',
@@ -209,6 +218,8 @@ usersPage: {
       phoneOptional: 'Telefon (opsiyonel)',
       initialPassword: 'İlk şifre',
       selectRolePlaceholder: 'Rol seçin…',
+      store: 'Mağaza',
+      selectStorePlaceholder: 'Mağaza seçin…',
     },
   },
 
