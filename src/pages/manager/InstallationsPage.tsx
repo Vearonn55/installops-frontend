@@ -16,7 +16,6 @@ import {
   Wrench,
   Edit3,
   Package,
-  XCircle,
   Trash2,
 } from 'lucide-react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
