@@ -406,7 +406,12 @@ installationsPage: {
     view: 'View',
     edit: 'Edit',
     stageInstallation: 'Stage installation',
+    cancelInstallation: 'Cancel',
+    deleteInstallation: 'Delete',
   },
+
+  confirmCancel: 'Cancel this installation?',
+  confirmDelete: 'Permanently delete this installation? This cannot be undone.',
 
   loading: 'Loading installations…',
   loadError: 'Failed to load installations.',
@@ -500,6 +505,15 @@ installationDetailPage: {
   buttons: {
     openCalendar: 'Open Calendar',
     viewOrder: 'View Order',
+    cancelInstallation: 'Cancel installation',
+    deleteInstallation: 'Delete installation',
+  },
+
+  toasts: {
+    cancelled: 'Installation cancelled.',
+    cancelFailed: 'Could not cancel installation.',
+    deleted: 'Installation deleted.',
+    deleteFailed: 'Could not delete installation.',
   },
 
   statusCard: {

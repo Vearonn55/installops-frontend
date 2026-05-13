@@ -168,6 +168,10 @@ export async function updateInstallationStatus(
   return apiPatch<Installation>(`/installations/${id}/status`, payload);
 }
 
+export async function deleteInstallation(id: UUID): Promise<void> {
+  await apiDelete<void>(`/installations/${id}`);
+}
+
 export async function updateInstallationChecklistResult(
   id: UUID,
   payload: {

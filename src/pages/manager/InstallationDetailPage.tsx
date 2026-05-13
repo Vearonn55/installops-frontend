@@ -1,7 +1,7 @@
 // src/pages/manager/InstallationDetailPage.tsx
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   CalendarDays,
@@ -11,13 +11,21 @@ import {
   Info,
   FileText,
   Image as ImageIcon,
+  XCircle,
+  Trash2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 import type { Installation } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatUiDateTime } from '../../lib/date-display';
 import { apiGet, isAxiosError, type UUID } from '../../api/http';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '../../stores/auth';
+import {
+  updateInstallationStatus,
+  deleteInstallation,
+} from '../../api/installations';
 import {
   listInstallationMedia,
   type MediaAsset,
@@ -102,7 +110,12 @@ const badge = (s: Installation['status']) =>
 export default function InstallationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { t, i18n } = useTranslation('common');
+  const { hasRole } = useAuthStore();
+  const isAdmin = hasRole('ADMIN');
+  const [canceling, setCanceling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // ---- Main installation (with items + crew embedded) ----
   const query = useQuery({
@@ -267,6 +280,47 @@ export default function InstallationDetailPage() {
         })()
       : '—';
 
+  const rawStatus = String(inst?.status ?? '');
+  const canCancel =
+    !isAdmin &&
+    inst &&
+    rawStatus !== 'canceled' &&
+    rawStatus !== 'cancelled' &&
+    rawStatus !== 'completed';
+
+  const handleCancel = async () => {
+    if (!id || !window.confirm(t('installationsPage.confirmCancel'))) return;
+    setCanceling(true);
+    try {
+      await updateInstallationStatus(id as UUID, { status: 'canceled' });
+      await queryClient.invalidateQueries({ queryKey: ['installation', id] });
+      await queryClient.invalidateQueries({ queryKey: ['installations'] });
+      await queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success(t('installationDetailPage.toasts.cancelled'));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : t('installationDetailPage.toasts.cancelFailed');
+      toast.error(msg);
+    } finally {
+      setCanceling(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id || !window.confirm(t('installationsPage.confirmDelete'))) return;
+    setDeleting(true);
+    try {
+      await deleteInstallation(id as UUID);
+      await queryClient.invalidateQueries({ queryKey: ['installations'] });
+      await queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success(t('installationDetailPage.toasts.deleted'));
+      navigate('/app/installations');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : t('installationDetailPage.toasts.deleteFailed');
+      toast.error(msg);
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -304,6 +358,34 @@ export default function InstallationDetailPage() {
               {t('installationDetailPage.buttons.viewOrder')}
             </Link>
           )}
+          {canCancel ? (
+            <button
+              type="button"
+              onClick={() => void handleCancel()}
+              disabled={canceling}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-100',
+                canceling && 'opacity-50'
+              )}
+            >
+              <XCircle className="h-4 w-4" />
+              {t('installationDetailPage.buttons.cancelInstallation')}
+            </button>
+          ) : null}
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 hover:bg-rose-100',
+                deleting && 'opacity-50'
+              )}
+            >
+              <Trash2 className="h-4 w-4" />
+              {t('installationDetailPage.buttons.deleteInstallation')}
+            </button>
+          ) : null}
         </div>
       </div>
 

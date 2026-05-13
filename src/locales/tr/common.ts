@@ -406,7 +406,12 @@ installationsPage: {
     view: 'Görüntüle',
     edit: 'Düzenle',
     stageInstallation: 'Kurulumu hazırla',
+    cancelInstallation: 'İptal et',
+    deleteInstallation: 'Sil',
   },
+
+  confirmCancel: 'Bu kurulum iptal edilsin mi?',
+  confirmDelete: 'Bu kurulum kalıcı olarak silinsin mi? Bu işlem geri alınamaz.',
 
   loading: 'Kurulumlar yükleniyor…',
   loadError: 'Kurulumlar yüklenemedi.',
@@ -500,6 +505,15 @@ installationDetailPage: {
   buttons: {
     openCalendar: 'Takvimi Aç',
     viewOrder: 'Siparişi Görüntüle',
+    cancelInstallation: 'Kurulumu iptal et',
+    deleteInstallation: 'Kurulumu sil',
+  },
+
+  toasts: {
+    cancelled: 'Kurulum iptal edildi.',
+    cancelFailed: 'Kurulum iptal edilemedi.',
+    deleted: 'Kurulum silindi.',
+    deleteFailed: 'Kurulum silinemedi.',
   },
 
   statusCard: {

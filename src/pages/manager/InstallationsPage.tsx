@@ -16,6 +16,8 @@ import {
   Wrench,
   Edit3,
   Package,
+  XCircle,
+  Trash2,
 } from 'lucide-react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -35,6 +37,7 @@ import {
   type InstallStatus,
   updateInstallationSchedule,
   updateInstallationStatus,
+  deleteInstallation,
 } from '../../api/installations';
 import { listStores, type Store } from '../../api/stores';
 import type { UUID } from '../../api/http';
@@ -430,6 +433,50 @@ export default function InstallationsPage() {
   };
 
   const [stagingId, setStagingId] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const canCancelInstallation = (status: InstallationStatus) =>
+    status !== 'cancelled' && status !== 'completed';
+
+  const handleCancelInstallation = async (id: string) => {
+    if (!window.confirm(t('installationsPage.confirmCancel'))) return;
+    setCancelingId(id);
+    try {
+      await updateInstallationStatus(id as UUID, { status: 'canceled' });
+      await queryClient.invalidateQueries({ queryKey: ['installations'] });
+      await queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success(
+        isTr ? 'Kurulum iptal edildi' : 'Installation cancelled'
+      );
+    } catch (err: any) {
+      toast.error(
+        err?.message ||
+          (isTr ? 'Kurulum iptal edilemedi' : 'Failed to cancel installation')
+      );
+    } finally {
+      setCancelingId(null);
+    }
+  };
+
+  const handleDeleteInstallation = async (id: string) => {
+    if (!window.confirm(t('installationsPage.confirmDelete'))) return;
+    setDeletingId(id);
+    try {
+      await deleteInstallation(id as UUID);
+      await queryClient.invalidateQueries({ queryKey: ['installations'] });
+      await queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success(isTr ? 'Kurulum silindi' : 'Installation deleted');
+    } catch (err: any) {
+      toast.error(
+        err?.message ||
+          (isTr ? 'Kurulum silinemedi' : 'Failed to delete installation')
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleStageInstallation = async (id: string) => {
     setStagingId(id);
     try {
@@ -727,7 +774,7 @@ export default function InstallationsPage() {
                 onClick={() => toggleSort('status')}
               />
               <th className="w-28 px-3 py-2 text-left">Crew</th>
-              <th className="w-32 px-3 py-2"></th>
+              <th className="min-w-[11rem] px-3 py-2"></th>
             </tr>
           </thead>
           <tbody className="divide-y">
@@ -799,7 +846,7 @@ export default function InstallationsPage() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <button
                         onClick={() => goDetail(r.id)}
                         className="text-primary-600 hover:text-primary-800 text-xs font-medium"
@@ -807,27 +854,55 @@ export default function InstallationsPage() {
                         {t('installationsPage.actions.view')}
                       </button>
                       {isAdmin ? (
-                        <button
-                          onClick={() => openEdit(r.id)}
-                          className="inline-flex items-center gap-1 rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                          {t('installationsPage.actions.edit')}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => openEdit(r.id)}
+                            className="inline-flex items-center gap-1 rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            {t('installationsPage.actions.edit')}
+                          </button>
+                          <button
+                            onClick={() => void handleDeleteInstallation(r.id)}
+                            disabled={deletingId === r.id}
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-100',
+                              deletingId === r.id && 'opacity-50'
+                            )}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {t('installationsPage.actions.deleteInstallation')}
+                          </button>
+                        </>
                       ) : (
-                        <button
-                          onClick={() => handleStageInstallation(r.id)}
-                          disabled={r.status !== 'pending' || stagingId === r.id}
-                          className={cn(
-                            'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium',
-                            r.status === 'pending' && stagingId !== r.id
-                              ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
-                              : 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400'
-                          )}
-                        >
-                          <Package className="h-3.5 w-3.5" />
-                          {t('installationsPage.actions.stageInstallation')}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleStageInstallation(r.id)}
+                            disabled={r.status !== 'pending' || stagingId === r.id}
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium',
+                              r.status === 'pending' && stagingId !== r.id
+                                ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                : 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400'
+                            )}
+                          >
+                            <Package className="h-3.5 w-3.5" />
+                            {t('installationsPage.actions.stageInstallation')}
+                          </button>
+                          {canCancelInstallation(r.status) ? (
+                            <button
+                              onClick={() => void handleCancelInstallation(r.id)}
+                              disabled={cancelingId === r.id}
+                              className={cn(
+                                'inline-flex items-center gap-1 rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100',
+                                cancelingId === r.id && 'opacity-50'
+                              )}
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                              {t('installationsPage.actions.cancelInstallation')}
+                            </button>
+                          ) : null}
+                        </>
                       )}
                     </div>
                   </td>
