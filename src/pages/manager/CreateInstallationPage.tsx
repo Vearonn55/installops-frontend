@@ -93,6 +93,7 @@ export default function CreateInstallationPage() {
   const [zone, setZone] = useState<string>('');
   const [crewIds, setCrewIds] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>('');
+  const [customerPaymentNote, setCustomerPaymentNote] = useState<string>('');
   const [difficulty, setDifficulty] = useState<DifficultyValue | ''>(
     prefillOrderId ? 'intermediate' : ''
   );
@@ -206,6 +207,7 @@ export default function CreateInstallationPage() {
         location: zoneLabel,
         customer_name: customerName,
         customer_phone: customerPhone,
+        customer_payment_note: customerPaymentNote.trim() || null,
       };
 
       // 1) Create the installation
@@ -496,6 +498,26 @@ export default function CreateInstallationPage() {
                 placeholder={t('createInstallationPage.notes.placeholder')}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="card-header">
+              <h3 className="card-title">
+                {t('createInstallationPage.paymentNote.title')}
+              </h3>
+              <p className="card-description">
+                {t('createInstallationPage.paymentNote.subtitle')}
+              </p>
+            </div>
+            <div className="card-content">
+              <textarea
+                className="textarea w-full"
+                rows={3}
+                placeholder={t('createInstallationPage.paymentNote.placeholder')}
+                value={customerPaymentNote}
+                onChange={(e) => setCustomerPaymentNote(e.target.value)}
               />
             </div>
           </section>

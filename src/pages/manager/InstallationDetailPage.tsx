@@ -522,6 +522,23 @@ export default function InstallationDetailPage() {
             </div>
             <div>
               <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
+                {t('installationDetailPage.paymentNoteCard.title')}
+              </div>
+              <p className="mb-2 text-xs text-gray-500">
+                {t('installationDetailPage.paymentNoteCard.subtitle')}
+              </p>
+              <div className="rounded-md border border-amber-100 bg-amber-50/50 p-3 text-sm text-gray-900 min-h-[64px] whitespace-pre-wrap">
+                {String(inst?.customer_payment_note || '').trim() ? (
+                  inst!.customer_payment_note
+                ) : (
+                  <span className="text-gray-400">
+                    {t('installationDetailPage.paymentNoteCard.none')}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
                 {t('installationDetailPage.crewNotesCard.title')}
               </div>
               <p className="mb-2 text-xs text-gray-500">

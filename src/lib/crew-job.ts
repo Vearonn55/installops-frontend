@@ -27,6 +27,7 @@ export type CrewJobView = {
   end: string;
   status: CrewJobsUiStatus;
   notes?: string;
+  customerPaymentNote?: string;
 };
 
 export function isCrewAssigned(inst: Installation, userId: string | undefined): boolean {
@@ -153,6 +154,7 @@ export function buildCrewJobView(
     end,
     status,
     notes: inst.notes ?? undefined,
+    customerPaymentNote: inst.customer_payment_note?.trim() || undefined,
   };
 }
 

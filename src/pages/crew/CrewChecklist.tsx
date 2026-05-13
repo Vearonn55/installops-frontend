@@ -1,9 +1,16 @@
 // src/pages/crew/CrewChecklist.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, CheckCircle2, Loader2, Camera, Image as ImageIcon } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  Camera,
+  Image as ImageIcon,
+  Banknote,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { cn } from '../../lib/utils';
@@ -31,12 +38,9 @@ type InstallOutcome = 'successful' | 'failed';
 type Values = {
   arrived_on_time?: boolean;
   customer_notes?: string;
-
   install_status?: InstallOutcome;
   handover_docs?: boolean;
-  payment_notes?: string;
   google_reco_given?: boolean;
-
   failure_reason?: string;
   mark_after_sale?: boolean;
 };
@@ -51,13 +55,13 @@ type LocalPhoto = {
 export default function CrewChecklist() {
   const { id: jobId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { t } = useTranslation('common');
 
   const [values, setValues] = useState<Values>({});
   const [submitting, setSubmitting] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
 
-  // local-only photos (will connect to /api/media later)
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
@@ -67,6 +71,9 @@ export default function CrewChecklist() {
     queryFn: () => getInstallation(jobId as UUID),
     enabled: !!jobId,
   });
+
+  const customerPaymentNote =
+    instQuery.data?.customer_payment_note?.trim() || '';
 
   const checklistUiStatus = instQuery.data
     ? mapBackendInstallationToCrewUiStatus(
@@ -81,15 +88,12 @@ export default function CrewChecklist() {
     ? crewReadOnlyBannerKey(checklistUiStatus)
     : null;
 
-  // ---- derive helpers ----
   const installStatus = values.install_status;
   const handoverDocs = values.handover_docs ?? false;
-  const paymentNotes = values.payment_notes ?? '';
   const googleRecoGiven = values.google_reco_given ?? false;
   const failureReason = values.failure_reason ?? '';
   const markAfterSale = values.mark_after_sale ?? false;
 
-  // ------------------ load + autosave draft ------------------
   useEffect(() => {
     if (!jobId) return;
     try {
@@ -114,7 +118,6 @@ export default function CrewChecklist() {
     }
   }, [values, jobId, draftHydrated]);
 
-  // clean up object URLs on unmount
   useEffect(() => {
     return () => {
       photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -134,15 +137,13 @@ export default function CrewChecklist() {
       prev.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       return [];
     });
-    toast('Draft cleared');
+    toast(t('crewPages.checklist.draftCleared'));
   }
 
-  // Map UI outcome → backend InstallStatus
   function mapInstallStatusForApi(status: InstallOutcome): InstallStatus {
     return status === 'successful' ? 'completed' : 'failed';
   }
 
-  // ------------------------ photo handlers ------------------------
   function handleFilesSelected(fileList: FileList | null, source: 'camera' | 'gallery') {
     if (!fileList || fileList.length === 0) return;
 
@@ -162,24 +163,23 @@ export default function CrewChecklist() {
     }
 
     if (next.length === 0) {
-      toast.error('No valid images selected');
+      toast.error(t('crewPages.checklist.noValidImages'));
       return;
     }
 
     setPhotos((prev) => [...prev, ...next]);
   }
 
-  // --------------------------- submit ---------------------------
   async function onSubmit() {
     if (!jobId) {
-      toast.error('Missing job ID');
+      toast.error(t('crewPages.checklist.missingJobId'));
       return;
     }
     if (checklistLocked) {
       toast.error(
         checklistLockMessageKey
           ? t(checklistLockMessageKey)
-          : 'Checklist is not available for this job.'
+          : t('crewPages.checklist.locked')
       );
       return;
     }
@@ -187,7 +187,7 @@ export default function CrewChecklist() {
     setSubmitting(true);
     try {
       if (installStatus === 'failed' && !String(failureReason).trim()) {
-        toast.error('Please write a failure reason');
+        toast.error(t('crewPages.checklist.failureRequired'));
         return;
       }
 
@@ -224,19 +224,20 @@ export default function CrewChecklist() {
             : null,
       });
 
-      // NOTE: photos are still local-only.
-      // Next step: upload files + call /installations/{id}/media using /api/media.ts.
+      await queryClient.invalidateQueries({ queryKey: ['installation', jobId] });
+      await queryClient.invalidateQueries({ queryKey: ['crew-jobs-installations'] });
+      await queryClient.invalidateQueries({ queryKey: ['crew-installations'] });
 
-      toast.success('Checklist submitted');
+      toast.success(t('crewPages.checklist.submitSuccess'));
       localStorage.removeItem(storageKey(jobId));
       navigate(`/crew/jobs/${jobId}`);
     } catch (err) {
       if (isAxiosError(err)) {
         const body = err.response?.data as { message?: string; error?: string } | undefined;
-        const msg = body?.message || body?.error || 'Failed to submit checklist';
+        const msg = body?.message || body?.error || t('crewPages.checklist.submitFailed');
         toast.error(msg);
       } else {
-        toast.error('Failed to submit checklist');
+        toast.error(t('crewPages.checklist.submitFailed'));
       }
     } finally {
       setSubmitting(false);
@@ -244,93 +245,115 @@ export default function CrewChecklist() {
   }
 
   return (
-    // root: flex column, main is scrollable, footer pinned at bottom
     <div className="flex h-full min-h-0 flex-1 flex-col bg-gray-50">
-      {/* Header */}
       <header className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-screen-sm items-center gap-3 px-3 py-2">
+        <div className="mx-auto flex w-full max-w-screen-sm items-center gap-2 px-3 py-3">
           <button
-            className="rounded-md p-1 hover:bg-gray-50"
+            type="button"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl hover:bg-gray-100"
             onClick={() => navigate(-1)}
+            aria-label={t('crewPages.backToJobs')}
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-gray-900">
-              Installation Checklist
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-base font-semibold text-gray-900">
+              {t('crewPages.checklist.title')}
             </div>
-            <div className="text-[11px] text-gray-500">
-              Standard Install Handover • v1.0.0
-            </div>
+            <div className="text-xs text-gray-500">{t('crewPages.checklist.subtitle')}</div>
           </div>
         </div>
       </header>
 
-      {/* Scrollable content */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto overscroll-contain">
         <div className="crew-page crew-page-sticky-footer space-y-3">
           {checklistLocked && checklistLockMessageKey ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               {t(checklistLockMessageKey)}
             </div>
           ) : null}
-          {/* Arrived on time */}
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
-            <div className="text-sm font-medium text-gray-900">Arrived on time</div>
-            <div className="mt-3 flex items-center gap-3">
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="arrived_on_time"
-                  checked={values.arrived_on_time === true}
-                  onChange={() => update('arrived_on_time', true)}
-                />
-                Yes
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="arrived_on_time"
-                  checked={values.arrived_on_time === false}
-                  onChange={() => update('arrived_on_time', false)}
-                />
-                No
-              </label>
-            </div>
-          </section>
 
-          {/* Customer notes */}
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
-            <div className="text-sm font-medium text-gray-900">Customer notes</div>
-            <div className="mt-0.5 text-xs text-gray-500">
-              Anything the customer requested
-            </div>
-            <div className="mt-3 space-y-2">
-              <textarea
-                className="input w-full min-h-[72px]"
-                placeholder="Type here…"
-                value={values.customer_notes ?? ''}
-                onChange={(e) => update('customer_notes', e.target.value)}
-              />
-              <div className="text-right">
-                <button
-                  onClick={() => update('customer_notes', undefined)}
-                  className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                >
-                  Clear
-                </button>
+          {customerPaymentNote ? (
+            <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <Banknote className="mt-0.5 h-5 w-5 shrink-0 text-amber-800" />
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-amber-950">
+                    {t('crewPages.checklist.paymentNoteTitle')}
+                  </div>
+                  <p className="mt-0.5 text-xs text-amber-800">
+                    {t('crewPages.checklist.paymentNoteHint')}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-amber-950">
+                    {customerPaymentNote}
+                  </p>
+                </div>
               </div>
+            </section>
+          ) : null}
+
+          <section className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="text-sm font-semibold text-gray-900">
+              {t('crewPages.checklist.arrivedOnTime')}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className={cn(
+                  'min-h-12 rounded-xl border px-3 text-sm font-medium',
+                  values.arrived_on_time === true
+                    ? 'border-primary-500 bg-primary-50 text-primary-800'
+                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                )}
+                onClick={() => update('arrived_on_time', true)}
+              >
+                {t('crewPages.checklist.yes')}
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  'min-h-12 rounded-xl border px-3 text-sm font-medium',
+                  values.arrived_on_time === false
+                    ? 'border-primary-500 bg-primary-50 text-primary-800'
+                    : 'border-gray-200 bg-white hover:bg-gray-50'
+                )}
+                onClick={() => update('arrived_on_time', false)}
+              >
+                {t('crewPages.checklist.no')}
+              </button>
             </div>
           </section>
 
-          {/* Photos */}
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
-            <div className="text-sm font-medium text-gray-900">Photos</div>
-            <div className="mt-0.5 text-xs text-gray-500">
-              Take a quick photo or pick from your gallery.
+          <section className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="text-sm font-semibold text-gray-900">
+              {t('crewPages.checklist.customerNotes')}
             </div>
+            <p className="mt-0.5 text-xs text-gray-500">
+              {t('crewPages.checklist.customerNotesHint')}
+            </p>
+            <textarea
+              className="input mt-3 min-h-[88px] w-full rounded-xl text-base"
+              placeholder={t('crewPages.checklist.customerNotesPlaceholder')}
+              value={values.customer_notes ?? ''}
+              onChange={(e) => update('customer_notes', e.target.value)}
+            />
+            <div className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={() => update('customer_notes', undefined)}
+                className="min-h-10 rounded-lg border px-3 text-xs font-medium hover:bg-gray-50"
+              >
+                {t('crewPages.checklist.clear')}
+              </button>
+            </div>
+          </section>
 
-            {/* Hidden inputs */}
+          <section className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="text-sm font-semibold text-gray-900">
+              {t('crewPages.checklist.photos')}
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500">{t('crewPages.checklist.photosHint')}</p>
+
             <input
               ref={cameraInputRef}
               type="file"
@@ -339,7 +362,6 @@ export default function CrewChecklist() {
               className="hidden"
               onChange={(e) => {
                 handleFilesSelected(e.target.files, 'camera');
-                // clear value so selecting the same file again still fires onChange
                 e.target.value = '';
               }}
             />
@@ -355,42 +377,35 @@ export default function CrewChecklist() {
               }}
             />
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 type="button"
-                className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center text-xs font-medium text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                onClick={() => {
-                  if (!cameraInputRef.current) return;
-                  cameraInputRef.current.click();
-                }}
+                className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 px-3 text-center text-xs font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                onClick={() => cameraInputRef.current?.click()}
               >
-                <Camera className="mb-1 h-5 w-5" />
-                <span>Take photo</span>
+                <Camera className="mb-1.5 h-6 w-6" />
+                {t('crewPages.checklist.takePhoto')}
               </button>
-
               <button
                 type="button"
-                className="flex flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 px-3 py-4 text-center text-xs font-medium text-gray-700 hover:border-gray-400 hover:bg-gray-50"
-                onClick={() => {
-                  if (!galleryInputRef.current) return;
-                  galleryInputRef.current.click();
-                }}
+                className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 px-3 text-center text-xs font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                onClick={() => galleryInputRef.current?.click()}
               >
-                <ImageIcon className="mb-1 h-5 w-5" />
-                <span>Select from gallery</span>
+                <ImageIcon className="mb-1.5 h-6 w-6" />
+                {t('crewPages.checklist.selectGallery')}
               </button>
             </div>
 
-            {photos.length > 0 && (
-              <div className="mt-3 space-y-1">
-                <div className="text-[11px] font-medium text-gray-500">
-                  Selected photos ({photos.length})
+            {photos.length > 0 ? (
+              <div className="mt-3">
+                <div className="text-xs font-medium text-gray-500">
+                  {t('crewPages.checklist.selectedPhotos', { count: photos.length })}
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   {photos.map((p) => (
                     <div
                       key={p.id}
-                      className="relative h-16 w-16 overflow-hidden rounded-md border"
+                      className="relative h-20 w-20 overflow-hidden rounded-xl border"
                     >
                       <img
                         src={p.previewUrl}
@@ -401,19 +416,20 @@ export default function CrewChecklist() {
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
           </section>
 
-          {/* Installation result */}
-          <section className="rounded-xl border bg-white p-3 shadow-sm">
-            <div className="mb-2 text-sm font-medium text-gray-900">Installation result</div>
+          <section className="rounded-2xl border bg-white p-4 shadow-sm">
+            <div className="mb-3 text-sm font-semibold text-gray-900">
+              {t('crewPages.checklist.installResult')}
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 className={cn(
-                  'rounded-md border px-3 py-2 text-sm',
+                  'min-h-12 rounded-xl border px-3 text-sm font-semibold',
                   installStatus === 'successful'
-                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    ? 'border-emerald-400 bg-emerald-50 text-emerald-800'
                     : 'border-gray-200 hover:bg-gray-50'
                 )}
                 onClick={() => {
@@ -421,146 +437,113 @@ export default function CrewChecklist() {
                   update('failure_reason', undefined);
                 }}
               >
-                Installation successful
+                {t('crewPages.checklist.successful')}
               </button>
               <button
                 type="button"
                 className={cn(
-                  'rounded-md border px-3 py-2 text-sm',
+                  'min-h-12 rounded-xl border px-3 text-sm font-semibold',
                   installStatus === 'failed'
-                    ? 'border-rose-300 bg-rose-50 text-rose-700'
+                    ? 'border-rose-400 bg-rose-50 text-rose-800'
                     : 'border-gray-200 hover:bg-gray-50'
                 )}
                 onClick={() => {
                   update('install_status', 'failed');
                   update('handover_docs', undefined);
-                  update('payment_notes', undefined);
                   update('google_reco_given', undefined);
                 }}
               >
-                Installation failed
+                {t('crewPages.checklist.failed')}
               </button>
             </div>
           </section>
 
-          {/* When successful */}
-          {installStatus === 'successful' && (
+          {installStatus === 'successful' ? (
             <>
-              <section className="rounded-xl border bg-white p-3 shadow-sm">
-                <div className="text-sm font-medium text-gray-900">
-                  Insurance document and User instructions given
+              <section className="rounded-2xl border bg-white p-4 shadow-sm">
+                <div className="text-sm font-semibold text-gray-900">
+                  {t('crewPages.checklist.handoverDocs')}
                 </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={handoverDocs}
-                      onChange={(e) => update('handover_docs', e.target.checked)}
-                    />
-                    Confirmed
-                  </label>
-                </div>
-              </section>
-
-              <section className="rounded-xl border bg-white p-3 shadow-sm">
-                <div className="text-sm font-medium text-gray-900">
-                  About customer payment
-                </div>
-                <div className="mt-2 space-y-2">
-                  <textarea
-                    className="input w-full min-h-[72px]"
-                    placeholder="Write any notes about payment method, receipt, balance, or follow-up…"
-                    value={paymentNotes}
-                    onChange={(e) => update('payment_notes', e.target.value)}
+                <label className="mt-3 flex min-h-12 items-center gap-3 rounded-xl border border-gray-200 px-3 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5"
+                    checked={handoverDocs}
+                    onChange={(e) => update('handover_docs', e.target.checked)}
                   />
-                  <div className="text-right">
-                    <button
-                      onClick={() => update('payment_notes', undefined)}
-                      className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
+                  {t('crewPages.checklist.confirmed')}
+                </label>
               </section>
 
-              <section className="rounded-xl border bg-white p-3 shadow-sm">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-gray-900">
-                    Google recommendation given
-                  </div>
-                  <div className="mt-0.5 text-xs text-gray-500">
-                    Ask customer to scan and leave a quick Google review.
-                  </div>
+              <section className="rounded-2xl border bg-white p-4 shadow-sm">
+                <div className="text-sm font-semibold text-gray-900">
+                  {t('crewPages.checklist.googleReco')}
                 </div>
-
-                <div className="mt-3 flex items-center gap-2">
-                  <label className="inline-flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={googleRecoGiven}
-                      onChange={(e) => update('google_reco_given', e.target.checked)}
-                    />
-                    Confirmed
-                  </label>
-                </div>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {t('crewPages.checklist.googleRecoHint')}
+                </p>
+                <label className="mt-3 flex min-h-12 items-center gap-3 rounded-xl border border-gray-200 px-3 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5"
+                    checked={googleRecoGiven}
+                    onChange={(e) => update('google_reco_given', e.target.checked)}
+                  />
+                  {t('crewPages.checklist.confirmed')}
+                </label>
               </section>
             </>
-          )}
+          ) : null}
 
-          {/* When failed */}
-          {installStatus === 'failed' && (
-            <section className="rounded-xl border bg-white p-3 shadow-sm">
-              <div className="text-sm font-medium text-gray-900">Failure reason</div>
-              <div className="mt-2 space-y-2">
-                <textarea
-                  className="input w-full min-h-[72px]"
-                  placeholder="Describe the failure reason…"
-                  value={failureReason}
-                  onChange={(e) => update('failure_reason', e.target.value)}
-                />
-                <div className="text-right">
-                  <button
-                    onClick={() => update('failure_reason', undefined)}
-                    className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
-                  >
-                    Clear
-                  </button>
-                </div>
+          {installStatus === 'failed' ? (
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <div className="text-sm font-semibold text-gray-900">
+                {t('crewPages.checklist.failureReason')}
+              </div>
+              <textarea
+                className="input mt-3 min-h-[88px] w-full rounded-xl text-base"
+                placeholder={t('crewPages.checklist.failurePlaceholder')}
+                value={failureReason}
+                onChange={(e) => update('failure_reason', e.target.value)}
+              />
+              <div className="mt-2 text-right">
+                <button
+                  type="button"
+                  onClick={() => update('failure_reason', undefined)}
+                  className="min-h-10 rounded-lg border px-3 text-xs font-medium hover:bg-gray-50"
+                >
+                  {t('crewPages.checklist.clear')}
+                </button>
               </div>
 
-              <label className="mt-3 inline-flex w-full items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <label className="mt-3 flex min-h-12 items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
                 <input
                   type="checkbox"
                   checked={markAfterSale}
                   onChange={(e) => update('mark_after_sale', e.target.checked)}
-                  className="mt-0.5"
+                  className="mt-1 h-5 w-5"
                 />
-                <span>
-                  Mark as <span className="font-semibold">After-sale service</span> (follow-up visit
-                  required)
-                </span>
+                <span>{t('crewPages.checklist.markAfterSale')}</span>
               </label>
             </section>
-          )}
+          ) : null}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="sticky bottom-0 border-t bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-3 pb-3">
+      <footer className="shrink-0 border-t bg-white/95 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-3">
           <button
-            className="btn-soft flex-1"
-            onClick={() => {
-              clearDraft();
-            }}
+            type="button"
+            className="btn-soft min-h-12 flex-1 rounded-xl text-sm font-semibold"
+            onClick={clearDraft}
           >
-            Clear All
+            {t('crewPages.checklist.clearAll')}
           </button>
           <button
+            type="button"
             disabled={submitting || checklistLocked}
             className={cn(
-              'inline-flex flex-1 items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50'
+              'inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-primary-600 px-3 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50'
             )}
             onClick={onSubmit}
           >
@@ -569,7 +552,7 @@ export default function CrewChecklist() {
             ) : (
               <CheckCircle2 className="mr-2 h-4 w-4" />
             )}
-            Submit
+            {t('crewPages.checklist.submit')}
           </button>
         </div>
       </footer>

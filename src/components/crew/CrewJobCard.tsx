@@ -1,4 +1,4 @@
-import { Clock, MapPin, Phone, Users, ChevronRight, Play } from 'lucide-react';
+import { Clock, MapPin, Phone, Users, ChevronRight, Play, Banknote } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import {
@@ -109,6 +109,12 @@ export default function CrewJobCard({
 
           {job.notes ? (
             <p className="line-clamp-2 pt-1 text-xs text-gray-600">{job.notes}</p>
+          ) : null}
+          {job.customerPaymentNote ? (
+            <p className="flex items-start gap-1.5 pt-1 text-xs text-amber-900">
+              <Banknote className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="line-clamp-2">{job.customerPaymentNote}</span>
+            </p>
           ) : null}
         </div>
 

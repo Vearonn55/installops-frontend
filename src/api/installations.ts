@@ -60,6 +60,7 @@ export type Installation = {
   location?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
+  customer_payment_note?: string | null;
   checklist_result?: 'success' | 'failed' | null;
   checklist_failure_reason?: string | null;
   checklist_completed_at?: string | null;
@@ -92,6 +93,7 @@ export type InstallationCreate = {
   location?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
+  customer_payment_note?: string | null;
 };
 
 export type ListInstallationsParams = {
@@ -106,6 +108,7 @@ export type UpdateSchedulePayload = {
   scheduled_start?: string | null;
   scheduled_end?: string | null;
   notes?: string | null;
+  customer_payment_note?: string | null;
 };
 
 export type UpdateStatusPayload = {

@@ -196,6 +196,7 @@ type EditState = {
   scheduled_start: string; // datetime-local
   scheduled_end: string;
   notes: string;
+  customer_payment_note: string;
 };
 
 /* --------------------------------- Page -------------------------------- */
@@ -393,6 +394,7 @@ export default function InstallationsPage() {
       scheduled_start: isoToLocalInput(inst.scheduled_start ?? null),
       scheduled_end: isoToLocalInput(inst.scheduled_end ?? null),
       notes: inst.notes ?? '',
+      customer_payment_note: inst.customer_payment_note ?? '',
     });
   };
 
@@ -409,6 +411,7 @@ export default function InstallationsPage() {
         scheduled_start: localInputToIso(editState.scheduled_start),
         scheduled_end: localInputToIso(editState.scheduled_end),
         notes: editState.notes.trim() || null,
+        customer_payment_note: editState.customer_payment_note.trim() || null,
       };
 
       await updateInstallationSchedule(editState.id, schedulePayload);
@@ -1082,6 +1085,29 @@ export default function InstallationsPage() {
                   }
                   placeholder={
                     isTr ? 'Ekip için ek notlar…' : 'Additional notes for the crew…'
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs text-gray-600">
+                  {isTr ? 'Müşteri ödeme notu' : 'Customer payment note'}
+                </label>
+                <textarea
+                  rows={3}
+                  className="input w-full"
+                  value={editState.customer_payment_note}
+                  onChange={(e) =>
+                    setEditState((prev) =>
+                      prev
+                        ? { ...prev, customer_payment_note: e.target.value }
+                        : prev
+                    )
+                  }
+                  placeholder={
+                    isTr
+                      ? 'Ödeme yöntemi, bakiye, makbuz vb.'
+                      : 'Payment method, balance, receipt, etc.'
                   }
                 />
               </div>

@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Play,
   Package,
+  Banknote,
 } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
@@ -217,6 +218,17 @@ export default function CrewJobDetail() {
                 <p className="mt-3 rounded-lg bg-white/60 p-2 text-xs text-gray-700">
                   {job.notes}
                 </p>
+              ) : null}
+              {job.customerPaymentNote ? (
+                <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 p-3 text-sm text-amber-950">
+                  <Banknote className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+                      {t('crewPages.customerPaymentNote')}
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap leading-snug">{job.customerPaymentNote}</p>
+                  </div>
+                </div>
               ) : null}
             </section>
 
