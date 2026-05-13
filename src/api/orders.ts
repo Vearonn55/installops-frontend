@@ -38,6 +38,7 @@ export type ListOrdersParams = {
   store_id?: UUID;
   status?: OrderStatus | string;
   external_order_id?: string;
+  q?: string;
   limit?: number;
   offset?: number;
 };

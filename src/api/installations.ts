@@ -101,6 +101,7 @@ export type ListInstallationsParams = {
   external_order_id?: string;
   store_id?: UUID;
   status?: InstallStatus;
+  q?: string;
   limit?: number;
   offset?: number;
 };

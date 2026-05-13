@@ -210,6 +210,7 @@ export default function OrdersPage() {
           const orderRes = await listOrders({
             limit: 300,
             ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
+            ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
           });
           if (!cancelled) {
             setOrders(orderRes.data ?? []);
