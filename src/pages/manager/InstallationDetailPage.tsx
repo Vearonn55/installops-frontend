@@ -110,6 +110,10 @@ const badge = (s: Installation['status']) =>
     ? 'bg-yellow-100 text-yellow-800'
     : 'bg-gray-100 text-gray-800';
 
+/** Long crew/manager notes must wrap inside grid cards without stretching the page. */
+const noteBodyClass =
+  'max-w-full min-h-[64px] break-words whitespace-pre-wrap p-3 text-sm [overflow-wrap:anywhere]';
+
 export default function InstallationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -327,7 +331,7 @@ export default function InstallationDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -405,9 +409,9 @@ export default function InstallationDetailPage() {
       </div>
 
       {/* Meta cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-3">
         {/* Status + store + schedule */}
-        <div className="card">
+        <div className="card min-w-0">
           <div className="card-header">
             <h3 className="card-title flex items-center gap-2">
               <Info className="h-4 w-4" />
@@ -454,7 +458,7 @@ export default function InstallationDetailPage() {
         </div>
 
         {/* Crew */}
-        <div className="card">
+        <div className="card min-w-0">
           <div className="card-header">
             <h3 className="card-title flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -510,7 +514,7 @@ export default function InstallationDetailPage() {
         </div>
 
         {/* Notes */}
-        <div className="card">
+        <div className="card min-w-0">
           <div className="card-header">
             <h3 className="card-title flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -525,7 +529,7 @@ export default function InstallationDetailPage() {
               <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
                 {t('installationDetailPage.notesCard.title')}
               </div>
-              <div className="rounded-md border bg-white p-3 text-sm text-gray-800 min-h-[64px]">
+              <div className={cn("rounded-md border bg-white text-gray-800", noteBodyClass)}>
                 {inst?.notes?.trim() ? (
                   inst.notes
                 ) : (
@@ -542,7 +546,7 @@ export default function InstallationDetailPage() {
               <p className="mb-2 text-xs text-gray-500">
                 {t('installationDetailPage.paymentNoteCard.subtitle')}
               </p>
-              <div className="rounded-md border border-amber-100 bg-amber-50/50 p-3 text-sm text-gray-900 min-h-[64px] whitespace-pre-wrap">
+              <div className={cn("rounded-md border border-amber-100 bg-amber-50/50 text-gray-900", noteBodyClass)}>
                 {String(inst?.customer_payment_note || '').trim() ? (
                   inst!.customer_payment_note
                 ) : (
@@ -559,7 +563,7 @@ export default function InstallationDetailPage() {
               <p className="mb-2 text-xs text-gray-500">
                 {t('installationDetailPage.crewNotesCard.subtitle')}
               </p>
-              <div className="rounded-md border border-primary-100 bg-primary-50/40 p-3 text-sm text-gray-900 min-h-[64px] whitespace-pre-wrap">
+              <div className={cn("rounded-md border border-primary-100 bg-primary-50/40 text-gray-900", noteBodyClass)}>
                 {String(inst?.crew_after_installation_notes || '').trim() ? (
                   inst!.crew_after_installation_notes
                 ) : (
@@ -573,7 +577,7 @@ export default function InstallationDetailPage() {
               <div className="mb-1 text-xs font-medium uppercase tracking-wide text-gray-500">
                 Failure reason
               </div>
-              <div className="rounded-md border border-rose-100 bg-rose-50/40 p-3 text-sm text-gray-900 min-h-[64px] whitespace-pre-wrap">
+              <div className={cn("rounded-md border border-rose-100 bg-rose-50/40 text-gray-900", noteBodyClass)}>
                 {String(inst?.checklist_failure_reason || '').trim() ? (
                   inst!.checklist_failure_reason
                 ) : (
