@@ -24,7 +24,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../stores/auth";
 import { useManagerStoreId } from "../../hooks/use-manager-store-id";
 import { inferManagerStoreId } from "../../lib/manager-store";
-import { textMatchesSearch } from "../../lib/search-text";
+import { textMatchesSearch, netsisApiSearchQ } from "../../lib/search-text";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -88,6 +88,20 @@ export default function OrdersPage() {
   }, [store, debouncedFilterQ, from, to, status]);
 
   const managerStoreId = useManagerStoreId(stores);
+
+  const netsisApiQ = useMemo(() => netsisApiSearchQ(debouncedFilterQ), [debouncedFilterQ]);
+
+  const ordersFetchKey = useMemo(() => {
+    const effectiveStoreId =
+      isAdmin && store !== "all" ? store : !isAdmin ? managerStoreId : store !== "all" ? store : null;
+    const sel = effectiveStoreId ? stores.find((s) => s.id === effectiveStoreId) : null;
+    const netsisStores = stores.filter(storeUsesNetsisItemSlipsList);
+    const useNetsis =
+      (isAdmin && store === "all" && netsisStores.length > 0) ||
+      Boolean(sel && storeUsesNetsisItemSlipsList(sel));
+    const searchPart = useNetsis ? netsisApiQ : debouncedFilterQ;
+    return `${store}:${effectiveStoreId ?? "all"}:${searchPart}`;
+  }, [store, stores, isAdmin, managerStoreId, netsisApiQ, debouncedFilterQ]);
 
   useEffect(() => {
     if (!isAdmin && managerStoreId && store === "all") {
@@ -190,7 +204,7 @@ export default function OrdersPage() {
 
       try {
         if (useNetsisAll) {
-          const batch = await fetchNetsisForStores(netsisStores, debouncedFilterQ, {});
+          const batch = await fetchNetsisForStores(netsisStores, netsisApiQ, {});
           if (!cancelled) {
             setOrders(batch.orders);
             setNetsisCursors(batch.cursors);
@@ -199,7 +213,7 @@ export default function OrdersPage() {
             setOrdersFetchError(null);
           }
         } else if (useNetsisSingle && sel) {
-          const batch = await fetchNetsisForStores([sel], debouncedFilterQ, {});
+          const batch = await fetchNetsisForStores([sel], netsisApiQ, {});
           if (!cancelled) {
             setOrders(batch.orders);
             setNetsisCursors(batch.cursors);
@@ -258,7 +272,7 @@ export default function OrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, [store, debouncedFilterQ, isAdmin, user?.email, fetchNetsisForStores]);
+  }, [ordersFetchKey, isAdmin, user?.email, user?.store_id, fetchNetsisForStores, netsisApiQ, debouncedFilterQ]);
 
   const loadMoreNetsis = useCallback(async () => {
     if (!hasMore || loadingMore || loading) return;
@@ -283,7 +297,7 @@ export default function OrdersPage() {
 
     setLoadingMore(true);
     try {
-      const batch = await fetchNetsisForStores(targetStores, debouncedFilterQ, offsets);
+      const batch = await fetchNetsisForStores(targetStores, netsisApiQ, offsets);
       setOrders((prev) => dedupeOrders([...prev, ...batch.orders]));
       setNetsisCursors((prev) => ({ ...prev, ...batch.cursors }));
       setHasMore(batch.hasMore);
@@ -301,7 +315,7 @@ export default function OrdersPage() {
     managerStoreId,
     store,
     netsisCursors,
-    debouncedFilterQ,
+    netsisApiQ,
     fetchNetsisForStores,
   ]);
 
@@ -354,9 +368,7 @@ export default function OrdersPage() {
       list = list.filter((o) => orderMatchesStoreFilter(o, store));
     }
 
-    // Client search only when the list API did not already filter by q
-    const apiHandlesSearch = Boolean(debouncedFilterQ.trim());
-    if (q.trim() && !apiHandlesSearch) {
+    if (q.trim()) {
       list = list.filter(
         (o) =>
           textMatchesSearch(o.id, q) ||
@@ -388,7 +400,7 @@ export default function OrdersPage() {
     });
 
     return list;
-  }, [orders, q, debouncedFilterQ, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
+  }, [orders, q, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
 
   const netsisFilteredEmpty =
     ordersSource === "netsis" &&
