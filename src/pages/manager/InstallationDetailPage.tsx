@@ -237,6 +237,7 @@ export default function InstallationDetailPage() {
   const mediaQuery = useQuery({
     queryKey: ['installationMedia', id],
     enabled: !!id,
+    refetchOnMount: 'always',
     queryFn: async () => {
       if (!id) throw new Error('Missing installation id');
       try {
