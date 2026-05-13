@@ -239,11 +239,19 @@ export default function CrewChecklist() {
             uploaded += 1;
           } catch (uploadErr) {
             console.error('checklist photo upload failed:', uploadErr);
-            if (isAxiosError(uploadErr)) {
+            if (uploadErr instanceof Error) {
+              if (uploadErr.message === 'network_error') {
+                lastUploadError = t('crewPages.checklist.photosUploadNetwork');
+              } else if (uploadErr.message === 'upload_timeout') {
+                lastUploadError = t('crewPages.checklist.photosUploadTimeout');
+              } else if (uploadErr.message === 'file_too_large') {
+                lastUploadError = t('crewPages.checklist.photosUploadTooLarge');
+              } else {
+                lastUploadError = uploadErr.message;
+              }
+            } else if (isAxiosError(uploadErr)) {
               const body = uploadErr.response?.data as { message?: string } | undefined;
               lastUploadError = body?.message || uploadErr.message;
-            } else if (uploadErr instanceof Error) {
-              lastUploadError = uploadErr.message;
             }
           }
         }

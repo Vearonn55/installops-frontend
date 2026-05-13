@@ -1,5 +1,5 @@
 // /api/media.ts
-import { apiGet, apiPost, apiDelete, apiClient, UUID } from './http';
+import { apiGet, apiPost, apiDelete, UUID } from './http';
 
 export type MediaType = 'photo' | 'signature';
 
@@ -64,22 +64,45 @@ export async function uploadInstallationMedia(
   if (opts?.tags && Object.keys(opts.tags).length > 0) {
     form.append('tags', JSON.stringify(opts.tags));
   }
-  const res = await apiClient.post<MediaAsset>(
-    `/media/installations/${installationId}/media/upload`,
-    form,
-    {
-      // Let the browser set multipart boundary (do not force Content-Type).
-      transformRequest: [
-        (data, headers) => {
-          if (data instanceof FormData && headers) {
-            delete headers['Content-Type'];
-          }
-          return data;
-        },
-      ],
+
+  const base =
+    import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || '/api/v1';
+  const url = `${base}/media/installations/${installationId}/media/upload`;
+
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 120_000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('upload_timeout');
     }
-  );
-  return res.data;
+    throw new Error('network_error');
+  } finally {
+    window.clearTimeout(timer);
+  }
+
+  if (!res.ok) {
+    let message = `Upload failed (${res.status})`;
+    try {
+      const body = (await res.json()) as { message?: string };
+      if (body?.message) message = body.message;
+    } catch {
+      if (res.status === 413) {
+        message = 'file_too_large';
+      }
+    }
+    throw new Error(message);
+  }
+
+  return res.json() as Promise<MediaAsset>;
 }
 
 // global media record

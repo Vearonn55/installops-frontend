@@ -801,6 +801,10 @@ profilePage: {
       submitFailed: 'Kontrol listesi gönderilemedi',
       photosUploadFailed: 'Kontrol listesi kaydedildi ancak fotoğraflar yüklenemedi',
       photosUploadFailedDetail: 'Kontrol listesi kaydedildi ancak fotoğraflar yüklenemedi: {{detail}}',
+      photosUploadNetwork:
+        'Ağ hatası — sunucu büyük dosyaları engelliyor olabilir (nginx client_max_body_size 20M gerekli)',
+      photosUploadTimeout: 'Yükleme zaman aşımı — daha küçük fotoğraf veya daha iyi bağlantı deneyin',
+      photosUploadTooLarge: 'Fotoğraf çok büyük (en fazla 10 MB)',
       photosUploadPartial: '{{total}} fotoğraftan yalnızca {{uploaded}} tanesi yüklendi',
       failureRequired: 'Lütfen başarısızlık nedenini yazın',
       missingJobId: 'İş kimliği eksik',
