@@ -65,6 +65,34 @@ export function stokAdiFromLine(line: NetsisJson): string {
   ).trim();
 }
 
+/**
+ * Text inside `(…)` in NetOpenX `Stok_Adi` after Items lookup, e.g.
+ * `SANDALYE BONİTA STD (HM-412) (TEKLİ)` → `["HM-412", "TEKLİ"]`.
+ */
+export function parentheticalSegmentsFromStokName(stokAdi: string): string[] {
+  const name = String(stokAdi || '').trim();
+  if (!name) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const re = /\(([^)]+)\)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(name)) !== null) {
+    const seg = String(m[1] ?? '').trim();
+    if (!seg) continue;
+    const k = seg.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(seg);
+  }
+  return out;
+}
+
+/** Parenthetical variant / renk hints from merged `Stok` / `StokTemelBilgi.Stok_Adi` on the line. */
+export function parentheticalNotesFromLine(line: NetsisJson): string {
+  const segments = parentheticalSegmentsFromStokName(stokAdiFromLine(line));
+  return segments.length ? segments.join(' · ') : '';
+}
+
 /** Flatten `Stok` + `StokTemelBilgi` for reading özellik / renk fields on a line. */
 function mergedStokFieldsForLine(line: Record<string, unknown>): Record<string, unknown> {
   const Stok =
@@ -126,9 +154,51 @@ export function lineVariantOrColorNote(line: NetsisJson): string {
   return parts.join(' · ');
 }
 
-/** NetOpenX satır açıklaması — özellikle `STra_ACIK` (Logo kalemi). */
+function collectStringArrayNotes(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((v) => String(v ?? '').trim()).filter(Boolean);
+}
+
+/**
+ * NetOpenX REST: `SatirBaziAciks` (string[]) on Kalems — COM `FatKalem.SatirBaziAcik[n]`.
+ * Schema: GET /api/v2/definitions/ItemSlips?expandLevel=full → Kalems.SatirBaziAciks.
+ */
+export function satirBaziAciksFromLine(line: NetsisJson): string[] {
+  const r = line as Record<string, unknown>;
+  const out: string[] = [];
+  for (const key of ['SatirBaziAciks', 'satirBaziAciks', 'SatirBaziAcik', 'satirBaziAcik']) {
+    const v = r[key];
+    if (Array.isArray(v)) {
+      out.push(...collectStringArrayNotes(v));
+    } else if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+      for (const entry of Object.values(v as Record<string, unknown>)) {
+        const t = String(entry ?? '').trim();
+        if (t) out.push(t);
+      }
+    } else if (typeof v === 'string' && v.trim()) {
+      out.push(v.trim());
+    }
+  }
+  const seen = new Set<string>();
+  return out.filter((t) => {
+    const k = t.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function looksLikeCariKodOnly(note: string, line: Record<string, unknown>): boolean {
+  const cari = String(line.STra_CARI_KOD ?? line.Stra_CarKod ?? line.CARI_KOD ?? '').trim();
+  return !!cari && note === cari;
+}
+
+/** NetOpenX satır açıklaması — önce `SatirBaziAciks`, sonra `STra_ACIK` (cari kodu değilse). */
 export function satirAciklamaFromLine(line: NetsisJson): string {
   const r = line as Record<string, unknown>;
+  const bazi = satirBaziAciksFromLine(line);
+  if (bazi.length) return bazi.join(' · ');
+
   const direct = String(
     r.ACIKLAMA ??
       r.SATIR_ACIKLAMA ??
@@ -143,25 +213,30 @@ export function satirAciklamaFromLine(line: NetsisJson): string {
       r.Sthar_aciklama ??
       ''
   ).trim();
-  if (direct) return direct;
+  if (direct && !looksLikeCariKodOnly(direct, r)) return direct;
 
   for (const key of Object.keys(r)) {
+    if (/SatirBazi/i.test(key)) continue;
     if (!/(ACIK|SATIR|SATAC|RENK|NOT)/i.test(key)) continue;
     const v = r[key];
     if (typeof v !== 'string') continue;
     const t = v.trim();
-    if (!t) continue;
+    if (!t || looksLikeCariKodOnly(t, r)) continue;
     if (/^\d{1,2}\.\d{1,2}\.\d{4}/.test(t)) continue;
     return t;
   }
   return '';
 }
 
-/** Satır notu + stok renk/özellik (Description sütunu için). */
+/** Description column: SatirBaziAciks → satır notu → `(…)` from Stok_Adi → stok kod alanları. */
 export function lineItemDescriptionFromLine(line: NetsisJson): string {
+  const bazi = satirBaziAciksFromLine(line);
+  if (bazi.length) return bazi.join(' · ');
   const satir = satirAciklamaFromLine(line);
-  const variant = lineVariantOrColorNote(line);
-  return [satir, variant].filter(Boolean).join(' · ');
+  if (satir) return satir;
+  const parens = parentheticalNotesFromLine(line);
+  if (parens) return parens;
+  return lineVariantOrColorNote(line);
 }
 
 export function lineRowId(line: NetsisJson, index: number): string {
