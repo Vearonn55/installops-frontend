@@ -1,5 +1,5 @@
 // src/pages/manager/OrdersPage.tsx
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -21,10 +21,17 @@ import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations"
 import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
+import { useAuthStore } from "../../stores/auth";
+
+const NETSIS_PAGE_SIZE = 50;
+
+type StoreFetchCursor = { offset: number; lastPageFull: boolean };
 
 export default function OrdersPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = useAuthStore((s) => s.hasRole("ADMIN"));
 
   // 🔹 Local UI state — date range includes past orders (placed_at = installation created_at)
   const ordersRangeDefault = useMemo(() => defaultDateRangeOrdersList(), []);
@@ -60,6 +67,9 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [ordersFetchError, setOrdersFetchError] = useState<string | null>(null);
   const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [netsisCursors, setNetsisCursors] = useState<Record<string, StoreFetchCursor>>({});
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedFilterQ(q.trim()), 400);
@@ -68,15 +78,76 @@ export default function OrdersPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [store, debouncedFilterQ]);
+  }, [store, debouncedFilterQ, from, to, status]);
 
-  // Stores + orders: NetOpenX ItemSlips when one store has HTTP Netsis + search path; else aggregated installations.
+  const managerStoreId = useMemo(
+    () => (isAdmin ? null : inferManagerStoreId(stores, user?.email)),
+    [isAdmin, stores, user?.email]
+  );
+
+  useEffect(() => {
+    if (!isAdmin && managerStoreId && store === "all") {
+      setStore(managerStoreId);
+    }
+  }, [isAdmin, managerStoreId, store]);
+
+  const fetchNetsisForStores = useCallback(
+    async (
+      targetStores: StoreType[],
+      q: string,
+      offsets: Record<string, number>
+    ): Promise<{
+      orders: Order[];
+      cursors: Record<string, StoreFetchCursor>;
+      hasMore: boolean;
+    }> => {
+      const results = await Promise.allSettled(
+        targetStores.map(async (s) => {
+          const res = await searchNetsisOrders({
+            store_id: s.id as UUID,
+            ...(q ? { q } : {}),
+            limit: NETSIS_PAGE_SIZE,
+            offset: offsets[s.id] ?? 0,
+          });
+          return { store: s, hits: res.data ?? [] };
+        })
+      );
+
+      const nextOrders: Order[] = [];
+      const nextCursors: Record<string, StoreFetchCursor> = {};
+      let anyFull = false;
+
+      for (const r of results) {
+        if (r.status !== "fulfilled") continue;
+        const { store: st, hits } = r.value;
+        const full = hits.length >= NETSIS_PAGE_SIZE;
+        if (full) anyFull = true;
+        nextCursors[st.id] = {
+          offset: offsets[st.id] ?? 0,
+          lastPageFull: full,
+        };
+        nextOrders.push(...netsisHitsToOrders(hits, st));
+      }
+
+      return {
+        orders: dedupeOrders(nextOrders),
+        cursors: nextCursors,
+        hasMore: anyFull,
+      };
+    },
+    []
+  );
+
+  // Stores + orders: NetOpenX ItemSlips for Netsis stores; managers are single-store scoped.
   useEffect(() => {
     let cancelled = false;
 
     async function fetchData() {
       setLoading(true);
       setOrdersFetchError(null);
+      setHasMore(false);
+      setNetsisCursors({});
+      setOrders([]);
 
       let nextStores: StoreType[] = [];
       try {
@@ -88,48 +159,78 @@ export default function OrdersPage() {
       }
       if (!cancelled) setStores(nextStores);
 
-      const sel = store !== "all" ? nextStores.find((s) => s.id === store) : null;
-      const useNetsis = Boolean(sel && storeUsesNetsisItemSlipsList(sel));
+      const mgrStoreId = !isAdmin ? inferManagerStoreId(nextStores, user?.email) : null;
+      if (!isAdmin && !mgrStoreId) {
+        if (!cancelled) {
+          setOrders([]);
+          setOrdersSource("installations");
+          setLoading(false);
+        }
+        return;
+      }
+
+      const effectiveStoreId = isAdmin
+        ? store !== "all"
+          ? store
+          : null
+        : mgrStoreId;
+      const sel = effectiveStoreId
+        ? nextStores.find((s) => s.id === effectiveStoreId)
+        : null;
+      const netsisStores = nextStores.filter(storeUsesNetsisItemSlipsList);
+      const useNetsisSingle = Boolean(sel && storeUsesNetsisItemSlipsList(sel));
+      const useNetsisAll = isAdmin && store === "all" && netsisStores.length > 0;
 
       try {
-        if (useNetsis && sel) {
-          const res = await searchNetsisOrders({
-            store_id: sel.id as UUID,
-            ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
-            limit: 50,
-          });
+        if (useNetsisAll) {
+          const batch = await fetchNetsisForStores(netsisStores, debouncedFilterQ, {});
           if (!cancelled) {
-            setOrders(netsisHitsToOrders(res.data ?? [], sel));
+            setOrders(batch.orders);
+            setNetsisCursors(batch.cursors);
+            setHasMore(batch.hasMore);
+            setOrdersSource("netsis");
+            setOrdersFetchError(null);
+          }
+        } else if (useNetsisSingle && sel) {
+          const batch = await fetchNetsisForStores([sel], debouncedFilterQ, {});
+          if (!cancelled) {
+            setOrders(batch.orders);
+            setNetsisCursors(batch.cursors);
+            setHasMore(batch.hasMore);
             setOrdersSource("netsis");
             setOrdersFetchError(null);
           }
         } else {
           const orderRes = await listOrders({
             limit: 300,
-            ...(store !== "all" ? { store_id: store as UUID } : {}),
+            ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
           });
           if (!cancelled) {
             setOrders(orderRes.data ?? []);
             setOrdersSource("installations");
             setOrdersFetchError(null);
+            setHasMore(false);
           }
         }
       } catch (err) {
         if (!cancelled) {
           setOrders([]);
           setOrdersSource("installations");
-          const status = isAxiosError(err) ? err.response?.status : undefined;
+          const statusCode = isAxiosError(err) ? err.response?.status : undefined;
           const msg =
             (isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
             (err instanceof Error ? err.message : "Request failed");
-          if (status === 404 && !useNetsis) {
+          if (statusCode === 404 && !useNetsisSingle && !useNetsisAll) {
             setOrdersFetchError(
               "Orders list is not available on this API (404). Deploy the latest installops-backend (GET /orders) and restart Node, or fix nginx so /api/v1 is proxied to the app."
             );
           } else {
             setOrdersFetchError(msg);
           }
-          console.error(useNetsis ? "searchNetsisOrders failed:" : "listOrders failed:", err);
+          console.error(
+            useNetsisSingle || useNetsisAll ? "searchNetsisOrders failed:" : "listOrders failed:",
+            err
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -149,15 +250,74 @@ export default function OrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, [store, debouncedFilterQ]);
+  }, [store, debouncedFilterQ, isAdmin, user?.email, fetchNetsisForStores]);
+
+  const loadMoreNetsis = useCallback(async () => {
+    if (!hasMore || loadingMore || loading) return;
+
+    const netsisStores = stores.filter(storeUsesNetsisItemSlipsList);
+    const effectiveStoreId =
+      !isAdmin && managerStoreId ? managerStoreId : store !== "all" ? store : null;
+    const targetStores =
+      isAdmin && store === "all"
+        ? netsisStores.filter((s) => netsisCursors[s.id]?.lastPageFull)
+        : effectiveStoreId
+          ? netsisStores.filter((s) => s.id === effectiveStoreId)
+          : [];
+
+    if (!targetStores.length) return;
+
+    const offsets: Record<string, number> = {};
+    for (const s of targetStores) {
+      const cur = netsisCursors[s.id];
+      offsets[s.id] = (cur?.offset ?? 0) + NETSIS_PAGE_SIZE;
+    }
+
+    setLoadingMore(true);
+    try {
+      const batch = await fetchNetsisForStores(targetStores, debouncedFilterQ, offsets);
+      setOrders((prev) => dedupeOrders([...prev, ...batch.orders]));
+      setNetsisCursors((prev) => ({ ...prev, ...batch.cursors }));
+      setHasMore(batch.hasMore);
+    } catch (err) {
+      console.error("loadMoreNetsis failed:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [
+    hasMore,
+    loadingMore,
+    loading,
+    stores,
+    isAdmin,
+    managerStoreId,
+    store,
+    netsisCursors,
+    debouncedFilterQ,
+    fetchNetsisForStores,
+  ]);
 
   // Derived store dropdown
   const storeOptions = useMemo(() => {
-    return stores.map((s) => ({
+    const all = stores.map((s) => ({
       id: s.id,
       label: s.name?.trim() || s.id,
     }));
-  }, [stores]);
+    if (isAdmin) return all;
+    if (managerStoreId) {
+      const one = all.find((s) => s.id === managerStoreId);
+      return one ? [one] : all;
+    }
+    return all;
+  }, [stores, isAdmin, managerStoreId]);
+
+  const storeFilterOptions = useMemo(() => {
+    const opts = storeOptions.map((s) => ({ value: s.id, label: s.label }));
+    if (isAdmin) {
+      return [{ value: "all", label: t("ordersPage.filters.storeAll") }, ...opts];
+    }
+    return opts;
+  }, [storeOptions, isAdmin, t]);
 
   // 🔹 Filter + search + store filter
   const filtered = useMemo(() => {
@@ -169,9 +329,9 @@ export default function OrdersPage() {
 
     list = list.filter((o) => {
       const raw = o.placed_at ?? o.created_at;
-      if (!raw) return true;
+      if (!raw) return false;
       const dt = new Date(raw);
-      if (Number.isNaN(dt.getTime())) return true;
+      if (Number.isNaN(dt.getTime())) return false;
       return dt >= fromD && dt <= toD;
     });
 
@@ -309,15 +469,13 @@ export default function OrdersPage() {
         <FilterSelect
           label={t("ordersPage.filters.storeLabel")}
           icon={Store}
-          value={store}
+          value={isAdmin ? store : managerStoreId ?? store}
           onChange={(v: string) => {
             setStore(v);
             setPage(1);
           }}
-          options={[
-            { value: "all", label: t("ordersPage.filters.storeAll") },
-            ...storeOptions.map((s) => ({ value: s.id, label: s.label })),
-          ]}
+          options={storeFilterOptions}
+          disabled={!isAdmin && Boolean(managerStoreId)}
         />
 
         {/* Dates */}
@@ -395,7 +553,7 @@ export default function OrdersPage() {
               </tr>
             ) : (
               paged.map((o) => (
-                <tr key={o.id} className="hover:bg-gray-50">
+                <tr key={`${o.store_id ?? ""}:${o.id}`} className="hover:bg-gray-50">
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1 text-xs text-gray-600">
                       <CalendarIcon className="h-3.5 w-3.5" />
@@ -447,12 +605,28 @@ export default function OrdersPage() {
         </table>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between border-t p-3 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
           <div className="text-gray-600">
             {t("ordersPage.pagination.showing")} <b>{paged.length}</b>{" "}
             {t("ordersPage.pagination.of")} <b>{filtered.length}</b>
+            {ordersSource === "netsis" && hasMore ? (
+              <span className="text-gray-500"> · {t("ordersPage.pagination.moreAvailable")}</span>
+            ) : null}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {ordersSource === "netsis" && hasMore ? (
+              <button
+                type="button"
+                onClick={() => void loadMoreNetsis()}
+                disabled={loadingMore}
+                className={cn(
+                  "rounded-md border border-primary-300 bg-primary-50 px-3 py-1.5 text-primary-800",
+                  loadingMore && "opacity-50"
+                )}
+              >
+                {loadingMore ? t("ordersPage.pagination.loadingMore") : t("ordersPage.pagination.loadMore")}
+              </button>
+            ) : null}
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
@@ -484,6 +658,39 @@ export default function OrdersPage() {
 }
 
 /* ------------------------ Helpers & small components ------------------------ */
+
+function dedupeOrders(list: Order[]): Order[] {
+  const seen = new Set<string>();
+  const out: Order[] = [];
+  for (const o of list) {
+    const key = `${o.store_id ?? ""}:${o.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(o);
+  }
+  return out;
+}
+
+function inferManagerStoreId(stores: StoreType[], email?: string | null): string | null {
+  const netsisStores = stores.filter(storeUsesNetsisItemSlipsList);
+  if (netsisStores.length === 1) return netsisStores[0].id;
+  const em = (email || "").toLowerCase();
+  for (const s of netsisStores) {
+    const name = (s.name || "").toLowerCase();
+    const ext = (s.external_store_id || "").toLowerCase();
+    if (name && em.includes(name)) return s.id;
+    if (ext && em.includes(ext)) return s.id;
+  }
+  if (em.includes("weltew") || em.includes("weltev")) {
+    const hit = netsisStores.find((s) => /weltew|weltev/i.test(s.name || ""));
+    if (hit) return hit.id;
+  }
+  if (em.includes("lajivert")) {
+    const hit = netsisStores.find((s) => /lajivert/i.test(s.name || ""));
+    if (hit) return hit.id;
+  }
+  return netsisStores[0]?.id ?? stores[0]?.id ?? null;
+}
 
 function orderMatchesStoreFilter(o: Order, storeId: string): boolean {
   const sid = String(storeId).trim();
@@ -551,7 +758,7 @@ function netsisHitsToOrders(hits: NetsisOrderHit[], store: StoreType): Order[] {
   }));
 }
 
-function FilterSelect({ label, icon: Icon, value, onChange, options }: any) {
+function FilterSelect({ label, icon: Icon, value, onChange, options, disabled }: any) {
   return (
     <div>
       <label className="text-xs text-gray-600 mb-1 block">{label}</label>
@@ -560,6 +767,7 @@ function FilterSelect({ label, icon: Icon, value, onChange, options }: any) {
         <select
           className="input-select-with-icon w-full"
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
         >
           {options.map((o: any) => (

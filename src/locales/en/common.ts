@@ -470,6 +470,9 @@ ordersPage: {
     prev: "Prev",
     next: "Next",
     page: "Page",
+    loadMore: "Load more",
+    loadingMore: "Loading…",
+    moreAvailable: "more in ERP",
   },
 },
 

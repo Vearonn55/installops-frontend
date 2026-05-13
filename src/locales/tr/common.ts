@@ -470,6 +470,9 @@ ordersPage: {
     prev: "Önceki",
     next: "Sonraki",
     page: "Sayfa",
+    loadMore: "Daha fazla yükle",
+    loadingMore: "Yükleniyor…",
+    moreAvailable: "ERP'de daha fazla kayıt var",
   },
 },
 

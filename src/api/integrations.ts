@@ -19,12 +19,14 @@ export async function searchNetsisOrders(params: {
   /** Optional for HTTP search when the store path lists slips without a `q` filter (e.g. ItemSlips?docType=7). */
   q?: string;
   limit?: number;
+  offset?: number;
 }): Promise<NetsisOrderSearchResponse> {
   return apiGet<NetsisOrderSearchResponse>('/integrations/netsis/orders/search', {
     params: {
       store_id: params.store_id,
       ...(params.q !== undefined && params.q !== '' ? { q: params.q } : {}),
       limit: params.limit,
+      offset: params.offset,
     },
   });
 }
