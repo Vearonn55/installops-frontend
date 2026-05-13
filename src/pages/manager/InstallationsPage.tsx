@@ -197,6 +197,7 @@ export default function InstallationsPage() {
 
   // Filters
   const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
   const [status, setStatus] = useState<InstallationStatus | 'all'>('all');
   const [zone, setZone] = useState<Zone | 'all'>('all');
 
@@ -208,6 +209,11 @@ export default function InstallationsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedQ(q.trim()), 400);
+    return () => window.clearTimeout(t);
+  }, [q]);
 
   useEffect(() => {
     setPage(1);
@@ -222,7 +228,7 @@ export default function InstallationsPage() {
   const managerStoreId = useManagerStoreId(storesQuery.data?.data ?? []);
 
   const installationsQuery = useInfiniteQuery({
-    queryKey: ['installations', { store_id: managerStoreId ?? 'all' }],
+    queryKey: ['installations', { store_id: managerStoreId ?? 'all', q: debouncedQ }],
     enabled:
       storesQuery.isSuccess && (isAdmin || Boolean(managerStoreId)),
     queryFn: async ({ pageParam }) => {
@@ -231,6 +237,7 @@ export default function InstallationsPage() {
         limit: INSTALLATIONS_PAGE_SIZE,
         offset,
         ...(managerStoreId ? { store_id: managerStoreId as UUID } : {}),
+        ...(debouncedQ ? { q: debouncedQ } : {}),
       });
     },
     initialPageParam: 0,

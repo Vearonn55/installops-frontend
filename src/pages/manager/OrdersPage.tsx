@@ -24,7 +24,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../stores/auth";
 import { useManagerStoreId } from "../../hooks/use-manager-store-id";
 import { inferManagerStoreId } from "../../lib/manager-store";
-import { textMatchesSearch, netsisApiSearchQ } from "../../lib/search-text";
+import { textMatchesSearch } from "../../lib/search-text";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -89,19 +89,11 @@ export default function OrdersPage() {
 
   const managerStoreId = useManagerStoreId(stores);
 
-  const netsisApiQ = useMemo(() => netsisApiSearchQ(debouncedFilterQ), [debouncedFilterQ]);
-
   const ordersFetchKey = useMemo(() => {
     const effectiveStoreId =
       isAdmin && store !== "all" ? store : !isAdmin ? managerStoreId : store !== "all" ? store : null;
-    const sel = effectiveStoreId ? stores.find((s) => s.id === effectiveStoreId) : null;
-    const netsisStores = stores.filter(storeUsesNetsisItemSlipsList);
-    const useNetsis =
-      (isAdmin && store === "all" && netsisStores.length > 0) ||
-      Boolean(sel && storeUsesNetsisItemSlipsList(sel));
-    const searchPart = useNetsis ? netsisApiQ : '';
-    return `${store}:${effectiveStoreId ?? "all"}:${searchPart}`;
-  }, [store, stores, isAdmin, managerStoreId, netsisApiQ]);
+    return `${store}:${effectiveStoreId ?? "all"}:${debouncedFilterQ}`;
+  }, [store, isAdmin, managerStoreId, debouncedFilterQ]);
 
   useEffect(() => {
     if (!isAdmin && managerStoreId && store === "all") {
@@ -204,7 +196,7 @@ export default function OrdersPage() {
 
       try {
         if (useNetsisAll) {
-          const batch = await fetchNetsisForStores(netsisStores, netsisApiQ, {});
+          const batch = await fetchNetsisForStores(netsisStores, debouncedFilterQ, {});
           if (!cancelled) {
             setOrders(batch.orders);
             setNetsisCursors(batch.cursors);
@@ -213,7 +205,7 @@ export default function OrdersPage() {
             setOrdersFetchError(null);
           }
         } else if (useNetsisSingle && sel) {
-          const batch = await fetchNetsisForStores([sel], netsisApiQ, {});
+          const batch = await fetchNetsisForStores([sel], debouncedFilterQ, {});
           if (!cancelled) {
             setOrders(batch.orders);
             setNetsisCursors(batch.cursors);
@@ -225,6 +217,7 @@ export default function OrdersPage() {
           const orderRes = await listOrders({
             limit: 300,
             ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
+            ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
           });
           if (!cancelled) {
             setOrders(orderRes.data ?? []);
@@ -271,7 +264,7 @@ export default function OrdersPage() {
     return () => {
       cancelled = true;
     };
-  }, [ordersFetchKey, isAdmin, user?.email, user?.store_id, fetchNetsisForStores, netsisApiQ]);
+  }, [ordersFetchKey, isAdmin, user?.email, user?.store_id, fetchNetsisForStores, debouncedFilterQ]);
 
   const loadMoreNetsis = useCallback(async () => {
     if (!hasMore || loadingMore || loading) return;
@@ -296,7 +289,7 @@ export default function OrdersPage() {
 
     setLoadingMore(true);
     try {
-      const batch = await fetchNetsisForStores(targetStores, netsisApiQ, offsets);
+      const batch = await fetchNetsisForStores(targetStores, debouncedFilterQ, offsets);
       setOrders((prev) => dedupeOrders([...prev, ...batch.orders]));
       setNetsisCursors((prev) => ({ ...prev, ...batch.cursors }));
       setHasMore(batch.hasMore);
@@ -314,7 +307,7 @@ export default function OrdersPage() {
     managerStoreId,
     store,
     netsisCursors,
-    netsisApiQ,
+    debouncedFilterQ,
     fetchNetsisForStores,
   ]);
 
