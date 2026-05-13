@@ -111,7 +111,7 @@ export default function CrewJobs() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-sm pb-[calc(env(safe-area-inset-bottom)+84px)]">
+    <div className="crew-page">
       <header className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur">
         <div className="px-4 py-3">
           <div className="flex items-center justify-between gap-2">

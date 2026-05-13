@@ -82,7 +82,7 @@ export default function CrewAfterSale() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-sm px-3 pb-[calc(env(safe-area-inset-bottom)+88px)] pt-3">
+    <div className="crew-page">
       <header className="mb-4 flex items-center gap-3">
         <button
           type="button"

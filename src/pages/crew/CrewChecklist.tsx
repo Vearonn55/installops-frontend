@@ -268,7 +268,7 @@ export default function CrewChecklist() {
 
       {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-screen-sm space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+112px)]">
+        <div className="crew-page crew-page-sticky-footer space-y-3">
           {checklistLocked && checklistLockMessageKey ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
               {t(checklistLockMessageKey)}
@@ -548,7 +548,7 @@ export default function CrewChecklist() {
 
       {/* Footer */}
       <footer className="sticky bottom-0 border-t bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+10px)]">
+        <div className="mx-auto flex w-full max-w-screen-sm gap-2 px-3 py-3 pb-3">
           <button
             className="btn-soft flex-1"
             onClick={() => {

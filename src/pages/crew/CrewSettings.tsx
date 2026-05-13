@@ -39,7 +39,7 @@ export default function CrewSettings() {
     (user?.name?.trim() || user?.email?.trim() || '?').charAt(0).toUpperCase();
 
   return (
-    <div className="mx-auto w-full max-w-md px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-3 sm:pb-[calc(env(safe-area-inset-bottom)+4.5rem)]">
+    <div className="crew-page max-w-md">
       <div className="mb-4">
         <h1 className="text-lg font-bold text-gray-900">
           {t('settings.crewSettingsTitle')}

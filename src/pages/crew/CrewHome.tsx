@@ -164,7 +164,7 @@ export default function CrewHome() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto w-full max-w-screen-sm px-3 pb-[calc(env(safe-area-inset-bottom)+88px)] pt-3">
+      <div className="crew-page">
         <h1 className="text-xl font-bold text-gray-900">{t('crewPages.homeTitle')}</h1>
         <p className="mt-1 text-sm text-gray-500">{t('crewPages.loading')}</p>
       </div>
@@ -173,7 +173,7 @@ export default function CrewHome() {
 
   if (isError) {
     return (
-      <div className="mx-auto w-full max-w-screen-sm px-3 pb-[calc(env(safe-area-inset-bottom)+88px)] pt-3">
+      <div className="crew-page">
         <h1 className="text-xl font-bold text-gray-900">{t('crewPages.homeTitle')}</h1>
         <p className="mt-3 text-sm text-red-600">{t('crewPages.loadError')}</p>
       </div>
@@ -181,7 +181,7 @@ export default function CrewHome() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-screen-sm px-3 pb-[calc(env(safe-area-inset-bottom)+88px)] pt-3">
+    <div className="crew-page">
       <div className="mb-3">
         <h1 className="text-xl font-bold text-gray-900">{t('crewPages.homeTitle')}</h1>
         <p className="text-sm text-gray-500">{t('crewPages.homeSubtitle')}</p>

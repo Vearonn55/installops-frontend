@@ -159,7 +159,7 @@ export default function CrewJobDetail() {
         </div>
       </header>
 
-      <main className="space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+120px)]">
+      <main className="crew-page space-y-3">
         {instQuery.isLoading && (
           <div className="rounded-2xl border bg-white p-6 text-sm text-gray-600">
             {t('crewPages.loading')}
