@@ -413,6 +413,27 @@ installationsPage: {
   confirmCancel: 'Cancel this installation?',
   confirmDelete: 'Permanently delete this installation? This cannot be undone.',
 
+  editModal: {
+    title: 'Edit installation',
+    subtitle: 'Schedule, customer details, crew and notes',
+    loading: 'Loading installation…',
+    loadError: 'Failed to load installation.',
+    scheduledStart: 'Scheduled start',
+    scheduledEnd: 'Scheduled end',
+    status: 'Status',
+    customerName: 'Customer name',
+    customerPhone: 'Customer phone',
+    cancel: 'Cancel',
+    save: 'Save changes',
+    saving: 'Saving…',
+    saved: 'Installation updated',
+    saveFailed: 'Failed to update installation',
+    validation: {
+      startRequired: 'Scheduled start is required',
+      difficultyRequired: 'Installation difficulty is required',
+    },
+  },
+
   loading: 'Loading installations…',
   loadError: 'Failed to load installations.',
   noResults: 'No installations match the filters.',

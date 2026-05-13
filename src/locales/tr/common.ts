@@ -413,6 +413,27 @@ installationsPage: {
   confirmCancel: 'Bu kurulum iptal edilsin mi?',
   confirmDelete: 'Bu kurulum kalıcı olarak silinsin mi? Bu işlem geri alınamaz.',
 
+  editModal: {
+    title: 'Kurulumu düzenle',
+    subtitle: 'Takvim, müşteri bilgileri, ekip ve notlar',
+    loading: 'Kurulum yükleniyor…',
+    loadError: 'Kurulum yüklenemedi.',
+    scheduledStart: 'Planlanan başlangıç',
+    scheduledEnd: 'Planlanan bitiş',
+    status: 'Durum',
+    customerName: 'Müşteri adı',
+    customerPhone: 'Müşteri telefonu',
+    cancel: 'İptal',
+    save: 'Değişiklikleri kaydet',
+    saving: 'Kaydediliyor…',
+    saved: 'Kurulum güncellendi',
+    saveFailed: 'Kurulum güncellenemedi',
+    validation: {
+      startRequired: 'Planlanan başlangıç zorunludur',
+      difficultyRequired: 'Kurulum zorluğu seçimi zorunludur',
+    },
+  },
+
   loading: 'Kurulumlar yükleniyor…',
   loadError: 'Kurulumlar yüklenemedi.',
   noResults: 'Filtrelere uyan kurulum bulunamadı.',

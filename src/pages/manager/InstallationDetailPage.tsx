@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   XCircle,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -26,6 +27,7 @@ import {
   updateInstallationStatus,
   deleteInstallation,
 } from '../../api/installations';
+import EditInstallationModal from '../../components/manager/EditInstallationModal';
 import {
   listInstallationMedia,
   type MediaAsset,
@@ -116,6 +118,7 @@ export default function InstallationDetailPage() {
   const isAdmin = hasRole('ADMIN');
   const [canceling, setCanceling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   // ---- Main installation (with items + crew embedded) ----
   const query = useQuery({
@@ -358,6 +361,16 @@ export default function InstallationDetailPage() {
               {t('installationDetailPage.buttons.viewOrder')}
             </Link>
           )}
+          {id ? (
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="inline-flex items-center gap-2 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800 hover:bg-primary-100"
+            >
+              <Pencil className="h-4 w-4" />
+              {t('installationsPage.actions.edit')}
+            </button>
+          ) : null}
           {canCancel ? (
             <button
               type="button"
@@ -734,6 +747,15 @@ export default function InstallationDetailPage() {
           )}
         </div>
       </div>
+
+      <EditInstallationModal
+        installationId={(id as UUID) ?? null}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSaved={() => {
+          void queryClient.invalidateQueries({ queryKey: ['installation', id] });
+        }}
+      />
     </div>
   );
 }

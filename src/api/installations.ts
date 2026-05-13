@@ -58,6 +58,7 @@ export type Installation = {
   status: InstallStatus;
   notes?: string | null;
   location?: string | null;
+  difficulty?: 'easy' | 'intermediate' | 'hard' | null;
   customer_name?: string | null;
   customer_phone?: string | null;
   customer_payment_note?: string | null;
@@ -108,6 +109,10 @@ export type UpdateSchedulePayload = {
   scheduled_start?: string | null;
   scheduled_end?: string | null;
   notes?: string | null;
+  location?: string | null;
+  difficulty?: 'easy' | 'intermediate' | 'hard' | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
   customer_payment_note?: string | null;
 };
 
