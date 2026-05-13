@@ -17,7 +17,9 @@ import { Link } from 'react-router-dom';
 import type { Installation } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../stores/auth';
-import { listInstallations } from '../../api/installations';
+import { listInstallations, type Installation as ApiInstallation } from '../../api/installations';
+import { listStores } from '../../api/stores';
+import { inferManagerStoreId } from '../../lib/manager-store';
 import { useTranslation } from 'react-i18next';
 import { formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
 
@@ -115,6 +117,41 @@ const HOUR_HEIGHT = 56; // px per hour
 const HOURS = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i);
 const COLUMN_HEIGHT = (DAY_END - DAY_START) * HOUR_HEIGHT;
 
+/* =============== Calendar event helpers =============== */
+type CalendarInstallation = Installation & {
+  install_code?: string;
+  customer_name?: string | null;
+};
+
+function calendarEventLabel(inst: CalendarInstallation): string {
+  const name = (inst.customer_name || '').trim();
+  if (name) return name;
+  const code = (inst.install_code || '').trim();
+  if (code) return code;
+  return inst.order_id || inst.id;
+}
+
+function calendarEventTitle(
+  inst: CalendarInstallation,
+  statusLabel: string
+): string {
+  const parts = [calendarEventLabel(inst)];
+  if (inst.order_id) parts.push(inst.order_id);
+  parts.push(statusLabel);
+  if (inst.scheduled_start) {
+    parts.push(
+      `${toLocalHM(inst.scheduled_start)}–${toLocalHM(inst.scheduled_end)}`
+    );
+  }
+  return parts.join(' • ');
+}
+
+function statusLabelKey(status: Installation['status']): string {
+  if (status === 'scheduled') return 'pending';
+  if (status === 'canceled') return 'cancelled';
+  return status;
+}
+
 /* =============== Status color classes (match InstallationsPage) =============== */
 function statusClasses(s: Installation['status']) {
   switch (s) {
@@ -150,8 +187,9 @@ function statusClasses(s: Installation['status']) {
 type ViewMode = 'month' | 'week';
 
 export default function CalendarPage() {
-  const { user } = useAuthStore();
+  const { user, hasRole } = useAuthStore();
   const { t, i18n } = useTranslation('common');
+  const isAdmin = hasRole('ADMIN');
 
   const [mode, setMode] = useState<ViewMode>('month');
   const [cursor, setCursor] = useState<Date>(() => new Date());
@@ -165,30 +203,52 @@ export default function CalendarPage() {
   const from = mode === 'month' ? monthStart : weekStart;
   const to = mode === 'month' ? monthEnd : weekEnd;
 
-  const storeFilter =
-    user?.role === 'STORE_MANAGER' && (user as any).store_id
-      ? (user as any).store_id
-      : undefined;
+  const storesQuery = useQuery({
+    queryKey: ['stores', 'calendar'],
+    queryFn: async () => {
+      const res = await listStores({ limit: 200, offset: 0 });
+      return res.data ?? [];
+    },
+  });
 
-  // Fetch installs (server filters by store; client filters by date)
+  const managerStoreId = useMemo(
+    () =>
+      isAdmin
+        ? undefined
+        : inferManagerStoreId(storesQuery.data ?? [], user?.email) ?? undefined,
+    [isAdmin, storesQuery.data, user?.email]
+  );
+
+  const storeFilter = managerStoreId;
+
+  const storeFilterLabel = useMemo(() => {
+    if (!storeFilter) return null;
+    const hit = (storesQuery.data ?? []).find((s) => s.id === storeFilter);
+    return hit?.name ?? storeFilter;
+  }, [storeFilter, storesQuery.data]);
+
+  // Fetch installs (server filters by store for managers; client filters by date)
   const query = useQuery({
-    queryKey: ['installations', { mode, store_id: storeFilter }],
+    queryKey: ['calendar', 'installations', { store_id: storeFilter ?? 'all' }],
+    enabled: isAdmin || storesQuery.isSuccess,
     queryFn: async () => {
       const res = await listInstallations({
-        store_id: storeFilter,
-        limit: 200,
+        ...(storeFilter ? { store_id: storeFilter as any } : {}),
+        limit: 300,
         offset: 0,
       });
 
-      const apiItems = (res as any).data ?? [];
-      const mapped: Installation[] = apiItems.map((i: any) => ({
+      const apiItems = (res.data ?? []) as ApiInstallation[];
+      const mapped: CalendarInstallation[] = apiItems.map((i) => ({
         id: i.id,
-        order_id: i.external_order_id ?? '', // installation code
+        order_id: i.external_order_id ?? '',
+        install_code: i.install_code,
+        customer_name: i.customer_name,
         store_id: i.store_id,
-        scheduled_start: i.scheduled_start,
-        scheduled_end: i.scheduled_end,
-        status: i.status,
-        capacity_slot_id: (i as any).capacity_slot_id ?? undefined,
+        scheduled_start: i.scheduled_start ?? '',
+        scheduled_end: i.scheduled_end ?? '',
+        status: i.status as Installation['status'],
+        capacity_slot_id: undefined,
         notes: i.notes ?? '',
         created_at: i.created_at,
         updated_at: i.updated_at,
@@ -301,10 +361,10 @@ export default function CalendarPage() {
               {mode === 'month'
                 ? `${formatUiFullFromDate(monthStart)} – ${formatUiFullFromDate(monthEnd)}`
                 : weekLabel}
-              {storeFilter && (
+              {storeFilterLabel && (
                 <span className="inline-flex items-center gap-1 text-gray-600">
                   <MapPin className="h-4 w-4" />{' '}
-                  {t('calendarPage.storeLabelShort')}: {storeFilter}
+                  {t('calendarPage.storeLabelShort')}: {storeFilterLabel}
                 </span>
               )}
             </p>
@@ -447,7 +507,12 @@ export default function CalendarPage() {
                   </div>
 
                   <div className="space-y-1">
-                    {events.slice(0, 3).map((ev) => (
+                    {events.slice(0, 3).map((ev) => {
+                      const label = calendarEventLabel(ev);
+                      const statusLabel = t(
+                        `installationsPage.statusLabels.${statusLabelKey(ev.status)}`
+                      );
+                      return (
                       <Link
                         to={`/app/installations/${ev.id}`}
                         key={ev.id}
@@ -455,11 +520,12 @@ export default function CalendarPage() {
                           'block truncate rounded border px-2 py-1 text-[11px] font-medium hover:opacity-90',
                           statusClasses(ev.status)
                         )}
-                        title={ev.order_id || ev.id}
+                        title={calendarEventTitle(ev, statusLabel)}
                       >
-                        {ev.order_id || ev.id}
+                        {label}
                       </Link>
-                    ))}
+                    );
+                    })}
                     {events.length > 3 && (
                       <div className="text-[11px] text-gray-500">
                         +{events.length - 3} {t('calendarPage.more')}
@@ -565,6 +631,10 @@ export default function CalendarPage() {
 
                   {/* Events */}
                   {events.map((ev) => {
+                    const label = calendarEventLabel(ev);
+                    const statusLabel = t(
+                      `installationsPage.statusLabels.${statusLabelKey(ev.status)}`
+                    );
                     const s = new Date(ev.scheduled_start || day);
                     const e = new Date(ev.scheduled_end || s);
 
@@ -593,12 +663,11 @@ export default function CalendarPage() {
                           statusClasses(ev.status)
                         )}
                         style={{ top, height }}
-                        title={`${ev.order_id || ev.id} • ${toLocalHM(
-                          ev.scheduled_start
-                        )}–${toLocalHM(ev.scheduled_end)}`}
+                        title={calendarEventTitle(ev, statusLabel)}
                       >
-                        <div className="truncate">
-                          {ev.order_id || ev.id}
+                        <div className="truncate">{label}</div>
+                        <div className="truncate text-[10px] opacity-80">
+                          {ev.order_id || ev.install_code}
                         </div>
                         <div className="text-[10px] opacity-70">
                           {toLocalHM(ev.scheduled_start)}–

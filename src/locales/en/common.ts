@@ -308,10 +308,13 @@ calendarPage: {
   createInstallation: 'Create Installation',
 
   legend: {
+    pending: 'Pending',
+    staged: 'Staged',
+    inProgress: 'In progress',
     completed: 'Completed',
-    acceptedPendingScheduled: 'Accepted / Pending / Scheduled',
-    failedCanceled: 'Failed / Canceled',
-    inProgress: 'In Progress',
+    failed: 'Failed',
+    cancelled: 'Cancelled',
+    afterSaleService: 'After-sale service',
   },
 
   weekdays: {

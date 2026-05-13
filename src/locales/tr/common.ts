@@ -308,10 +308,13 @@ calendarPage: {
   createInstallation: 'Kurulum Oluştur',
 
   legend: {
-    completed: 'Tamamlandı',
-    acceptedPendingScheduled: 'Kabul / Bekliyor / Planlandı',
-    failedCanceled: 'Başarısız / İptal',
+    pending: 'Beklemede',
+    staged: 'Hazırlandı',
     inProgress: 'Devam ediyor',
+    completed: 'Tamamlandı',
+    failed: 'Başarısız',
+    cancelled: 'İptal edildi',
+    afterSaleService: 'Satış sonrası servis',
   },
 
   weekdays: {
