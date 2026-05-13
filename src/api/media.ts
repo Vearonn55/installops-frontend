@@ -1,5 +1,5 @@
 // /api/media.ts
-import { apiGet, apiPost, apiDelete, UUID } from './http';
+import { apiGet, apiPost, apiDelete, apiClient, UUID } from './http';
 
 export type MediaType = 'photo' | 'signature';
 
@@ -45,6 +45,31 @@ export async function createInstallationMedia(
   payload: MediaAssetCreate
 ): Promise<MediaAsset> {
   return apiPost<MediaAsset>(`/installations/${installationId}/media`, payload);
+}
+
+export type UploadInstallationMediaOptions = {
+  type?: MediaType;
+  tags?: Record<string, unknown>;
+};
+
+/** Multipart upload — stores file on server and creates media_assets row. */
+export async function uploadInstallationMedia(
+  installationId: UUID,
+  file: File,
+  opts?: UploadInstallationMediaOptions
+): Promise<MediaAsset> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('type', opts?.type ?? 'photo');
+  if (opts?.tags && Object.keys(opts.tags).length > 0) {
+    form.append('tags', JSON.stringify(opts.tags));
+  }
+  const res = await apiClient.post<MediaAsset>(
+    `/media/installations/${installationId}/media/upload`,
+    form,
+    { headers: { 'Content-Type': 'multipart/form-data' } }
+  );
+  return res.data;
 }
 
 // global media record

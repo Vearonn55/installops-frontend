@@ -32,6 +32,7 @@ import {
   listInstallationMedia,
   type MediaAsset,
 } from '../../api/media';
+import { resolveMediaUrl } from '../../lib/media-url';
 import { getNetsisOrderDetail, type NetsisOrderLine } from '../../api/integrations';
 import {
   pickLineQuantity,
@@ -728,21 +729,24 @@ export default function InstallationDetailPage() {
 
           {photos.length > 0 && (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-              {photos.map((m) => (
+              {photos.map((m) => {
+                const src = resolveMediaUrl(m.url);
+                return (
                 <a
                   key={m.id}
-                  href={m.url}
+                  href={src}
                   target="_blank"
                   rel="noreferrer"
                   className="group block overflow-hidden rounded-md border bg-gray-50"
                 >
                   <img
-                    src={m.url}
+                    src={src}
                     alt="Installation photo"
                     className="h-32 w-full object-cover transition-transform group-hover:scale-105"
                   />
                 </a>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>

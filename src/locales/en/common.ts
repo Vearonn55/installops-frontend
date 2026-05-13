@@ -799,6 +799,8 @@ profilePage: {
       draftCleared: 'Draft cleared',
       submitSuccess: 'Checklist submitted',
       submitFailed: 'Failed to submit checklist',
+      photosUploadFailed: 'Checklist saved but photos could not be uploaded',
+      photosUploadPartial: 'Only {{uploaded}} of {{total}} photos were uploaded',
       failureRequired: 'Please enter a failure reason',
       missingJobId: 'Missing job ID',
     },

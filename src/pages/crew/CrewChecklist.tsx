@@ -23,6 +23,7 @@ import {
   updateCrewAfterInstallationNotes,
   type InstallStatus,
 } from '../../api/installations';
+import { uploadInstallationMedia } from '../../api/media';
 import {
   mapBackendInstallationToCrewUiStatus,
   pickInstallationRecordStatus,
@@ -224,7 +225,33 @@ export default function CrewChecklist() {
             : null,
       });
 
+      if (photos.length > 0) {
+        let uploaded = 0;
+        for (const p of photos) {
+          try {
+            await uploadInstallationMedia(jobId as UUID, p.file, {
+              type: 'photo',
+              tags: { source: 'crew_checklist', capture: p.source },
+            });
+            uploaded += 1;
+          } catch (uploadErr) {
+            console.error('checklist photo upload failed:', uploadErr);
+          }
+        }
+        if (uploaded === 0) {
+          toast.error(t('crewPages.checklist.photosUploadFailed'));
+        } else if (uploaded < photos.length) {
+          toast.error(
+            t('crewPages.checklist.photosUploadPartial', {
+              uploaded,
+              total: photos.length,
+            })
+          );
+        }
+      }
+
       await queryClient.invalidateQueries({ queryKey: ['installation', jobId] });
+      await queryClient.invalidateQueries({ queryKey: ['installationMedia', jobId] });
       await queryClient.invalidateQueries({ queryKey: ['crew-jobs-installations'] });
       await queryClient.invalidateQueries({ queryKey: ['crew-installations'] });
 
