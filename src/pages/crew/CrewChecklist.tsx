@@ -10,6 +10,7 @@ import {
   Camera,
   Image as ImageIcon,
   Banknote,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -170,6 +171,14 @@ export default function CrewChecklist() {
     }
 
     setPhotos((prev) => [...prev, ...next]);
+  }
+
+  function removePhoto(photoId: string) {
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.id === photoId);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((p) => p.id !== photoId);
+    });
   }
 
   async function onSubmit() {
@@ -460,6 +469,14 @@ export default function CrewChecklist() {
                         alt={p.file.name}
                         className="h-full w-full object-cover"
                       />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(p.id)}
+                        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                        aria-label={t('crewPages.checklist.removePhoto')}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>

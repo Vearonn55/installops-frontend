@@ -780,6 +780,7 @@ profilePage: {
       takePhoto: 'Fotoğraf çek',
       selectGallery: 'Galeriden seç',
       selectedPhotos: 'Seçilen fotoğraflar ({{count}})',
+      removePhoto: 'Fotoğrafı kaldır',
       noValidImages: 'Geçerli görsel seçilmedi',
       installResult: 'Kurulum sonucu',
       successful: 'Başarılı',

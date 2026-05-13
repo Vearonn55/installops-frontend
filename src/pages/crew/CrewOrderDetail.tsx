@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, MapPin, Phone, Package, User2 } from 'lucide-react';
 
-import { formatUiDateTime } from '../../lib/date-display';
 import { getInstallation } from '../../api/installations';
 import type { UUID } from '../../api/http';
 import { useInstallationNetsis } from '../../hooks/use-installation-netsis';
@@ -14,12 +13,6 @@ import {
   mergeArpIntoCrewJobView,
 } from '../../lib/crew-job';
 import { netsisLinesToDisplayRows } from '../../lib/netsis-native';
-import { getOrderTimeline } from '../../api/orders';
-import {
-  auditRowToOrderTrackingEvent,
-  orderTrackingAccentClass,
-} from '../../lib/order-timeline-audit';
-import { cn } from '../../lib/utils';
 
 export default function CrewOrderDetail() {
   const { id: jobId } = useParams<{ id: string }>();
@@ -45,20 +38,6 @@ export default function CrewOrderDetail() {
     () => netsisLinesToDisplayRows(netsis.order?.lines),
     [netsis.order?.lines]
   );
-
-  const timelineQuery = useQuery({
-    queryKey: ['crew-order-timeline', inst?.external_order_id],
-    queryFn: () =>
-      getOrderTimeline(inst!.external_order_id, { limit: 200, offset: 0 }),
-    enabled: Boolean(inst?.external_order_id),
-  });
-
-  const timeline = useMemo(() => {
-    const rows = timelineQuery.data?.timeline?.data ?? [];
-    return rows
-      .map(auditRowToOrderTrackingEvent)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [timelineQuery.data]);
 
   const loading = instQuery.isLoading || netsis.isLoading;
   const hasError = instQuery.isError;
@@ -147,32 +126,6 @@ export default function CrewOrderDetail() {
                         <span className="font-mono">{line.sku}</span>
                         <span className="font-semibold text-gray-900">×{line.quantity}</span>
                       </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="rounded-2xl border bg-white p-4 shadow-sm">
-              <div className="mb-2 text-sm font-semibold text-gray-900">
-                {t('crewPages.tracking')}
-              </div>
-              {timeline.length === 0 ? (
-                <p className="text-sm text-gray-500">{t('crewPages.noMilestones')}</p>
-              ) : (
-                <ul className="space-y-3">
-                  {timeline.map((ev) => (
-                    <li
-                      key={ev.id}
-                      className={cn('border-l-2 pl-3', orderTrackingAccentClass(ev.tone))}
-                    >
-                      <p className="text-sm font-medium text-gray-900">{ev.headline}</p>
-                      <time className="text-xs text-gray-500" dateTime={ev.date}>
-                        {formatUiDateTime(ev.date)}
-                      </time>
-                      {ev.detail ? (
-                        <p className="mt-1 text-sm text-gray-600">{ev.detail}</p>
-                      ) : null}
                     </li>
                   ))}
                 </ul>

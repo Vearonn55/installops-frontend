@@ -780,6 +780,7 @@ profilePage: {
       takePhoto: 'Take photo',
       selectGallery: 'From gallery',
       selectedPhotos: 'Selected photos ({{count}})',
+      removePhoto: 'Remove photo',
       noValidImages: 'No valid images selected',
       installResult: 'Installation result',
       successful: 'Successful',
