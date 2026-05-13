@@ -459,6 +459,8 @@ ordersPage: {
 
   loading: "Loading orders…",
   noResults: "No orders match the filters.",
+  noResultsInDateRange:
+    "No orders in the selected date range ({{loaded}} loaded from ERP). Widen From/To dates or load more.",
 
   actions: {
     view: "View",
@@ -473,6 +475,7 @@ ordersPage: {
     loadMore: "Load more",
     loadingMore: "Loading…",
     moreAvailable: "more in ERP",
+    filtered: "{{count}} in date range",
   },
 },
 

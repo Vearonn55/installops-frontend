@@ -459,6 +459,8 @@ ordersPage: {
 
   loading: "Siparişler yükleniyor…",
   noResults: "Filtrelere uyan sipariş bulunamadı.",
+  noResultsInDateRange:
+    "Seçilen tarih aralığında sipariş yok (ERP'den {{loaded}} kayıt yüklendi). Başlangıç/Bitiş tarihlerini genişletin veya daha fazla yükleyin.",
 
   actions: {
     view: "Görüntüle",
@@ -473,6 +475,7 @@ ordersPage: {
     loadMore: "Daha fazla yükle",
     loadingMore: "Yükleniyor…",
     moreAvailable: "ERP'de daha fazla kayıt var",
+    filtered: "tarih aralığında {{count}}",
   },
 },
 

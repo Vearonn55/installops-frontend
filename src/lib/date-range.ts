@@ -22,6 +22,15 @@ export function defaultDateRangeOneMonthAhead(
   };
 }
 
+/** Parse order timestamps from API (`2023-11-28 00:00:00`, ISO, etc.). */
+export function parseOrderDate(raw: string | null | undefined): Date | null {
+  const s = String(raw ?? '').trim();
+  if (!s) return null;
+  const normalized = s.includes('T') ? s : s.replace(' ', 'T');
+  const d = new Date(normalized);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /** Default range for the Orders list: last calendar month through today. */
 export function defaultDateRangeOrdersList(
   now: Date = new Date()

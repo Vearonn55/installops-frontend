@@ -13,7 +13,7 @@ import {
 
 import { cn } from "../../lib/utils";
 import { formatUiDateTime } from "../../lib/date-display";
-import { defaultDateRangeOrdersList } from "../../lib/date-range";
+import { defaultDateRangeOrdersList, parseOrderDate } from "../../lib/date-range";
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
@@ -46,11 +46,13 @@ export default function OrdersPage() {
     setFrom(val);
     if (to && val > to) setTo(val);
     setPage(1);
+    setNetsisDateFilterActive(true);
   };
   const setToClamped = (val: string) => {
     setTo(val);
     if (from && val < from) setFrom(val);
     setPage(1);
+    setNetsisDateFilterActive(true);
   };
 
 
@@ -70,6 +72,8 @@ export default function OrdersPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [netsisCursors, setNetsisCursors] = useState<Record<string, StoreFetchCursor>>({});
+  /** Netsis ItemSlips are not date-scoped at the API; only filter by date after the user changes pickers. */
+  const [netsisDateFilterActive, setNetsisDateFilterActive] = useState(false);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedFilterQ(q.trim()), 400);
@@ -147,6 +151,7 @@ export default function OrdersPage() {
       setOrdersFetchError(null);
       setHasMore(false);
       setNetsisCursors({});
+      setNetsisDateFilterActive(false);
       setOrders([]);
 
       let nextStores: StoreType[] = [];
@@ -323,17 +328,18 @@ export default function OrdersPage() {
   const filtered = useMemo(() => {
     let list = orders.slice();
 
-    // Date filtering
-    const fromD = new Date(from + "T00:00:00");
-    const toD = new Date(to + "T23:59:59");
-
-    list = list.filter((o) => {
-      const raw = o.placed_at ?? o.created_at;
-      if (!raw) return false;
-      const dt = new Date(raw);
-      if (Number.isNaN(dt.getTime())) return false;
-      return dt >= fromD && dt <= toD;
-    });
+    // Date filtering (installations always; Netsis only after user adjusts dates — API pages are not date-scoped)
+    const applyDateFilter =
+      ordersSource !== "netsis" || netsisDateFilterActive;
+    if (applyDateFilter && from && to) {
+      const fromD = new Date(from + "T00:00:00");
+      const toD = new Date(to + "T23:59:59");
+      list = list.filter((o) => {
+        const dt = parseOrderDate(o.placed_at ?? o.created_at);
+        if (!dt) return false;
+        return dt >= fromD && dt <= toD;
+      });
+    }
 
     // Status filter (Netsis slips are shown as confirmed; skip so filters do not hide the whole list)
     if (ordersSource !== "netsis" && status !== "all") {
@@ -379,7 +385,13 @@ export default function OrdersPage() {
     });
 
     return list;
-  }, [orders, q, status, store, from, to, sortBy, sortDir, ordersSource]);
+  }, [orders, q, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
+
+  const netsisFilteredEmpty =
+    ordersSource === "netsis" &&
+    netsisDateFilterActive &&
+    orders.length > 0 &&
+    filtered.length === 0;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -548,7 +560,9 @@ export default function OrdersPage() {
             ) : paged.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
-                  {t("ordersPage.noResults")}
+                  {netsisFilteredEmpty
+                    ? t("ordersPage.noResultsInDateRange", { loaded: orders.length })
+                    : t("ordersPage.noResults")}
                 </td>
               </tr>
             ) : (
@@ -608,7 +622,14 @@ export default function OrdersPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
           <div className="text-gray-600">
             {t("ordersPage.pagination.showing")} <b>{paged.length}</b>{" "}
-            {t("ordersPage.pagination.of")} <b>{filtered.length}</b>
+            {t("ordersPage.pagination.of")}{" "}
+            <b>{ordersSource === "netsis" ? orders.length : filtered.length}</b>
+            {ordersSource === "netsis" && netsisDateFilterActive && filtered.length !== orders.length ? (
+              <span className="text-gray-500">
+                {" "}
+                · {t("ordersPage.pagination.filtered", { count: filtered.length })}
+              </span>
+            ) : null}
             {ordersSource === "netsis" && hasMore ? (
               <span className="text-gray-500"> · {t("ordersPage.pagination.moreAvailable")}</span>
             ) : null}
