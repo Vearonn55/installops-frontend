@@ -800,6 +800,7 @@ profilePage: {
       submitSuccess: 'Kontrol listesi gönderildi',
       submitFailed: 'Kontrol listesi gönderilemedi',
       photosUploadFailed: 'Kontrol listesi kaydedildi ancak fotoğraflar yüklenemedi',
+      photosUploadFailedDetail: 'Kontrol listesi kaydedildi ancak fotoğraflar yüklenemedi: {{detail}}',
       photosUploadPartial: '{{total}} fotoğraftan yalnızca {{uploaded}} tanesi yüklendi',
       failureRequired: 'Lütfen başarısızlık nedenini yazın',
       missingJobId: 'İş kimliği eksik',

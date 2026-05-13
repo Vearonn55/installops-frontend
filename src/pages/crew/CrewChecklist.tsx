@@ -24,6 +24,7 @@ import {
   type InstallStatus,
 } from '../../api/installations';
 import { uploadInstallationMedia } from '../../api/media';
+import { preparePhotoForUpload } from '../../lib/prepare-photo-upload';
 import {
   mapBackendInstallationToCrewUiStatus,
   pickInstallationRecordStatus,
@@ -227,19 +228,31 @@ export default function CrewChecklist() {
 
       if (photos.length > 0) {
         let uploaded = 0;
+        let lastUploadError: string | null = null;
         for (const p of photos) {
           try {
-            await uploadInstallationMedia(jobId as UUID, p.file, {
+            const prepared = await preparePhotoForUpload(p.file);
+            await uploadInstallationMedia(jobId as UUID, prepared, {
               type: 'photo',
               tags: { source: 'crew_checklist', capture: p.source },
             });
             uploaded += 1;
           } catch (uploadErr) {
             console.error('checklist photo upload failed:', uploadErr);
+            if (isAxiosError(uploadErr)) {
+              const body = uploadErr.response?.data as { message?: string } | undefined;
+              lastUploadError = body?.message || uploadErr.message;
+            } else if (uploadErr instanceof Error) {
+              lastUploadError = uploadErr.message;
+            }
           }
         }
         if (uploaded === 0) {
-          toast.error(t('crewPages.checklist.photosUploadFailed'));
+          toast.error(
+            lastUploadError
+              ? t('crewPages.checklist.photosUploadFailedDetail', { detail: lastUploadError })
+              : t('crewPages.checklist.photosUploadFailed')
+          );
         } else if (uploaded < photos.length) {
           toast.error(
             t('crewPages.checklist.photosUploadPartial', {

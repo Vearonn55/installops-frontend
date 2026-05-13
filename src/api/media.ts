@@ -67,7 +67,17 @@ export async function uploadInstallationMedia(
   const res = await apiClient.post<MediaAsset>(
     `/media/installations/${installationId}/media/upload`,
     form,
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    {
+      // Let the browser set multipart boundary (do not force Content-Type).
+      transformRequest: [
+        (data, headers) => {
+          if (data instanceof FormData && headers) {
+            delete headers['Content-Type'];
+          }
+          return data;
+        },
+      ],
+    }
   );
   return res.data;
 }

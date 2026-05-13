@@ -800,6 +800,7 @@ profilePage: {
       submitSuccess: 'Checklist submitted',
       submitFailed: 'Failed to submit checklist',
       photosUploadFailed: 'Checklist saved but photos could not be uploaded',
+      photosUploadFailedDetail: 'Checklist saved but photos failed: {{detail}}',
       photosUploadPartial: 'Only {{uploaded}} of {{total}} photos were uploaded',
       failureRequired: 'Please enter a failure reason',
       missingJobId: 'Missing job ID',
