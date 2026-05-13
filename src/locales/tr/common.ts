@@ -702,6 +702,10 @@ profilePage: {
     todayJobs: 'Bugünün diğer işleri',
     noOtherToday: 'Bugün başka iş yok.',
     readOnlyClosed: 'Bu iş tamamlandı — yalnızca görüntüleme, işlem yapılamaz.',
+    readOnlyPending:
+      'Bu iş henüz başlamadı. Yalnızca önizleme — depo yöneticisinden hazırlandı olarak işaretlemesini isteyin.',
+    readOnlyStaged:
+      'Sahada başlamak için Kurulumu başlat’a basın. Kontrol listesi iş devam ederken açılır.',
     startInstallation: 'Kurulumu başlat',
     starting: 'Başlatılıyor…',
     jobDetail: 'Kurulum',

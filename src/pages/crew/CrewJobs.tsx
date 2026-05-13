@@ -13,6 +13,7 @@ import {
   buildCrewJobView,
   installationDayKey,
   isCrewAssigned,
+  isCrewStartableStatus,
   isCrewVisibleInstallation,
 } from '../../lib/crew-job';
 import {
@@ -171,7 +172,7 @@ export default function CrewJobs() {
             <CrewJobCard
               key={job.id}
               job={job}
-              showStart
+              showStart={isCrewStartableStatus(job.status)}
               starting={startingId === job.id && startMutation.isPending}
               onStart={() => handleStart(job.id)}
               onOpen={() => navigate(`/crew/jobs/${job.id}`)}

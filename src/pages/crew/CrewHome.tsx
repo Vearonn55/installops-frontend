@@ -19,7 +19,8 @@ import {
   buildCrewJobView,
   installationDayKey,
   isCrewAssigned,
-  isCrewInteractiveStatus,
+  isCrewActionableStatus,
+  isCrewStartableStatus,
   isCrewVisibleInstallation,
   type CrewJobView,
 } from '../../lib/crew-job';
@@ -112,13 +113,13 @@ export default function CrewHome() {
     const staged = todayJobs.filter((j) => j.status === 'staged');
     if (staged.length) return [...staged].sort(byStart)[0];
 
-    const actionableToday = todayJobs.filter((j) => isCrewInteractiveStatus(j.status));
+    const actionableToday = todayJobs.filter((j) => isCrewActionableStatus(j.status));
     if (actionableToday.length) return [...actionableToday].sort(byStart)[0];
 
     const weekInProgress = weekJobs.filter((j) => j.status === 'in_progress');
     if (weekInProgress.length) return [...weekInProgress].sort(byStart)[0];
 
-    const actionableWeek = weekJobs.filter((j) => isCrewInteractiveStatus(j.status));
+    const actionableWeek = weekJobs.filter((j) => isCrewActionableStatus(j.status));
     if (actionableWeek.length) return [...actionableWeek].sort(byStart)[0];
 
     return todayJobs.length ? [...todayJobs].sort(byStart)[0] : null;
@@ -239,7 +240,7 @@ export default function CrewHome() {
         {activeJob ? (
           <CrewJobCard
             job={activeJob}
-            showStart={isCrewInteractiveStatus(activeJob.status)}
+            showStart={isCrewStartableStatus(activeJob.status)}
             starting={startingId === activeJob.id && startMutation.isPending}
             onStart={() => handleStart(activeJob.id)}
             onOpen={() => navigate(`/crew/jobs/${activeJob.id}`)}
@@ -266,7 +267,7 @@ export default function CrewHome() {
             <CrewJobCard
               key={job.id}
               job={job}
-              showStart={isCrewInteractiveStatus(job.status)}
+              showStart={isCrewStartableStatus(job.status)}
               starting={startingId === job.id && startMutation.isPending}
               onStart={() => handleStart(job.id)}
               onOpen={() => navigate(`/crew/jobs/${job.id}`)}

@@ -29,7 +29,9 @@ import {
   crewStatusLabelKey,
   crewStatusPillClass,
   mergeArpIntoCrewJobView,
-  isCrewInteractiveStatus,
+  crewReadOnlyBannerKey,
+  isCrewChecklistAllowedStatus,
+  isCrewStartableStatus,
 } from '../../lib/crew-job';
 import {
   netsisLinesByStokKodu,
@@ -218,7 +220,7 @@ export default function CrewJobDetail() {
               ) : null}
             </section>
 
-            {job.status === 'staged' && isCrewInteractiveStatus(job.status) ? (
+            {isCrewStartableStatus(job.status) ? (
               <button
                 type="button"
                 disabled={starting || startMutation.isPending}
@@ -269,9 +271,9 @@ export default function CrewJobDetail() {
               </button>
             </section>
 
-            {!isCrewInteractiveStatus(job.status) ? (
+            {crewReadOnlyBannerKey(job.status) ? (
               <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-                {t('crewPages.readOnlyClosed')}
+                {t(crewReadOnlyBannerKey(job.status)!)}
               </p>
             ) : null}
 
@@ -283,7 +285,7 @@ export default function CrewJobDetail() {
               >
                 {t('crewPages.backToJobs')}
               </button>
-              {isCrewInteractiveStatus(job.status) ? (
+              {isCrewChecklistAllowedStatus(job.status) ? (
                 <button
                   type="button"
                   onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}

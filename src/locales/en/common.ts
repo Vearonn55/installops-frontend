@@ -702,6 +702,10 @@ profilePage: {
     todayJobs: 'Today’s other jobs',
     noOtherToday: 'No other jobs today.',
     readOnlyClosed: 'This job is finished — view only, no further actions.',
+    readOnlyPending:
+      'This job has not been started yet. Preview only — ask your warehouse manager to mark it as staged.',
+    readOnlyStaged:
+      'Press Start installation to begin on site. The checklist opens after the job is in progress.',
     startInstallation: 'Start installation',
     starting: 'Starting…',
     jobDetail: 'Installation',

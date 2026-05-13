@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, CheckCircle2, Loader2, Camera, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -19,7 +20,7 @@ import {
   mapBackendInstallationToCrewUiStatus,
   pickInstallationRecordStatus,
 } from '../../lib/installation-status';
-import { isCrewInteractiveStatus } from '../../lib/crew-job';
+import { crewReadOnlyBannerKey, isCrewChecklistAllowedStatus } from '../../lib/crew-job';
 
 function storageKey(jobId: string) {
   return `crew_checklist_${jobId}`;
@@ -50,6 +51,7 @@ type LocalPhoto = {
 export default function CrewChecklist() {
   const { id: jobId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
 
   const [values, setValues] = useState<Values>({});
   const [submitting, setSubmitting] = useState(false);
@@ -66,14 +68,18 @@ export default function CrewChecklist() {
     enabled: !!jobId,
   });
 
-  const checklistLocked = (() => {
-    const inst = instQuery.data;
-    if (!inst) return false;
-    const ui = mapBackendInstallationToCrewUiStatus(
-      pickInstallationRecordStatus(inst as unknown as Record<string, unknown>)
-    );
-    return !isCrewInteractiveStatus(ui);
-  })();
+  const checklistUiStatus = instQuery.data
+    ? mapBackendInstallationToCrewUiStatus(
+        pickInstallationRecordStatus(instQuery.data as unknown as Record<string, unknown>)
+      )
+    : null;
+
+  const checklistLocked =
+    checklistUiStatus !== null && !isCrewChecklistAllowedStatus(checklistUiStatus);
+
+  const checklistLockMessageKey = checklistUiStatus
+    ? crewReadOnlyBannerKey(checklistUiStatus)
+    : null;
 
   // ---- derive helpers ----
   const installStatus = values.install_status;
@@ -170,7 +176,11 @@ export default function CrewChecklist() {
       return;
     }
     if (checklistLocked) {
-      toast.error('This installation is closed — checklist cannot be changed.');
+      toast.error(
+        checklistLockMessageKey
+          ? t(checklistLockMessageKey)
+          : 'Checklist is not available for this job.'
+      );
       return;
     }
 
@@ -259,10 +269,9 @@ export default function CrewChecklist() {
       {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-screen-sm space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+112px)]">
-          {checklistLocked ? (
+          {checklistLocked && checklistLockMessageKey ? (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-              This installation is already completed or closed. You can view details from the job
-              page but cannot submit a new checklist.
+              {t(checklistLockMessageKey)}
             </div>
           ) : null}
           {/* Arrived on time */}

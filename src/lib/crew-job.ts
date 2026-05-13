@@ -46,13 +46,45 @@ export function isCrewVisibleInstallation(inst: Installation): boolean {
   return !isCrewCancelledRawStatus(raw);
 }
 
-/** Crew can start jobs or open/submit checklist only while work is active. */
-export function isCrewInteractiveStatus(status: CrewJobsUiStatus): boolean {
-  return status === 'pending' || status === 'staged' || status === 'in_progress';
+/** Staged: crew may press Start (→ in_progress). */
+export function isCrewStartableStatus(status: CrewJobsUiStatus): boolean {
+  return status === 'staged';
+}
+
+/** Checklist only after the job has been started. */
+export function isCrewChecklistAllowedStatus(status: CrewJobsUiStatus): boolean {
+  return status === 'in_progress';
+}
+
+/** Highlight / prioritize on home: work that can still be acted on. */
+export function isCrewActionableStatus(status: CrewJobsUiStatus): boolean {
+  return status === 'staged' || status === 'in_progress';
+}
+
+export function isCrewPendingStatus(status: CrewJobsUiStatus): boolean {
+  return status === 'pending';
 }
 
 export function isCrewTerminalStatus(status: CrewJobsUiStatus): boolean {
   return status === 'completed' || status === 'failed' || status === 'after_sale';
+}
+
+/** View-only cards (pending or finished). */
+export function isCrewPreviewOnlyStatus(status: CrewJobsUiStatus): boolean {
+  return isCrewPendingStatus(status) || isCrewTerminalStatus(status);
+}
+
+/** i18n key for read-only banner on job detail, or null. */
+export function crewReadOnlyBannerKey(status: CrewJobsUiStatus): string | null {
+  if (status === 'pending') return 'crewPages.readOnlyPending';
+  if (isCrewTerminalStatus(status)) return 'crewPages.readOnlyClosed';
+  if (status === 'staged') return 'crewPages.readOnlyStaged';
+  return null;
+}
+
+/** @deprecated Use isCrewChecklistAllowedStatus */
+export function isCrewInteractiveStatus(status: CrewJobsUiStatus): boolean {
+  return isCrewChecklistAllowedStatus(status);
 }
 
 export function installationAnchorIso(inst: Installation): string | null {
