@@ -35,6 +35,26 @@ export function isCrewAssigned(inst: Installation, userId: string | undefined): 
   return crew.some((c) => c.crew_user_id === userId);
 }
 
+export function isCrewCancelledRawStatus(raw: string): boolean {
+  const s = (raw || '').trim().toLowerCase();
+  return s === 'canceled' || s === 'cancelled';
+}
+
+/** Crew may view all assigned jobs except canceled installations. */
+export function isCrewVisibleInstallation(inst: Installation): boolean {
+  const raw = pickInstallationRecordStatus(inst as unknown as Record<string, unknown>);
+  return !isCrewCancelledRawStatus(raw);
+}
+
+/** Crew can start jobs or open/submit checklist only while work is active. */
+export function isCrewInteractiveStatus(status: CrewJobsUiStatus): boolean {
+  return status === 'pending' || status === 'staged' || status === 'in_progress';
+}
+
+export function isCrewTerminalStatus(status: CrewJobsUiStatus): boolean {
+  return status === 'completed' || status === 'failed' || status === 'after_sale';
+}
+
 export function installationAnchorIso(inst: Installation): string | null {
   return inst.scheduled_start || inst.created_at || null;
 }

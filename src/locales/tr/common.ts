@@ -701,6 +701,7 @@ profilePage: {
     noActiveJob: 'Bugün aktif iş yok.',
     todayJobs: 'Bugünün diğer işleri',
     noOtherToday: 'Bugün başka iş yok.',
+    readOnlyClosed: 'Bu iş tamamlandı — yalnızca görüntüleme, işlem yapılamaz.',
     startInstallation: 'Kurulumu başlat',
     starting: 'Başlatılıyor…',
     jobDetail: 'Kurulum',

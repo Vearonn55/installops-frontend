@@ -13,6 +13,7 @@ import {
   buildCrewJobView,
   installationDayKey,
   isCrewAssigned,
+  isCrewVisibleInstallation,
 } from '../../lib/crew-job';
 import {
   listInstallations,
@@ -41,6 +42,7 @@ const ACTIVE_CREW_STATUSES = new Set([
   'staged',
   'in_progress',
   'completed',
+  'failed',
   'after_sale_service',
 ]);
 
@@ -89,8 +91,8 @@ export default function CrewJobs() {
     return insts
       .filter((inst) => {
         if (!isCrewAssigned(inst, user?.id)) return false;
+        if (!isCrewVisibleInstallation(inst)) return false;
         const raw = String(inst.status || '').toLowerCase();
-        if (raw === 'canceled' || raw === 'cancelled' || raw === 'failed') return false;
         if (!ACTIVE_CREW_STATUSES.has(raw)) return false;
         return installationDayKey(inst) === dayYmd;
       })

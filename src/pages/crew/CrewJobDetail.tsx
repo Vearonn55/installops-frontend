@@ -29,6 +29,7 @@ import {
   crewStatusLabelKey,
   crewStatusPillClass,
   mergeArpIntoCrewJobView,
+  isCrewInteractiveStatus,
 } from '../../lib/crew-job';
 import {
   netsisLinesByStokKodu,
@@ -217,7 +218,7 @@ export default function CrewJobDetail() {
               ) : null}
             </section>
 
-            {job.status === 'staged' ? (
+            {job.status === 'staged' && isCrewInteractiveStatus(job.status) ? (
               <button
                 type="button"
                 disabled={starting || startMutation.isPending}
@@ -268,6 +269,12 @@ export default function CrewJobDetail() {
               </button>
             </section>
 
+            {!isCrewInteractiveStatus(job.status) ? (
+              <p className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                {t('crewPages.readOnlyClosed')}
+              </p>
+            ) : null}
+
             <div className="flex gap-2">
               <button
                 type="button"
@@ -276,13 +283,15 @@ export default function CrewJobDetail() {
               >
                 {t('crewPages.backToJobs')}
               </button>
-              <button
-                type="button"
-                onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}
-                className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-primary-600 px-3 text-sm font-semibold text-white hover:bg-primary-700"
-              >
-                {t('crewPages.openChecklist')}
-              </button>
+              {isCrewInteractiveStatus(job.status) ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}
+                  className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-primary-600 px-3 text-sm font-semibold text-white hover:bg-primary-700"
+                >
+                  {t('crewPages.openChecklist')}
+                </button>
+              ) : null}
             </div>
           </>
         )}

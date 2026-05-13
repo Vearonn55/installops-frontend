@@ -701,6 +701,7 @@ profilePage: {
     noActiveJob: 'No active job today.',
     todayJobs: 'Today’s other jobs',
     noOtherToday: 'No other jobs today.',
+    readOnlyClosed: 'This job is finished — view only, no further actions.',
     startInstallation: 'Start installation',
     starting: 'Starting…',
     jobDetail: 'Installation',

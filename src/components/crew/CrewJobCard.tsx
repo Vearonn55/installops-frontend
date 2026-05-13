@@ -6,6 +6,7 @@ import {
   crewStatusLabelKey,
   crewStatusPillClass,
   fmtTimeRange,
+  isCrewInteractiveStatus,
   type CrewJobView,
 } from '../../lib/crew-job';
 
@@ -25,12 +26,14 @@ export default function CrewJobCard({
   showStart,
 }: Props) {
   const { t } = useTranslation('common');
+  const interactive = isCrewInteractiveStatus(job.status);
 
   return (
     <article
       className={cn(
         'rounded-2xl border-2 shadow-sm',
-        crewJobCardClass(job.status)
+        crewJobCardClass(job.status),
+        !interactive && 'opacity-95'
       )}
     >
       <div
@@ -111,7 +114,7 @@ export default function CrewJobCard({
         <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-gray-400" />
       </div>
 
-      {showStart && job.status === 'staged' && onStart ? (
+      {showStart && interactive && job.status === 'staged' && onStart ? (
         <div className="border-t border-black/5 px-4 pb-4 pt-2">
           <button
             type="button"

@@ -19,6 +19,8 @@ import {
   buildCrewJobView,
   installationDayKey,
   isCrewAssigned,
+  isCrewInteractiveStatus,
+  isCrewVisibleInstallation,
   type CrewJobView,
 } from '../../lib/crew-job';
 import type { CrewJobsUiStatus } from '../../lib/installation-status';
@@ -80,9 +82,8 @@ export default function CrewHome() {
   const myJobs: CrewJobView[] = useMemo(() => {
     const insts = data?.data ?? [];
     return insts
-      .filter((inst) => isCrewAssigned(inst, user?.id))
-      .map((inst) => buildCrewJobView(inst))
-      .filter((j) => j.status !== 'failed');
+      .filter((inst) => isCrewAssigned(inst, user?.id) && isCrewVisibleInstallation(inst))
+      .map((inst) => buildCrewJobView(inst));
   }, [data, user?.id]);
 
   const weekJobs = useMemo(() => {
@@ -111,12 +112,16 @@ export default function CrewHome() {
     const staged = todayJobs.filter((j) => j.status === 'staged');
     if (staged.length) return [...staged].sort(byStart)[0];
 
-    if (todayJobs.length) return [...todayJobs].sort(byStart)[0];
+    const actionableToday = todayJobs.filter((j) => isCrewInteractiveStatus(j.status));
+    if (actionableToday.length) return [...actionableToday].sort(byStart)[0];
 
     const weekInProgress = weekJobs.filter((j) => j.status === 'in_progress');
     if (weekInProgress.length) return [...weekInProgress].sort(byStart)[0];
 
-    return weekJobs.length ? [...weekJobs].sort(byStart)[0] : null;
+    const actionableWeek = weekJobs.filter((j) => isCrewInteractiveStatus(j.status));
+    if (actionableWeek.length) return [...actionableWeek].sort(byStart)[0];
+
+    return todayJobs.length ? [...todayJobs].sort(byStart)[0] : null;
   }, [todayJobs, weekJobs]);
 
   const weekDays = useMemo(() => {
@@ -234,7 +239,7 @@ export default function CrewHome() {
         {activeJob ? (
           <CrewJobCard
             job={activeJob}
-            showStart
+            showStart={isCrewInteractiveStatus(activeJob.status)}
             starting={startingId === activeJob.id && startMutation.isPending}
             onStart={() => handleStart(activeJob.id)}
             onOpen={() => navigate(`/crew/jobs/${activeJob.id}`)}
@@ -261,7 +266,7 @@ export default function CrewHome() {
             <CrewJobCard
               key={job.id}
               job={job}
-              showStart
+              showStart={isCrewInteractiveStatus(job.status)}
               starting={startingId === job.id && startMutation.isPending}
               onStart={() => handleStart(job.id)}
               onOpen={() => navigate(`/crew/jobs/${job.id}`)}

@@ -1,6 +1,7 @@
 // src/pages/crew/CrewChecklist.tsx
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, CheckCircle2, Loader2, Camera, Image as ImageIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,6 +15,11 @@ import {
   updateCrewAfterInstallationNotes,
   type InstallStatus,
 } from '../../api/installations';
+import {
+  mapBackendInstallationToCrewUiStatus,
+  pickInstallationRecordStatus,
+} from '../../lib/installation-status';
+import { isCrewInteractiveStatus } from '../../lib/crew-job';
 
 function storageKey(jobId: string) {
   return `crew_checklist_${jobId}`;
@@ -53,6 +59,21 @@ export default function CrewChecklist() {
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
+  const instQuery = useQuery({
+    queryKey: ['installation', jobId],
+    queryFn: () => getInstallation(jobId as UUID),
+    enabled: !!jobId,
+  });
+
+  const checklistLocked = (() => {
+    const inst = instQuery.data;
+    if (!inst) return false;
+    const ui = mapBackendInstallationToCrewUiStatus(
+      pickInstallationRecordStatus(inst as unknown as Record<string, unknown>)
+    );
+    return !isCrewInteractiveStatus(ui);
+  })();
 
   // ---- derive helpers ----
   const installStatus = values.install_status;
@@ -148,6 +169,10 @@ export default function CrewChecklist() {
       toast.error('Missing job ID');
       return;
     }
+    if (checklistLocked) {
+      toast.error('This installation is closed — checklist cannot be changed.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -234,6 +259,12 @@ export default function CrewChecklist() {
       {/* Scrollable content */}
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-screen-sm space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+112px)]">
+          {checklistLocked ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              This installation is already completed or closed. You can view details from the job
+              page but cannot submit a new checklist.
+            </div>
+          ) : null}
           {/* Arrived on time */}
           <section className="rounded-xl border bg-white p-3 shadow-sm">
             <div className="text-sm font-medium text-gray-900">Arrived on time</div>
@@ -518,7 +549,7 @@ export default function CrewChecklist() {
             Clear All
           </button>
           <button
-            disabled={submitting}
+            disabled={submitting || checklistLocked}
             className={cn(
               'inline-flex flex-1 items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50'
             )}
