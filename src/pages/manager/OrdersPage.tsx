@@ -24,6 +24,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../stores/auth";
 import { useManagerStoreId } from "../../hooks/use-manager-store-id";
 import { inferManagerStoreId } from "../../lib/manager-store";
+import { textMatchesSearch } from "../../lib/search-text";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -353,14 +354,14 @@ export default function OrdersPage() {
       list = list.filter((o) => orderMatchesStoreFilter(o, store));
     }
 
-    // Search query
-    if (q.trim()) {
-      const s = q.toLowerCase();
+    // Client search only when the list API did not already filter by q
+    const apiHandlesSearch = Boolean(debouncedFilterQ.trim());
+    if (q.trim() && !apiHandlesSearch) {
       list = list.filter(
         (o) =>
-          o.id.toLowerCase().includes(s) ||
-          o.customer_name?.toLowerCase().includes(s) ||
-          o.store?.name?.toLowerCase().includes(s)
+          textMatchesSearch(o.id, q) ||
+          textMatchesSearch(o.customer_name, q) ||
+          textMatchesSearch(o.store?.name, q)
       );
     }
 
@@ -387,7 +388,7 @@ export default function OrdersPage() {
     });
 
     return list;
-  }, [orders, q, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
+  }, [orders, q, debouncedFilterQ, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
 
   const netsisFilteredEmpty =
     ordersSource === "netsis" &&

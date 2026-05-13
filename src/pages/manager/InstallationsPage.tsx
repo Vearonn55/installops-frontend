@@ -40,6 +40,7 @@ import {
 import { listStores, type Store } from '../../api/stores';
 import type { UUID } from '../../api/http';
 import EditInstallationModal from '../../components/manager/EditInstallationModal';
+import { textMatchesSearch } from '../../lib/search-text';
 
 /* -------------------------------- Types -------------------------------- */
 // UI status (we map backend → UI)
@@ -129,6 +130,7 @@ function applyInstallationFilters(
   rows: Row[],
   opts: {
     q: string;
+    serverSearch: boolean;
     status: InstallationStatus | 'all';
     zone: Zone | 'all';
     from: string;
@@ -147,19 +149,18 @@ function applyInstallationFilters(
     );
   }
 
-  if (opts.q.trim()) {
-    const s = opts.q.toLowerCase();
+  if (opts.q.trim() && !opts.serverSearch) {
     list = list.filter(
       (r) =>
-        r.id.toLowerCase().includes(s) ||
-        r.installCode.toLowerCase().includes(s) ||
-        r.externalOrderId.toLowerCase().includes(s) ||
-        r.storeName.toLowerCase().includes(s) ||
-        (r.customerName ?? '').toLowerCase().includes(s) ||
-        (r.customerPhone ?? '').toLowerCase().includes(s) ||
-        (r.addressLine ?? '').toLowerCase().includes(s) ||
-        (r.location ?? '').toLowerCase().includes(s) ||
-        (r.city ?? '').toLowerCase().includes(s)
+        textMatchesSearch(r.id, opts.q) ||
+        textMatchesSearch(r.installCode, opts.q) ||
+        textMatchesSearch(r.externalOrderId, opts.q) ||
+        textMatchesSearch(r.storeName, opts.q) ||
+        textMatchesSearch(r.customerName, opts.q) ||
+        textMatchesSearch(r.customerPhone, opts.q) ||
+        textMatchesSearch(r.addressLine, opts.q) ||
+        textMatchesSearch(r.location, opts.q) ||
+        textMatchesSearch(r.city, opts.q)
     );
   }
 
@@ -269,20 +270,21 @@ export default function InstallationsPage() {
   }, [allInstallations, storesById]);
 
   const filterOpts = useMemo(
-    () => ({ q, status, zone, from, to }),
-    [q, status, zone, from, to]
+    () => ({ q, serverSearch: Boolean(debouncedQ), status, zone, from, to }),
+    [q, debouncedQ, status, zone, from, to]
   );
 
   const rowsForStatusCounts = useMemo(
     () =>
       applyInstallationFilters(allRows, {
         q: filterOpts.q,
+        serverSearch: filterOpts.serverSearch,
         status: 'all',
         zone: filterOpts.zone,
         from: filterOpts.from,
         to: filterOpts.to,
       }),
-    [allRows, filterOpts.q, filterOpts.zone, filterOpts.from, filterOpts.to]
+    [allRows, filterOpts.q, filterOpts.serverSearch, filterOpts.zone, filterOpts.from, filterOpts.to]
   );
 
   const filtered = useMemo(() => {
