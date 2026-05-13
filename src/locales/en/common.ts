@@ -405,6 +405,8 @@ installationsPage: {
   loading: 'Loading installations…',
   loadError: 'Failed to load installations.',
   noResults: 'No installations match the filters.',
+  noResultsInRange:
+    'No installations in the selected date range ({{loaded}} loaded). Widen From/To dates or load more.',
 
   pagination: {
     showing: 'Showing',
@@ -412,6 +414,10 @@ installationsPage: {
     prev: 'Prev',
     next: 'Next',
     page: 'Page',
+    loadMore: 'Load more',
+    loadingMore: 'Loading…',
+    moreAvailable: 'more on server',
+    loaded: '{{count}} loaded',
   },
 
   sort: 'Sort',

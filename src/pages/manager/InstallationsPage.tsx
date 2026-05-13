@@ -1,5 +1,5 @@
 // src/pages/manager/InstallationsPage.tsx
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -17,13 +17,17 @@ import {
   Edit3,
   Package,
 } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 import { cn } from '../../lib/utils';
 import { formatUiDateTime } from '../../lib/date-display';
-import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
+import {
+  defaultDateRangeInstallationsList,
+  installationInDateRange,
+} from '../../lib/date-range';
+import { inferManagerStoreId } from '../../lib/manager-store';
 import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
@@ -54,6 +58,7 @@ type Row = {
   status: InstallationStatus;
   start: string | null;
   end: string | null;
+  createdAt: string;
   externalOrderId: string;
   storeName: string;
   city?: string;
@@ -61,24 +66,12 @@ type Row = {
   crewCount: number;
 };
 
+const INSTALLATIONS_PAGE_SIZE = 50;
+
 /* ----------------------------- Helpers ---------------------------- */
 const isTr =
   typeof navigator !== 'undefined' &&
   navigator.language.toLowerCase().startsWith('tr');
-
-function ymd(d = new Date()) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function ymdFromIso(iso: string) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return ymd(d);
-}
 
 function isoToLocalInput(value?: string | null): string {
   if (!value) return '';
@@ -120,20 +113,66 @@ function mapBackendStatusToUi(status: InstallStatus | string): InstallationStatu
 
 function makeRow(inst: Installation, store?: Store): Row {
   const uiStatus = mapBackendStatusToUi(inst.status);
-  const addr = store?.address;
+  const resolvedStore = store ?? inst.store;
+  const addr = resolvedStore?.address;
 
   return {
     id: inst.id,
     status: uiStatus,
     start: inst.scheduled_start ?? null,
     end: inst.scheduled_end ?? null,
+    createdAt: inst.created_at,
     externalOrderId: inst.external_order_id,
-    storeName: store?.name ?? inst.store_id,
+    storeName: resolvedStore?.name ?? inst.store_id,
     city: addr?.city,
     addressLine: addr?.line1,
-    // if backend later embeds crew array, we’ll pick it up here
     crewCount: Array.isArray(inst.crew) ? inst.crew.length : 0,
   };
+}
+
+function applyInstallationFilters(
+  rows: Row[],
+  opts: {
+    q: string;
+    status: InstallationStatus | 'all';
+    zone: Zone | 'all';
+    from: string;
+    to: string;
+  }
+): Row[] {
+  let list = rows.slice();
+
+  if (opts.from && opts.to) {
+    list = list.filter((r) =>
+      installationInDateRange(
+        { scheduledStart: r.start, scheduledEnd: r.end, createdAt: r.createdAt },
+        opts.from,
+        opts.to
+      )
+    );
+  }
+
+  if (opts.q.trim()) {
+    const s = opts.q.toLowerCase();
+    list = list.filter(
+      (r) =>
+        r.id.toLowerCase().includes(s) ||
+        r.externalOrderId.toLowerCase().includes(s) ||
+        r.storeName.toLowerCase().includes(s) ||
+        (r.addressLine ?? '').toLowerCase().includes(s) ||
+        (r.city ?? '').toLowerCase().includes(s)
+    );
+  }
+
+  if (opts.status !== 'all') {
+    list = list.filter((r) => r.status === opts.status);
+  }
+
+  if (opts.zone !== 'all') {
+    list = list.filter((r) => r.city === opts.zone);
+  }
+
+  return list;
 }
 
 /* ----------------------------- Edit state ---------------------------- */
@@ -150,7 +189,7 @@ export default function InstallationsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useTranslation('common');
-  const { hasRole } = useAuthStore();
+  const { hasRole, user } = useAuthStore();
   const isAdmin = hasRole('ADMIN');
 
   // Force-open date picker (Chrome / Edge / Safari)
@@ -161,7 +200,10 @@ export default function InstallationsPage() {
     }
   };
 
-  const installationsRangeDefault = useMemo(() => defaultDateRangeOneMonthAhead(), []);
+  const installationsRangeDefault = useMemo(
+    () => defaultDateRangeInstallationsList(),
+    []
+  );
 
   // Filters
   const [q, setQ] = useState('');
@@ -175,30 +217,53 @@ export default function InstallationsPage() {
   const [sortBy, setSortBy] = useState<'start' | 'customer' | 'zone' | 'status'>('start');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
-  const pageSize = 6;
+  const pageSize = 10;
 
-  // Edit modal
-  const [editState, setEditState] = useState<EditState | null>(null);
-  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    setPage(1);
+  }, [q, status, zone, from, to]);
 
-  // Fetch installations (we use a reasonable limit and filter locally by date/search)
-  const installationsQuery = useQuery({
-    queryKey: ['installations'],
-    queryFn: async () => {
-      // listInstallations returns InstallationList { data, limit, offset }
-      const res = await listInstallations({ limit: 200, offset: 0 });
-      return res;
-    },
-  });
-
-  // Fetch stores (for name + address.city)
+  // Fetch stores first (names, cities, manager scope)
   const storesQuery = useQuery({
     queryKey: ['stores'],
-    queryFn: async () => {
-      const res = await listStores({ limit: 200, offset: 0 });
-      return res;
+    queryFn: async () => listStores({ limit: 200, offset: 0 }),
+  });
+
+  const managerStoreId = useMemo(
+    () =>
+      isAdmin
+        ? null
+        : inferManagerStoreId(storesQuery.data?.data ?? [], user?.email),
+    [isAdmin, storesQuery.data, user?.email]
+  );
+
+  const installationsQuery = useInfiniteQuery({
+    queryKey: ['installations', { store_id: managerStoreId ?? 'all' }],
+    enabled:
+      storesQuery.isSuccess && (isAdmin || Boolean(managerStoreId)),
+    queryFn: async ({ pageParam }) => {
+      const offset = typeof pageParam === 'number' ? pageParam : 0;
+      return listInstallations({
+        limit: INSTALLATIONS_PAGE_SIZE,
+        offset,
+        ...(managerStoreId ? { store_id: managerStoreId as UUID } : {}),
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const next = lastPage.offset + lastPage.data.length;
+      if (lastPage.data.length < INSTALLATIONS_PAGE_SIZE) return undefined;
+      return next;
     },
   });
+
+  const allInstallations: Installation[] = useMemo(
+    () => installationsQuery.data?.pages.flatMap((p) => p.data) ?? [],
+    [installationsQuery.data]
+  );
+
+  const [editState, setEditState] = useState<EditState | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const storesById = useMemo(() => {
     const m = new Map<string, Store>();
@@ -208,55 +273,30 @@ export default function InstallationsPage() {
 
   // Build row objects from API data
   const allRows: Row[] = useMemo(() => {
-    const insts: Installation[] = installationsQuery.data?.data ?? [];
-    return insts.map((inst) => makeRow(inst, storesById.get(inst.store_id)));
-  }, [installationsQuery.data, storesById]);
+    return allInstallations.map((inst) =>
+      makeRow(inst, storesById.get(inst.store_id))
+    );
+  }, [allInstallations, storesById]);
 
-  // Zone options from store.address.city
-  const zoneOptions: Zone[] = useMemo(() => {
-    const set = new Set<string>();
-    for (const r of allRows) {
-      if (r.city) set.add(r.city);
-    }
-    return Array.from(set).sort();
-  }, [allRows]);
+  const filterOpts = useMemo(
+    () => ({ q, status, zone, from, to }),
+    [q, status, zone, from, to]
+  );
+
+  const rowsForStatusCounts = useMemo(
+    () =>
+      applyInstallationFilters(allRows, {
+        q: filterOpts.q,
+        status: 'all',
+        zone: filterOpts.zone,
+        from: filterOpts.from,
+        to: filterOpts.to,
+      }),
+    [allRows, filterOpts.q, filterOpts.zone, filterOpts.from, filterOpts.to]
+  );
 
   const filtered = useMemo(() => {
-    let list = allRows.slice();
-
-    // Date filter (by scheduled_start)
-    if (from) {
-      list = list.filter((r) => !r.start || ymdFromIso(r.start) >= from);
-    }
-    if (to) {
-      list = list.filter((r) => !r.start || ymdFromIso(r.start) <= to);
-    }
-
-    // Search text
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      list = list.filter((r) => {
-        return (
-          r.id.toLowerCase().includes(s) ||
-          r.externalOrderId.toLowerCase().includes(s) ||
-          r.storeName.toLowerCase().includes(s) ||
-          (r.addressLine ?? '').toLowerCase().includes(s) ||
-          (r.city ?? '').toLowerCase().includes(s)
-        );
-      });
-    }
-
-    // Status filter
-    if (status !== 'all') {
-      list = list.filter((r) => r.status === status);
-    }
-
-    // Zone filter (by city)
-    if (zone !== 'all') {
-      list = list.filter((r) => r.city === zone);
-    }
-
-    // Sorting
+    let list = applyInstallationFilters(allRows, filterOpts);
     list.sort((a, b) => {
       switch (sortBy) {
         case 'start': {
@@ -283,34 +323,16 @@ export default function InstallationsPage() {
     });
 
     return list;
-  }, [allRows, q, status, zone, sortBy, sortDir, from, to]);
+  }, [allRows, filterOpts, sortBy, sortDir]);
 
-  /** Status chip counts respect date / search / zone so totals match the current filter context. */
-  const rowsForStatusCounts = useMemo(() => {
-    let list = allRows.slice();
-    if (from) {
-      list = list.filter((r) => !r.start || ymdFromIso(r.start) >= from);
+  // Zone options from store.address.city
+  const zoneOptions: Zone[] = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of allRows) {
+      if (r.city) set.add(r.city);
     }
-    if (to) {
-      list = list.filter((r) => !r.start || ymdFromIso(r.start) <= to);
-    }
-    if (q.trim()) {
-      const s = q.toLowerCase();
-      list = list.filter((r) => {
-        return (
-          r.id.toLowerCase().includes(s) ||
-          r.externalOrderId.toLowerCase().includes(s) ||
-          r.storeName.toLowerCase().includes(s) ||
-          (r.addressLine ?? '').toLowerCase().includes(s) ||
-          (r.city ?? '').toLowerCase().includes(s)
-        );
-      });
-    }
-    if (zone !== 'all') {
-      list = list.filter((r) => r.city === zone);
-    }
-    return list;
-  }, [allRows, from, to, q, zone]);
+    return Array.from(set).sort();
+  }, [allRows]);
 
   const counts = useMemo(() => {
     const c: Record<InstallationStatus | 'all', number> = {
@@ -330,6 +352,9 @@ export default function InstallationsPage() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const filteredEmptyWithData = allRows.length > 0 && filtered.length === 0;
+  const isLoadingList =
+    installationsQuery.isLoading || (!isAdmin && storesQuery.isLoading);
 
   const toggleSort = (k: typeof sortBy) => {
     if (sortBy === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -344,8 +369,7 @@ export default function InstallationsPage() {
 
   /* --------------------------- Edit helpers --------------------------- */
   const openEdit = (id: string) => {
-    const insts: Installation[] = installationsQuery.data?.data ?? [];
-    const inst = insts.find((i) => i.id === id);
+    const inst = allInstallations.find((i) => i.id === id);
     if (!inst) return;
 
     setEditState({
@@ -691,7 +715,7 @@ export default function InstallationsPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {installationsQuery.isLoading ? (
+            {isLoadingList ? (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
                   {t('installationsPage.loading')}
@@ -706,7 +730,9 @@ export default function InstallationsPage() {
             ) : paged.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
-                  {t('installationsPage.noResults')}
+                  {filteredEmptyWithData
+                    ? t('installationsPage.noResultsInRange', { loaded: allRows.length })
+                    : t('installationsPage.noResults')}
                 </td>
               </tr>
             ) : (
@@ -792,14 +818,41 @@ export default function InstallationsPage() {
         </table>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between border-top p-3 text-sm border-t">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
           <div className="text-gray-600">
             {t('installationsPage.pagination.showing')}{' '}
             <span className="font-medium text-gray-900">{paged.length}</span>{' '}
             {t('installationsPage.pagination.of')}{' '}
             <span className="font-medium text-gray-900">{filtered.length}</span>
+            {filtered.length !== allRows.length ? (
+              <span className="text-gray-500">
+                {' '}
+                · {t('installationsPage.pagination.loaded', { count: allRows.length })}
+              </span>
+            ) : null}
+            {installationsQuery.hasNextPage ? (
+              <span className="text-gray-500">
+                {' '}
+                · {t('installationsPage.pagination.moreAvailable')}
+              </span>
+            ) : null}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {installationsQuery.hasNextPage ? (
+              <button
+                type="button"
+                onClick={() => void installationsQuery.fetchNextPage()}
+                disabled={installationsQuery.isFetchingNextPage}
+                className={cn(
+                  'rounded-md border border-primary-300 bg-primary-50 px-3 py-1.5 text-primary-800',
+                  installationsQuery.isFetchingNextPage && 'opacity-50'
+                )}
+              >
+                {installationsQuery.isFetchingNextPage
+                  ? t('installationsPage.pagination.loadingMore')
+                  : t('installationsPage.pagination.loadMore')}
+              </button>
+            ) : null}
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}

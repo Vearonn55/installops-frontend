@@ -405,6 +405,8 @@ installationsPage: {
   loading: 'Kurulumlar yükleniyor…',
   loadError: 'Kurulumlar yüklenemedi.',
   noResults: 'Filtrelere uyan kurulum bulunamadı.',
+  noResultsInRange:
+    'Seçilen tarih aralığında kurulum yok ({{loaded}} kayıt yüklendi). Başlangıç/Bitiş tarihlerini genişletin veya daha fazla yükleyin.',
 
   pagination: {
     showing: 'Gösterilen',
@@ -412,6 +414,10 @@ installationsPage: {
     prev: 'Önceki',
     next: 'Sonraki',
     page: 'Sayfa',
+    loadMore: 'Daha fazla yükle',
+    loadingMore: 'Yükleniyor…',
+    moreAvailable: 'sunucuda daha fazla kayıt var',
+    loaded: '{{count}} yüklendi',
   },
 
   sort: 'Sırala',
