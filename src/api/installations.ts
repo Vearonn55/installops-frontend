@@ -39,7 +39,8 @@ export type CrewAssignment = {
   declined_at?: string | null;
   created_at: string;
   updated_at: string;
-  // Note: schema does not embed User, but you might join on backend later
+  /** Populated when backend joins User on crew assignments. */
+  crew?: { id: UUID; name: string; email?: string };
 };
 
 export type CrewAssignmentCreate = {

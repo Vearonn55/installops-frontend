@@ -688,6 +688,35 @@ profilePage: {
     },
   },
 
+  crewPages: {
+    jobsTitle: 'My jobs',
+    jobsSubtitle: 'Assigned installations for the selected day',
+    loading: 'Loading…',
+    loadError: 'Failed to load jobs.',
+    noJobsDay: 'No assigned jobs for this day.',
+    startInstallation: 'Start installation',
+    starting: 'Starting…',
+    jobDetail: 'Installation',
+    jobLoadError: 'Failed to load installation.',
+    order: 'Order',
+    orderSubtitle: 'Customer & Netsis line items',
+    orderLoadError: 'Failed to load order.',
+    orderLines: 'Order lines',
+    noOrderLines: 'No line items from Netsis.',
+    tracking: 'Installation tracking',
+    noMilestones: 'No milestones yet.',
+    backToJobs: 'Back to jobs',
+    openChecklist: 'Open checklist',
+    status: {
+      pending: 'Pending',
+      staged: 'Staged',
+      in_progress: 'In progress',
+      completed: 'Completed',
+      failed: 'Failed',
+      after_sale: 'After-sale',
+    },
+  },
+
 
 };
 

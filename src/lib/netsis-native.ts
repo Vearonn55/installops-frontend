@@ -361,6 +361,23 @@ export function documentCustomerSparse(doc: NetsisJson | null | undefined): bool
   return !cariNameFromDoc(doc) && !cariPhoneFromDoc(doc) && !cariAddressFromDoc(doc);
 }
 
+/** Map NetOpenX kalem lines by stok kodu for merging onto local installation items. */
+export function netsisLinesByStokKodu(lines: NetsisJson[] | undefined) {
+  const m = new Map<string, { sku: string; name: string; description: string }>();
+  if (!lines?.length) return m;
+  for (const line of lines) {
+    const sku = pickStokKoduFromLine(line);
+    if (!sku) continue;
+    const nameRaw = stokAdiFromLine(line);
+    const descRaw = lineItemDescriptionFromLine(line);
+    const nameOut = nameRaw && nameRaw !== sku ? nameRaw : sku;
+    const description =
+      descRaw && descRaw !== sku && descRaw !== nameOut ? descRaw : nameOut;
+    m.set(sku, { sku, name: nameOut, description });
+  }
+  return m;
+}
+
 /** Map native lines to minimal rows for tables that still expect sku/name/qty. */
 export function netsisLinesToDisplayRows(lines: NetsisJson[] | undefined) {
   if (!Array.isArray(lines) || !lines.length) return [];

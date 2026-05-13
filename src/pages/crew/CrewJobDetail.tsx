@@ -1,103 +1,91 @@
 // src/pages/crew/CrewJobDetail.tsx
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Clock, MapPin, Phone, ChevronRight } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import {
+  ArrowLeft,
+  Clock,
+  MapPin,
+  Phone,
+  Users,
+  ChevronRight,
+  Play,
+  Package,
+} from 'lucide-react';
 
 import { cn } from '../../lib/utils';
 import { formatUiDateTime, formatUiTime } from '../../lib/date-display';
-import { getInstallation, type Installation } from '../../api/installations';
-import type { UUID } from '../../api/http';
 import {
-  pickInstallationRecordStatus,
-  mapBackendInstallationToCrewUiStatus,
-  type CrewJobsUiStatus,
-} from '../../lib/installation-status';
+  getInstallation,
+  updateInstallationStatus,
+  type Installation,
+} from '../../api/installations';
+import type { UUID } from '../../api/http';
+import { useInstallationNetsis } from '../../hooks/use-installation-netsis';
+import {
+  buildCrewJobView,
+  crewJobCardClass,
+  crewStatusLabelKey,
+  crewStatusPillClass,
+  mergeArpIntoCrewJobView,
+} from '../../lib/crew-job';
+import {
+  netsisLinesByStokKodu,
+  netsisLinesToDisplayRows,
+} from '../../lib/netsis-native';
 
-type CrewJob = {
+type DisplayItem = {
   id: string;
-  order_id: string;
-  start: string;
-  end: string;
-  customer: string;
-  phone?: string;
-  address: string;
-  zone: string;
-  status: CrewJobsUiStatus;
-  notes?: string;
-  items?: Array<{ sku: string; name: string; qty: number }>;
+  sku: string;
+  name: string;
+  description: string;
+  qty: number;
 };
 
-function formatTimeRange(startISO: string, endISO: string) {
-  return `${formatUiTime(startISO)}–${formatUiTime(endISO)}`;
-}
+function buildDisplayItems(inst: Installation, netsisLines: unknown[] | undefined): DisplayItem[] {
+  const lines = netsisLines ?? [];
+  const byPid = netsisLinesByStokKodu(lines as never);
+  const local = inst.items ?? [];
 
-function installationToCrewJob(inst: Installation): CrewJob {
-  const store = inst.store;
-  const addr = store?.address;
-  const city = addr?.city || addr?.region || '';
-  const addressLine = addr?.line1 || '';
-  const start = inst.scheduled_start ?? inst.created_at;
-  const end = inst.scheduled_end ?? start;
-
-  return {
-    id: inst.id,
-    order_id: inst.external_order_id,
-    start,
-    end,
-    customer: store?.name ?? inst.store_id,
-    phone: store?.phone ?? undefined,
-    address: city ? `${addressLine}, ${city}` : addressLine,
-    zone: city || '—',
-    status: mapBackendInstallationToCrewUiStatus(
-      pickInstallationRecordStatus(inst as unknown as Record<string, unknown>)
-    ),
-    notes: inst.notes ?? undefined,
-    items: (inst.items ?? []).map((it) => ({
-      sku: it.external_product_id,
-      name: it.external_product_id,
-      qty: it.quantity,
-    })),
-  };
-}
-
-function statusClass(s: CrewJobsUiStatus) {
-  switch (s) {
-    case 'completed':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-    case 'in_progress':
-      return 'border-blue-200 bg-blue-50 text-blue-700';
-    case 'staged':
-      return 'border-amber-200 bg-amber-50 text-amber-700';
-    case 'failed':
-      return 'border-red-200 bg-red-50 text-red-700';
-    case 'after_sale':
-      return 'border-violet-200 bg-violet-50 text-violet-800';
-    default:
-      return 'border-gray-200 bg-gray-50 text-gray-700';
+  if (!local.length && lines.length) {
+    return netsisLinesToDisplayRows(lines as never).map((row) => ({
+      id: row.id,
+      sku: row.sku,
+      name: row.name,
+      description: row.description,
+      qty: row.quantity,
+    }));
   }
-}
 
-function statusLabel(s: CrewJobsUiStatus) {
-  switch (s) {
-    case 'completed':
-      return 'Completed';
-    case 'in_progress':
-      return 'In progress';
-    case 'staged':
-      return 'Staged';
-    case 'failed':
-      return 'Failed';
-    case 'after_sale':
-      return 'After-sale';
-    default:
-      return 'Pending';
-  }
+  return local.map((row, idx) => {
+    const pid = String(row.external_product_id ?? '').trim();
+    const n = byPid.get(pid);
+    if (n) {
+      return {
+        id: row.id,
+        sku: n.sku,
+        name: n.name,
+        description: n.description,
+        qty: row.quantity,
+      };
+    }
+    return {
+      id: row.id || `item-${idx}`,
+      sku: pid,
+      name: pid,
+      description: row.special_instructions || pid,
+      qty: row.quantity,
+    };
+  });
 }
 
 export default function CrewJobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('common');
+  const [starting, setStarting] = useState(false);
 
   const instQuery = useQuery({
     queryKey: ['installation', id],
@@ -105,160 +93,195 @@ export default function CrewJobDetail() {
     enabled: !!id,
   });
 
-  const job: CrewJob | null = useMemo(() => {
-    if (!instQuery.data) return null;
-    return installationToCrewJob(instQuery.data);
-  }, [instQuery.data]);
+  const inst = instQuery.data;
+  const netsis = useInstallationNetsis(inst);
+
+  const job = useMemo(() => {
+    if (!inst) return null;
+    const base = buildCrewJobView(inst, netsis.order);
+    return mergeArpIntoCrewJobView(base, netsis.customerFromArp);
+  }, [inst, netsis.order, netsis.customerFromArp]);
+
+  const items = useMemo(
+    () => (inst ? buildDisplayItems(inst, netsis.order?.lines) : []),
+    [inst, netsis.order?.lines]
+  );
+
+  const startMutation = useMutation({
+    mutationFn: () => updateInstallationStatus(id as UUID, { status: 'in_progress' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['installation', id] });
+      queryClient.invalidateQueries({ queryKey: ['crew-jobs-installations'] });
+    },
+  });
+
+  const handleStart = async () => {
+    setStarting(true);
+    try {
+      await startMutation.mutateAsync();
+    } finally {
+      setStarting(false);
+    }
+  };
 
   return (
     <div className="mx-auto h-full w-full max-w-screen-sm">
-      <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <button className="rounded-md p-1 hover:bg-gray-50" onClick={() => navigate(-1)}>
+      <header className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button
+            type="button"
+            className="rounded-lg p-2 hover:bg-gray-100"
+            onClick={() => navigate(-1)}
+          >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div>
-            <div className="text-[11px] uppercase tracking-wide text-gray-500">Job</div>
-            <div className="text-sm font-semibold text-gray-900">{id ?? '—'}</div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wide text-gray-500">
+              {t('crewPages.jobDetail')}
+            </div>
+            <div className="truncate font-mono text-sm font-semibold text-gray-900">
+              {job?.installCode ?? id}
+            </div>
           </div>
-          {job && (
+          {job ? (
             <span
               className={cn(
-                'ml-auto inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                statusClass(job.status)
+                'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                crewStatusPillClass(job.status)
               )}
             >
-              {statusLabel(job.status)}
+              {t(crewStatusLabelKey(job.status))}
             </span>
-          )}
+          ) : null}
         </div>
       </header>
 
-      <main className="space-y-4 p-3 pb-[calc(env(safe-area-inset-bottom)+100px)]">
+      <main className="space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+120px)]">
         {instQuery.isLoading && (
-          <div className="rounded-xl border bg-white p-4 text-sm text-gray-600">Loading job…</div>
-        )}
-        {instQuery.isError && (
-          <div className="rounded-xl border bg-white p-4 text-sm text-red-600">
-            Failed to load job. It may not exist or you may not have access.
+          <div className="rounded-2xl border bg-white p-6 text-sm text-gray-600">
+            {t('crewPages.loading')}
           </div>
         )}
+        {instQuery.isError && (
+          <div className="rounded-2xl border bg-white p-6 text-sm text-red-600">
+            {t('crewPages.jobLoadError')}
+          </div>
+        )}
+
         {job && (
           <>
-            <section className="rounded-xl border bg-white p-3 shadow-sm">
-              <div className="text-base font-semibold text-gray-900">{job.customer}</div>
+            <section
+              className={cn(
+                'rounded-2xl border-2 p-4 shadow-sm',
+                crewJobCardClass(job.status)
+              )}
+            >
+              <h1 className="text-xl font-bold text-gray-900">{job.customerName}</h1>
+              <p className="mt-1 text-sm font-medium text-gray-700">{job.storeName}</p>
 
-              <div className="mt-2 grid grid-cols-1 gap-2 text-sm text-gray-700">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-gray-500" />
-                  <span>{formatTimeRange(job.start, job.end)}</span>
+              <div className="mt-3 space-y-2 text-sm text-gray-800">
+                <div className="flex items-start gap-2">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />
+                  <span className="break-words leading-snug">{job.address}</span>
                 </div>
-                <div className="text-xs text-gray-500">{formatUiDateTime(job.start)}</div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gray-500" />
-                  <span className="break-words">{job.address} • {job.zone}</span>
-                </div>
-                {job.phone && (
+                {job.phone ? (
                   <a
-                    href={`tel:${job.phone}`}
-                    className="flex items-center gap-2 text-primary-700 hover:underline"
+                    href={`tel:${job.phone.replace(/\s/g, '')}`}
+                    className="flex items-center gap-2 font-semibold text-primary-700"
                   >
                     <Phone className="h-4 w-4" />
                     {job.phone}
                   </a>
-                )}
+                ) : null}
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-gray-500" />
+                  <span>
+                    {formatUiTime(job.start)}–{formatUiTime(job.end)}
+                    <span className="ml-2 text-xs text-gray-500">
+                      {formatUiDateTime(job.start)}
+                    </span>
+                  </span>
+                </div>
+                {job.crewNames.length > 0 ? (
+                  <div className="flex items-start gap-2">
+                    <Users className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />
+                    <span>{job.crewNames.join(' · ')}</span>
+                  </div>
+                ) : null}
               </div>
 
-              {job.notes && (
-                <div className="mt-2 rounded-lg bg-gray-50 p-2 text-xs text-gray-600">
-                  <span className="font-medium text-gray-700">Notes:</span> {job.notes}
-                </div>
-              )}
+              {job.notes ? (
+                <p className="mt-3 rounded-lg bg-white/60 p-2 text-xs text-gray-700">
+                  {job.notes}
+                </p>
+              ) : null}
             </section>
 
-            {!!job.items?.length && (
-              <section className="rounded-xl border bg-white p-3 shadow-sm">
-                <div className="mb-2 text-sm font-semibold text-gray-900">Items</div>
+            {job.status === 'staged' ? (
+              <button
+                type="button"
+                disabled={starting || startMutation.isPending}
+                onClick={handleStart}
+                className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-4 text-base font-bold text-white hover:bg-primary-700 disabled:opacity-60"
+              >
+                <Play className="h-5 w-5" />
+                {starting ? t('crewPages.starting') : t('crewPages.startInstallation')}
+              </button>
+            ) : null}
+
+            {items.length > 0 ? (
+              <section className="rounded-2xl border bg-white p-4 shadow-sm">
+                <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <Package className="h-4 w-4" />
+                  {t('crewPages.orderLines')}
+                </div>
                 <ul className="divide-y">
-                  {job.items.map((it, idx) => (
-                    <li key={`${it.sku}-${idx}`} className="flex items-center justify-between py-2">
-                      <div className="min-w-0">
-                        <div className="text-sm text-gray-900">{it.name}</div>
-                        <div className="text-xs font-mono text-gray-500">{it.sku}</div>
+                  {items.map((it) => (
+                    <li key={it.id} className="py-3">
+                      <div className="text-sm font-medium text-gray-900">{it.name}</div>
+                      {it.description && it.description !== it.name ? (
+                        <p className="mt-0.5 text-xs text-gray-600">{it.description}</p>
+                      ) : null}
+                      <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                        <span className="font-mono">{it.sku}</span>
+                        <span className="font-semibold text-gray-900">×{it.qty}</span>
                       </div>
-                      <div className="text-sm font-medium text-gray-900">×{it.qty}</div>
                     </li>
                   ))}
                 </ul>
               </section>
-            )}
+            ) : null}
 
-            <section className="rounded-xl border bg-white p-3 shadow-sm">
-              <div className="text-sm font-semibold text-gray-900">Progress</div>
-              <ol className="mt-2 grid grid-cols-3 gap-2 text-center text-[11px]">
-                {[
-                  { key: 'staged', label: 'Staged' },
-                  { key: 'in_progress', label: 'In progress' },
-                  { key: 'completed', label: 'Completed' },
-                ].map((s) => {
-                  const active =
-                    (s.key === 'staged' &&
-                      (job.status === 'staged' ||
-                        job.status === 'in_progress' ||
-                        job.status === 'completed' ||
-                        job.status === 'after_sale')) ||
-                    (s.key === 'in_progress' &&
-                      (job.status === 'in_progress' ||
-                        job.status === 'completed' ||
-                        job.status === 'after_sale')) ||
-                    (s.key === 'completed' &&
-                      (job.status === 'completed' || job.status === 'after_sale'));
-
-                  return (
-                    <li
-                      key={s.key}
-                      className={cn(
-                        'rounded-lg border px-2 py-1',
-                        active
-                          ? 'border-primary-200 bg-emerald-200 text-primary-700'
-                          : 'border-gray-200 text-gray-500'
-                      )}
-                    >
-                      {s.label}
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
-
-            <section className="rounded-xl border bg-white p-3 shadow-sm">
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
               <button
                 type="button"
                 onClick={() => navigate(`/crew/jobs/${job.id}/order`)}
-                className="flex w-full items-center justify-between"
+                className="flex w-full items-center justify-between gap-2"
               >
-                <div className="text-left">
-                  <div className="text-xs uppercase tracking-wide text-gray-500">Order</div>
-                  <div className="break-all font-mono text-sm text-gray-900">{job.order_id}</div>
+                <div className="min-w-0 text-left">
+                  <div className="text-xs uppercase tracking-wide text-gray-500">
+                    {t('crewPages.order')}
+                  </div>
+                  <div className="break-all font-mono text-sm text-gray-900">{job.orderId}</div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
+                <ChevronRight className="h-5 w-5 shrink-0 text-gray-400" />
               </button>
             </section>
 
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => navigate('/crew/jobs')}
-                className="btn-soft flex-1 min-h-11"
+                className="btn-soft min-h-12 flex-1"
               >
-                Back to Jobs
+                {t('crewPages.backToJobs')}
               </button>
               <button
                 type="button"
                 onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}
-                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-primary-600 px-3 text-sm font-semibold text-white hover:bg-primary-700"
               >
-                Open Checklist
+                {t('crewPages.openChecklist')}
               </button>
             </div>
           </>

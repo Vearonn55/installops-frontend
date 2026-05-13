@@ -2,130 +2,163 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, MapPin, User2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, Loader2, MapPin, Phone, Package, User2 } from 'lucide-react';
 
-import { cn } from '../../lib/utils';
 import { formatUiDateTime } from '../../lib/date-display';
 import { getInstallation } from '../../api/installations';
-import { getOrderTimeline } from '../../api/orders';
 import type { UUID } from '../../api/http';
+import { useInstallationNetsis } from '../../hooks/use-installation-netsis';
+import {
+  buildCrewJobView,
+  mergeArpIntoCrewJobView,
+} from '../../lib/crew-job';
+import { netsisLinesToDisplayRows } from '../../lib/netsis-native';
+import { getOrderTimeline } from '../../api/orders';
 import {
   auditRowToOrderTrackingEvent,
   orderTrackingAccentClass,
-  type OrderTimelineViewEvent,
 } from '../../lib/order-timeline-audit';
-
-type Customer = {
-  name: string;
-  region: string;
-  address: string;
-};
-
-type OrderDetail = {
-  orderId: string;
-  orderNo: string;
-  customer: Customer;
-  timeline: OrderTimelineViewEvent[];
-};
-
-async function loadOrderDetailForInstallation(installationId: string): Promise<OrderDetail> {
-  const inst = await getInstallation(installationId as UUID);
-  const tl = await getOrderTimeline(inst.external_order_id, { limit: 200, offset: 0 });
-  const store = inst.store;
-  const addr = store?.address;
-  const addressLine = [addr?.line1, addr?.line2, addr?.city, addr?.postal_code].filter(Boolean).join(', ') || '—';
-
-  const timeline = (tl.timeline?.data ?? []).map(auditRowToOrderTrackingEvent);
-
-  return {
-    orderId: inst.id,
-    orderNo: inst.external_order_id,
-    customer: {
-      name: store?.name ?? '—',
-      region: addr?.region || addr?.city || '—',
-      address: addressLine,
-    },
-    timeline,
-  };
-}
+import { cn } from '../../lib/utils';
 
 export default function CrewOrderDetail() {
   const { id: jobId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
 
-  const queryEnabled = Boolean(jobId);
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['crew-order-detail', jobId],
-    queryFn: () => loadOrderDetailForInstallation(jobId as string),
-    enabled: queryEnabled,
+  const instQuery = useQuery({
+    queryKey: ['installation', jobId],
+    queryFn: () => getInstallation(jobId as UUID),
+    enabled: Boolean(jobId),
   });
 
-  const order = data;
+  const inst = instQuery.data;
+  const netsis = useInstallationNetsis(inst);
+
+  const job = useMemo(() => {
+    if (!inst) return null;
+    const base = buildCrewJobView(inst, netsis.order);
+    return mergeArpIntoCrewJobView(base, netsis.customerFromArp);
+  }, [inst, netsis.order, netsis.customerFromArp]);
+
+  const lines = useMemo(
+    () => netsisLinesToDisplayRows(netsis.order?.lines),
+    [netsis.order?.lines]
+  );
+
+  const timelineQuery = useQuery({
+    queryKey: ['crew-order-timeline', inst?.external_order_id],
+    queryFn: () =>
+      getOrderTimeline(inst!.external_order_id, { limit: 200, offset: 0 }),
+    enabled: Boolean(inst?.external_order_id),
+  });
+
   const timeline = useMemo(() => {
-    if (!order) return [];
-    return [...order.timeline].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-  }, [order]);
+    const rows = timelineQuery.data?.timeline?.data ?? [];
+    return rows
+      .map(auditRowToOrderTrackingEvent)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [timelineQuery.data]);
+
+  const loading = instQuery.isLoading || netsis.isLoading;
+  const hasError = instQuery.isError;
 
   return (
     <div className="mx-auto h-full w-full max-w-screen-sm">
-      <header className="sticky top-0 z-10 border-b bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <button type="button" className="rounded-md p-1 hover:bg-gray-50" onClick={() => navigate(-1)}>
+      <header className="sticky top-0 z-10 border-b bg-white/95 backdrop-blur">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button
+            type="button"
+            className="rounded-lg p-2 hover:bg-gray-100"
+            onClick={() => navigate(-1)}
+          >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold text-gray-900">
-              {order ? order.orderNo : 'Order details'}
+              {job?.orderId ?? t('crewPages.order')}
             </div>
-            <div className="text-[11px] text-gray-500">Order information & history</div>
+            <div className="text-[11px] text-gray-500">{t('crewPages.orderSubtitle')}</div>
           </div>
         </div>
       </header>
 
       <main className="space-y-3 p-3 pb-[calc(env(safe-area-inset-bottom)+88px)]">
-        {isLoading && (
-          <section className="rounded-xl border bg-white p-4 text-sm text-gray-600">
+        {loading && (
+          <section className="rounded-2xl border bg-white p-6 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading order details…
+              {t('crewPages.loading')}
             </div>
           </section>
         )}
-        {isError && (
-          <section className="rounded-xl border bg-white p-4 text-sm text-rose-700">
-            Failed to load order details.
+
+        {hasError && (
+          <section className="rounded-2xl border bg-white p-6 text-sm text-rose-700">
+            {t('crewPages.orderLoadError')}
           </section>
         )}
 
-        {!!order && (
+        {job && !loading && (
           <>
-            <section className="rounded-xl border bg-white p-3 shadow-sm">
-              <div className="grid grid-cols-[32px_1fr] items-start gap-x-3 gap-y-2">
-                <div className="flex items-start justify-center pt-0.5">
-                  <User2 className="h-7 w-7 text-gray-700" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-lg font-semibold text-gray-900">{order.customer.name}</div>
-                  <div className="text-sm text-gray-600">{order.customer.region}</div>
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <div className="grid grid-cols-[28px_1fr] items-start gap-x-3 gap-y-3">
+                <User2 className="h-6 w-6 text-gray-600" />
+                <div>
+                  <div className="text-lg font-bold text-gray-900">{job.customerName}</div>
+                  <div className="text-sm text-gray-600">{job.storeName}</div>
                 </div>
 
-                <div className="flex items-start justify-center pt-0.5">
-                  <MapPin className="h-6 w-6 text-gray-700" />
+                <MapPin className="h-5 w-5 text-gray-600" />
+                <div className="break-words text-sm leading-snug text-gray-900">
+                  {job.address}
                 </div>
-                <div className="min-w-0 break-words text-[16px] leading-snug text-gray-900">{order.customer.address}</div>
+
+                {job.phone ? (
+                  <>
+                    <Phone className="h-5 w-5 text-gray-600" />
+                    <a
+                      href={`tel:${job.phone.replace(/\s/g, '')}`}
+                      className="text-sm font-semibold text-primary-700"
+                    >
+                      {job.phone}
+                    </a>
+                  </>
+                ) : null}
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-xl border bg-white p-3 shadow-sm">
-              <div className="mb-1 text-sm font-semibold text-gray-900">Installation tracking</div>
-              <p className="mb-3 text-xs text-gray-500">
-                Short summary only. Your office can open Audit for full technical history.
-              </p>
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Package className="h-4 w-4" />
+                {t('crewPages.orderLines')}
+              </div>
+              {lines.length === 0 ? (
+                <p className="text-sm text-gray-500">{t('crewPages.noOrderLines')}</p>
+              ) : (
+                <ul className="divide-y">
+                  {lines.map((line) => (
+                    <li key={line.id} className="py-3">
+                      <div className="text-sm font-medium text-gray-900">{line.name}</div>
+                      {line.description && line.description !== line.name ? (
+                        <p className="mt-0.5 text-xs text-gray-600">{line.description}</p>
+                      ) : null}
+                      <div className="mt-1 flex justify-between text-xs text-gray-500">
+                        <span className="font-mono">{line.sku}</span>
+                        <span className="font-semibold text-gray-900">×{line.quantity}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
 
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <div className="mb-2 text-sm font-semibold text-gray-900">
+                {t('crewPages.tracking')}
+              </div>
               {timeline.length === 0 ? (
-                <p className="text-sm text-gray-500">No milestones yet.</p>
+                <p className="text-sm text-gray-500">{t('crewPages.noMilestones')}</p>
               ) : (
                 <ul className="space-y-3">
                   {timeline.map((ev) => (
@@ -133,14 +166,12 @@ export default function CrewOrderDetail() {
                       key={ev.id}
                       className={cn('border-l-2 pl-3', orderTrackingAccentClass(ev.tone))}
                     >
-                      <div className="flex flex-col gap-0.5">
-                        <p className="text-sm font-medium leading-snug text-gray-900">{ev.headline}</p>
-                        <time className="text-xs tabular-nums text-gray-500" dateTime={ev.date}>
-                          {formatUiDateTime(ev.date)}
-                        </time>
-                      </div>
+                      <p className="text-sm font-medium text-gray-900">{ev.headline}</p>
+                      <time className="text-xs text-gray-500" dateTime={ev.date}>
+                        {formatUiDateTime(ev.date)}
+                      </time>
                       {ev.detail ? (
-                        <p className="mt-1 line-clamp-3 text-sm leading-snug text-gray-600">{ev.detail}</p>
+                        <p className="mt-1 text-sm text-gray-600">{ev.detail}</p>
                       ) : null}
                     </li>
                   ))}

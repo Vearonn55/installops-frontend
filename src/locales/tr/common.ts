@@ -688,7 +688,34 @@ profilePage: {
     },
   },
 
-
+  crewPages: {
+    jobsTitle: 'İşlerim',
+    jobsSubtitle: 'Seçilen güne atanmış kurulumlar',
+    loading: 'Yükleniyor…',
+    loadError: 'İşler yüklenemedi.',
+    noJobsDay: 'Bu gün için atanmış iş yok.',
+    startInstallation: 'Kurulumu başlat',
+    starting: 'Başlatılıyor…',
+    jobDetail: 'Kurulum',
+    jobLoadError: 'Kurulum yüklenemedi.',
+    order: 'Sipariş',
+    orderSubtitle: 'Müşteri ve Netsis kalemleri',
+    orderLoadError: 'Sipariş yüklenemedi.',
+    orderLines: 'Sipariş kalemleri',
+    noOrderLines: 'Netsis’ten kalem bulunamadı.',
+    tracking: 'Kurulum takibi',
+    noMilestones: 'Henüz kayıt yok.',
+    backToJobs: 'İşlere dön',
+    openChecklist: 'Kontrol listesi',
+    status: {
+      pending: 'Beklemede',
+      staged: 'Sahaya hazır',
+      in_progress: 'Devam ediyor',
+      completed: 'Tamamlandı',
+      failed: 'Başarısız',
+      after_sale: 'Satış sonrası',
+    },
+  },
 
 
 
