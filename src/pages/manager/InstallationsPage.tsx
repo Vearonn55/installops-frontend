@@ -662,7 +662,7 @@ export default function InstallationsPage() {
         <QuickChip
           label={t('installationsPage.chips.after_sale_service')}
           value={counts.after_sale_service}
-          tone="sky"
+          tone="violet"
           icon={<Wrench className="h-3.5 w-3.5" />}
           active={status === 'after_sale_service'}
           onClick={() => {
@@ -986,7 +986,7 @@ const STATUS_PILL_CFG: Record<
     label: 'Cancelled',
   },
   after_sale_service: {
-    tone: 'border-sky-200 bg-sky-50 text-sky-700',
+    tone: 'border-violet-200 bg-violet-50 text-violet-700',
     Icon: Wrench,
     label: 'After-sale service',
   },
@@ -1041,7 +1041,7 @@ function Th({
         onClick={onClick}
         className={cn(
           'inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-gray-100',
-          active && 'text-violet-700'
+          active && 'text-primary-700'
         )}
         title={t('installationsPage.sort')}
       >
@@ -1070,12 +1070,13 @@ function QuickChip({
   active?: boolean;
   onClick?: () => void;
   icon?: React.ReactNode;
-  tone?: 'gray' | 'blue' | 'sky' | 'amber' | 'emerald' | 'rose' | 'zinc';
+  tone?: 'gray' | 'blue' | 'sky' | 'violet' | 'amber' | 'emerald' | 'rose' | 'zinc';
 }) {
   const tones: Record<string, string> = {
     gray: 'border-gray-200 bg-white text-gray-700',
     blue: 'border-blue-200 bg-blue-50 text-blue-700',
     sky: 'border-sky-200 bg-sky-50 text-sky-700',
+    violet: 'border-violet-200 bg-violet-50 text-violet-700',
     amber: 'border-amber-200 bg-amber-50 text-amber-700',
     emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
     rose: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -1088,7 +1089,7 @@ function QuickChip({
       className={cn(
         'mx-1 inline-flex max-w-[min(100%,18rem)] shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-left text-sm sm:max-w-none sm:gap-2 sm:px-3',
         tones[tone],
-        active && 'ring-2 ring-violet-500 ring-offset-1 border-violet-300 bg-violet-50 text-violet-800'
+        active && 'ring-2 ring-primary-500 ring-offset-1'
       )}
     >
       {icon && <span className="shrink-0">{icon}</span>}

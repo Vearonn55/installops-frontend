@@ -165,7 +165,7 @@ function statusClasses(s: Installation['status']) {
       return 'border-rose-200 bg-rose-50 text-rose-700';
 
     case 'after_sale_service':
-      return 'border-sky-200 bg-sky-50 text-sky-700';
+      return 'border-violet-200 bg-violet-50 text-violet-700';
 
     case 'staged':
       return 'border-blue-200 bg-blue-50 text-blue-700';
