@@ -1,29 +1,28 @@
 # Server update (InstallOps)
 
-Adjust paths, branch names, and process manager (`pm2` / `systemd`) to match your host.
+Adjust paths, branch names, and service names to match your host.
 
 ## 1. Backend API (Node)
 
 ```bash
-cd /path/to/installops-backend/backend
+cd /opt/installops-backend   # or your clone path
 git pull origin main
 npm ci
-# Apply new SQL (e.g. migration 006) — use your normal migration process, or once:
-#   psql "$DATABASE_URL" -f db/migrations/006_stores_netsis_order_detail_paths.sql
-sudo systemctl restart installops-api
-# or: pm2 restart installops-api
+# Apply any new SQL under db/migrations/ if you use them on existing DBs
+sudo systemctl restart installops-backend
+# or: pm2 restart installops-backend
 ```
 
-Smoke test from the server (after logging in via browser once, or use a session cookie):
+Smoke test:
 
 ```bash
 curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/api/v1/health
-# Expect 200. Then GET /orders must exist (may be 401 without cookie — not 404):
-curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8000/api/v1/orders?limit=5
+# Expect 200. GET /orders without cookie → 401 (route exists), not 404:
+curl -sS -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:8000/api/v1/orders?limit=5"
 ```
 
-- **404** on `/api/v1/orders` → old code still running; confirm `git log -1` and restart the correct service.
-- **401** on `/api/v1/orders` → route exists; auth is required (expected).
+- **404** on `/api/v1/orders` → old code or wrong service; check `git log -1` and restart.
+- **401** → expected without session cookie.
 
 ## 2. Nginx (proxy `/api/` before SPA)
 
@@ -42,16 +41,16 @@ npm run build
 sudo rsync -a --delete dist/ /var/www/installops-frontend/dist/
 ```
 
-Ensure production env includes API base (usually same-origin):
+Production env (same-origin API):
 
 ```bash
-# In repo .env.production or CI env:
-# VITE_API_BASE_URL=/api/v1
+# .env.production or build-time env
+VITE_API_BASE_URL=/api/v1
 ```
 
-## 4. One-line checks (HTTPS)
+## 4. HTTPS checks
 
 ```bash
 curl -sS -o /dev/null -w "%{http_code}\n" https://YOUR_DOMAIN/api/v1/health
-curl -sS -o /dev/null -w "%{http_code}\n" https://YOUR_DOMAIN/api/v1/orders?limit=1
+curl -sS -o /dev/null -w "%{http_code}\n" "https://YOUR_DOMAIN/api/v1/orders?limit=1"
 ```

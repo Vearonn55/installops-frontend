@@ -1,218 +1,128 @@
-# InstallOps - Furniture Installation Management Platform
+# InstallOps Frontend
 
-A comprehensive web application for managing furniture installation operations across multiple roles and workflows.
+Web UI for furniture installation operations: manager/admin dashboards, Netsis-backed orders, installation scheduling, crew mobile workflow, and admin configuration.
 
-## Features
+## Roles and routes
 
-### Multi-Role Support
-- **Admin**: System administration, user management, integrations, audit logs
-- **Store Manager**: Order management, installation scheduling, customer management
-- **Warehouse Manager**: Inventory management, pick list generation, stock tracking
-- **Installation Crew**: Mobile PWA for job execution, offline support, photo capture
+Session cookie auth (`POST /auth/login`). The API returns role names `admin`, `manager`, and `crew`; the SPA maps them to `ADMIN`, `STORE_MANAGER`, and `CREW`.
 
-### Core Functionality
-- **Order Management**: Create and manage customer orders
-- **Installation Scheduling**: Calendar-based scheduling with capacity management
-- **Inventory Tracking**: Real-time stock levels and allocation
-- **Pick List Generation**: Automated pick list creation for installations
-- **Job Execution**: Mobile-friendly crew app with offline capabilities
-- **Photo Documentation**: Required photo capture with tagging
-- **Checklist Management**: Configurable installation checklists
-- **Reporting & Analytics**: KPI dashboards and operational insights
-- **Audit Trail**: Complete activity logging and compliance tracking
+| Role | Shell | Main routes |
+|------|--------|-------------|
+| **Admin** | `/app/*` | Dashboard, orders, installations, calendar, profile, settings; admin: users, roles, reports, stores (Netsis config), integrations hub, audit |
+| **Store manager** | `/app/*` | Same except admin-only pages; scoped to the user’s store |
+| **Crew** | `/crew/*` | Home, jobs list, job detail, checklist (with photo upload), order view, settings |
 
-## Technology Stack
+### Public auth pages
 
-### Frontend
-- **React 19** with TypeScript
-- **Vite** for build tooling
-- **React Router** for navigation
-- **TanStack Query** for server state management
-- **Zustand** for client state management
-- **React Hook Form** with Zod validation
-- **Tailwind CSS** for styling
-- **Lucide React** for icons
+- `/auth/login` — working login
+- `/auth/forgot-password`, `/auth/reset-password` — UI only (no backend reset API wired)
 
-### Architecture
-- **Modular Monolith**: Organized by feature modules
-- **Role-Based Access Control (RBAC)**: Granular permissions
-- **Offline-First PWA**: Crew app works offline with sync
-- **API-First Design**: RESTful API with OpenAPI specification
-- **Responsive Design**: Mobile-first approach
+### Placeholder routes (not implemented)
 
-## Getting Started
+- `/app/orders/new` — create order in InstallOps (orders come from Netsis)
+- `/app/admin/capacity` — capacity settings
+- `/crew/jobs/:id/capture`, `/crew/jobs/:id/issues`, `/crew/issues` — dedicated capture/issues pages (photos are uploaded from the checklist flow)
 
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
+## Implemented features
 
-### Installation
+- **Orders** — browse aggregated installations as orders (`GET /orders`) or live Netsis ItemSlips (`GET /integrations/netsis/orders/search`) with load-more pagination; order detail with installations, timeline, and optional Netsis document/lines
+- **Installations** — list, create (linked to Netsis `external_order_id`), detail, edit, status changes, crew assignment, media gallery, stage (`pending`/`scheduled` → `staged`)
+- **Calendar** — month/week views of installations (no capacity rules)
+- **Dashboards** — admin and manager KPI-style summaries from installation data
+- **Reports** (admin) — filtered installation report table
+- **Users / roles** (admin) — user CRUD, role assignment
+- **Stores & Netsis** (admin) — per-store Netsis URL, paths, credentials, test connection
+- **Audit log** (admin) — read-only audit viewer
+- **Crew app** — responsive job list, start job (`staged` → `in_progress`), fixed checklist with required photos, completion outcomes (`completed`, `failed`, `after_sale_service`)
+- **Media** — upload from crew checklist; view on installation detail
+- **i18n** — English and Turkish; date display preference in settings
+- **Command palette** — top-bar search in `AppShell`: navigate pages, run commands, help links (frontend-only; no API entity search)
 
-1. Clone the repository:
+## Not implemented
+
+Do not expect these in the current codebase:
+
+- Warehouse role, inventory, pick lists, stock allocation
+- Creating customer orders inside InstallOps (`POST /orders` does not exist)
+- Configurable checklist templates in the UI (backend CRUD exists; crew uses a built-in checklist)
+- Offline queue / background sync / installable PWA (`stores/offline.ts` is unused)
+- Crew job accept/decline UI (backend supports assignment status; no frontend wiring)
+- Password reset API
+- Automated test suite (Vitest is configured; no `*.test.*` / `*.spec.*` files yet)
+- Docker image for the frontend repo
+
+## Stack
+
+- React 19, TypeScript, Vite
+- React Router, TanStack Query, Zustand
+- React Hook Form + Zod, Tailwind CSS, Lucide icons, react-i18next
+
+## Getting started
+
 ```bash
 git clone <repository-url>
-cd installops-alpler
-```
-
-2. Install dependencies:
-```bash
+cd installops-frontend
 npm install
-```
-
-3. Start the development server:
-```bash
 npm run dev
 ```
 
-4. Open your browser and navigate to `http://localhost:3000`
+Open `http://localhost:5173` (or the port Vite prints). Point the API at your backend:
 
-### Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-- `npm run test` - Run tests
-- `npm run test:ui` - Run tests with UI
-- `npm run test:coverage` - Run tests with coverage
-
-## Project Structure
-
-```
-src/
-├── components/          # Reusable UI components
-│   ├── auth/           # Authentication components
-│   └── layout/         # Layout components
-├── hooks/              # Custom React hooks
-├── lib/                # Utility libraries
-│   ├── api.ts         # API client
-│   ├── query-client.ts # React Query configuration
-│   └── utils.ts       # Utility functions
-├── pages/              # Page components
-│   ├── admin/         # Admin pages
-│   ├── auth/          # Authentication pages
-│   ├── crew/          # Crew PWA pages
-│   ├── manager/       # Store manager pages
-│   ├── shared/        # Shared pages
-│   └── warehouse/     # Warehouse pages
-├── stores/             # State management
-│   ├── auth.ts        # Authentication store
-│   └── offline.ts     # Offline queue store
-├── types/              # TypeScript type definitions
-└── App.tsx            # Main application component
-```
-
-## Role-Based Access Control
-
-### Admin
-- Full system access
-- User and role management
-- System configuration
-- Audit log access
-- Integration management
-
-### Store Manager
-- Order management
-- Installation scheduling
-- Customer management
-- Calendar access
-- Reports (store-scoped)
-
-### Warehouse Manager
-- Inventory management
-- Pick list generation
-- Product catalog
-- Stock allocation
-
-### Installation Crew
-- Job acceptance/decline
-- Installation execution
-- Photo capture
-- Checklist completion
-- Issue reporting
-- Offline operation
-
-## API Integration
-
-The app talks to the **InstallOps backend** over REST (`src/api/*` uses Axios with **`withCredentials: true`**).
-
-- **Base URL**: `VITE_API_BASE_URL` (default `/api/v1` — same origin when served behind nginx with `/api` → Node).
-- **Authentication**: **Session cookie** `sid` after `POST /auth/login` — not JWT. Do not send `Authorization: Bearer` for the main API.
-- **Errors**: JSON bodies such as `{ error, message, request_id? }` from the backend.
-- **Netsis**: Order combobox search uses `GET /integrations/netsis/orders/search`; order detail (customer + lines) uses `GET /integrations/netsis/orders/detail` when `netsis_order_detail_path` is set (see backend `docs/NETSIS.md`). Configure under **Admin → Stores & Netsis**.
-
-## Offline Support
-
-The Crew PWA includes comprehensive offline support:
-
-- **Offline Queue**: Actions are queued when offline
-- **Background Sync**: Automatic sync when connection restored
-- **Conflict Resolution**: Handles sync conflicts gracefully
-- **Data Persistence**: Local storage for critical data
-- **Status Indicators**: Clear offline/online status
-
-## Development Guidelines
-
-### Code Style
-- Use TypeScript for type safety
-- Follow React best practices
-- Use functional components with hooks
-- Implement proper error boundaries
-- Write comprehensive tests
-
-### Component Guidelines
-- Keep components small and focused
-- Use proper prop typing
-- Implement loading and error states
-- Follow accessibility guidelines (WCAG 2.1 AA)
-
-### State Management
-- Use React Query for server state
-- Use Zustand for client state
-- Implement optimistic updates where appropriate
-- Handle loading and error states consistently
-
-## Testing
-
-The project includes comprehensive testing setup:
-
-- **Unit Tests**: Component and utility testing
-- **Integration Tests**: API integration testing
-- **E2E Tests**: Full user workflow testing
-- **Accessibility Tests**: WCAG compliance testing
-
-## Deployment
-
-### Production Build
 ```bash
-npm run build
-```
-
-### Environment Variables
-Create a `.env` file with:
-```
+# .env
 VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```
 
-### Docker Support
-```bash
-docker build -t installops-frontend .
-docker run -p 3000:3000 installops-frontend
+In production behind nginx, `/api/v1` on the same origin is typical.
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Development server |
+| `npm run build` | Production build → `dist/` |
+| `npm run build:check` | `tsc` then build |
+| `npm run preview` | Preview production build |
+| `npm run lint` | ESLint |
+| `npm run test` | Vitest (no tests committed yet) |
+
+## API usage
+
+- Client: `src/api/*` (Axios, `withCredentials: true`)
+- Session cookie `sid` after login — not JWT
+- Netsis: `src/api/integrations.ts`; field reading helpers in `src/lib/netsis-native.ts`
+- Configure Netsis per store under **Admin → Stores** (not the integrations hub alone)
+
+## Project layout
+
+```
+src/
+├── api/              # HTTP clients
+├── components/       # UI (layout, CommandPalette, modals, …)
+├── hooks/
+├── lib/              # utils, netsis-native, media-url, date-display
+├── locales/          # en / tr
+├── pages/
+│   ├── admin/
+│   ├── auth/
+│   ├── crew/
+│   ├── manager/
+│   └── shared/
+├── stores/           # auth (Zustand)
+└── App.tsx
 ```
 
-## Contributing
+## Deployment
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+```bash
+npm ci
+npm run build
+# serve dist/ via nginx or rsync to /var/www/...
+```
 
-## License
+See `scripts/DEPLOY_SERVER.md` for a typical VPS update flow.
 
-This project is licensed under the MIT License.
+## Related docs
 
-## Support
-
-For support and questions, please contact the development team or create an issue in the repository.
+- Backend API and Netsis: `../installops-backend/README.md`, `../installops-backend/docs/NETSIS.md`
+- Command palette design notes: `docs/command-palette-scope.md`
