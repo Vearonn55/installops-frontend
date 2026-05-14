@@ -17,7 +17,7 @@ import { defaultDateRangeOrdersList, parseOrderDate } from "../../lib/date-range
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
-import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations";
+import { searchNetsisOrders, fetchNetsisOrderIndex, type NetsisOrderHit } from "../../api/integrations";
 import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
@@ -74,6 +74,7 @@ export default function OrdersPage() {
   const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [netsisTotalsByStore, setNetsisTotalsByStore] = useState<Record<string, number>>({});
   const [netsisCursors, setNetsisCursors] = useState<Record<string, StoreFetchCursor>>({});
   /** Netsis ItemSlips are not date-scoped at the API; only filter by date after the user changes pickers. */
   const [netsisDateFilterActive, setNetsisDateFilterActive] = useState(false);
@@ -110,26 +111,45 @@ export default function OrdersPage() {
       orders: Order[];
       cursors: Record<string, StoreFetchCursor>;
       hasMore: boolean;
+      totalsByStore: Record<string, number>;
     }> => {
       const results = await Promise.allSettled(
         targetStores.map(async (s) => {
+          const detailOffset = offsets[s.id] ?? 0;
+          let total: number | undefined;
+
+          if (!q.trim() && detailOffset === 0) {
+            const indexRes = await fetchNetsisOrderIndex({ store_id: s.id as UUID });
+            total = indexRes.total;
+          }
+
           const res = await searchNetsisOrders({
             store_id: s.id as UUID,
             ...(q ? { q } : {}),
             limit: NETSIS_PAGE_SIZE,
-            offset: offsets[s.id] ?? 0,
+            offset: detailOffset,
           });
-          return { store: s, hits: res.data ?? [], hasMore: res.has_more };
+
+          return {
+            store: s,
+            hits: res.data ?? [],
+            hasMore: res.has_more,
+            total: total ?? res.total,
+          };
         })
       );
 
       const nextOrders: Order[] = [];
       const nextCursors: Record<string, StoreFetchCursor> = {};
+      const totalsByStore: Record<string, number> = {};
       let anyFull = false;
 
       for (const r of results) {
         if (r.status !== "fulfilled") continue;
-        const { store: st, hits, hasMore: storeHasMore } = r.value;
+        const { store: st, hits, hasMore: storeHasMore, total } = r.value;
+        if (typeof total === "number") {
+          totalsByStore[st.id] = total;
+        }
         const full = storeHasMore === true;
         if (full) anyFull = true;
         nextCursors[st.id] = {
@@ -143,6 +163,7 @@ export default function OrdersPage() {
         orders: sortOrdersByIdDesc(dedupeOrders(nextOrders)),
         cursors: nextCursors,
         hasMore: anyFull,
+        totalsByStore,
       };
     },
     []
@@ -157,6 +178,7 @@ export default function OrdersPage() {
       setOrdersFetchError(null);
       setHasMore(false);
       setNetsisCursors({});
+      setNetsisTotalsByStore({});
       setNetsisDateFilterActive(false);
       setOrders([]);
 
@@ -200,6 +222,7 @@ export default function OrdersPage() {
           if (!cancelled) {
             setOrders(batch.orders);
             setNetsisCursors(batch.cursors);
+            setNetsisTotalsByStore(batch.totalsByStore);
             setHasMore(batch.hasMore);
             setOrdersSource("netsis");
             setOrdersFetchError(null);
@@ -209,6 +232,7 @@ export default function OrdersPage() {
           if (!cancelled) {
             setOrders(batch.orders);
             setNetsisCursors(batch.cursors);
+            setNetsisTotalsByStore(batch.totalsByStore);
             setHasMore(batch.hasMore);
             setOrdersSource("netsis");
             setOrdersFetchError(null);
@@ -332,6 +356,12 @@ export default function OrdersPage() {
     }
     return opts;
   }, [storeOptions, isAdmin, t]);
+
+  const netsisCatalogTotal = useMemo(() => {
+    const vals = Object.values(netsisTotalsByStore);
+    if (!vals.length) return null;
+    return vals.reduce((sum, n) => sum + n, 0);
+  }, [netsisTotalsByStore]);
 
   // 🔹 Filter + search + store filter
   const filtered = useMemo(() => {
@@ -631,6 +661,9 @@ export default function OrdersPage() {
             {t("ordersPage.pagination.showing")} <b>{paged.length}</b>{" "}
             {t("ordersPage.pagination.of")}{" "}
             <b>{ordersSource === "netsis" ? orders.length : filtered.length}</b>
+            {ordersSource === "netsis" && netsisCatalogTotal != null ? (
+              <span className="text-gray-500"> / {netsisCatalogTotal}</span>
+            ) : null}
             {ordersSource === "netsis" && netsisDateFilterActive && filtered.length !== orders.length ? (
               <span className="text-gray-500">
                 {" "}

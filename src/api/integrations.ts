@@ -17,6 +17,20 @@ export type NetsisOrderSearchResponse = {
   total?: number;
 };
 
+export type NetsisOrderIndexResponse = {
+  order_ids: string[];
+  total: number;
+  source?: 'http';
+};
+
+export async function fetchNetsisOrderIndex(params: {
+  store_id: UUID;
+}): Promise<NetsisOrderIndexResponse> {
+  return apiGet<NetsisOrderIndexResponse>('/integrations/netsis/orders/index', {
+    params: { store_id: params.store_id },
+  });
+}
+
 export async function searchNetsisOrders(params: {
   store_id: UUID;
   /** Optional for HTTP search when the store path lists slips without a `q` filter (e.g. ItemSlips?docType=7). */
