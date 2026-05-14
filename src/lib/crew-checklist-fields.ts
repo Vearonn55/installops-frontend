@@ -26,6 +26,45 @@ export function buildCrewChecklistResponsePayload(
   return out;
 }
 
+/** Snapshot answers at submit time (successful installs always persist handover/reco booleans). */
+export function crewChecklistAnswersFromValues(
+  values: CrewChecklistDraft,
+  installStatus?: 'successful' | 'failed'
+): Record<string, boolean> | null {
+  const answers: Record<string, boolean> = {};
+  if (typeof values.arrived_on_time === 'boolean') {
+    answers.arrived_on_time = values.arrived_on_time;
+  }
+  if (installStatus === 'successful') {
+    answers.handover_docs = Boolean(values.handover_docs);
+    answers.google_reco_given = Boolean(values.google_reco_given);
+  }
+  if (installStatus === 'failed' && typeof values.mark_after_sale === 'boolean') {
+    answers.mark_after_sale = values.mark_after_sale;
+  }
+  return Object.keys(answers).length ? answers : null;
+}
+
+export function parseChecklistAnswersFromInstallation(
+  inst?: Record<string, unknown> | null
+): ChecklistAnswersMap | null {
+  if (!inst) return null;
+  const raw = inst.checklist_answers ?? inst.checklistAnswers;
+  if (raw == null) return null;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw) as ChecklistAnswersMap;
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw as ChecklistAnswersMap;
+  }
+  return null;
+}
+
 export function crewChecklistLabelKey(key: string): string {
   const map: Record<string, string> = {
     arrived_on_time: 'crewPages.checklist.arrivedOnTime',

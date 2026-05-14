@@ -45,6 +45,7 @@ import {
   crewChecklistLabelKey,
   CREW_CHECKLIST_FIELD_KEYS,
   formatChecklistBooleanValue,
+  parseChecklistAnswersFromInstallation,
   resolveChecklistAnswersForDisplay,
 } from '../../lib/crew-checklist-fields';
 
@@ -166,10 +167,10 @@ export default function InstallationDetailPage() {
   const checklistAnswers = useMemo(
     () =>
       resolveChecklistAnswersForDisplay(
-        inst?.checklist_answers ?? null,
+        parseChecklistAnswersFromInstallation(inst as Record<string, unknown> | undefined),
         inst?.checklistResponses
       ),
-    [inst?.checklist_answers, inst?.checklistResponses]
+    [inst, inst?.checklistResponses]
   );
   const hasAnyChecklistAnswer = CREW_CHECKLIST_FIELD_KEYS.some(
     (key) => checklistAnswers[key] === true || checklistAnswers[key] === false

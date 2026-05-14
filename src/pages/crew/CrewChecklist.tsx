@@ -31,7 +31,7 @@ import {
   pickInstallationRecordStatus,
 } from '../../lib/installation-status';
 import { crewReadOnlyBannerKey, isCrewChecklistAllowedStatus } from '../../lib/crew-job';
-import { buildCrewChecklistResponsePayload } from '../../lib/crew-checklist-fields';
+import { buildCrewChecklistResponsePayload, crewChecklistAnswersFromValues } from '../../lib/crew-checklist-fields';
 import { bulkUpsertChecklistResponses } from '../../api/checklist';
 
 function storageKey(jobId: string) {
@@ -222,6 +222,15 @@ export default function CrewChecklist() {
       await updateCrewAfterInstallationNotes(jobId as UUID, {
         crew_after_installation_notes: siteNotes ? siteNotes : null,
       });
+      const checklistAnswers = crewChecklistAnswersFromValues(
+        {
+          arrived_on_time: values.arrived_on_time,
+          handover_docs: handoverDocs,
+          google_reco_given: googleRecoGiven,
+          mark_after_sale: markAfterSale,
+        },
+        installStatus
+      );
       await updateInstallationChecklistResult(jobId as UUID, {
         checklist_result:
           installStatus === 'successful'
@@ -235,31 +244,27 @@ export default function CrewChecklist() {
           installStatus === 'successful' || installStatus === 'failed'
             ? new Date().toISOString()
             : null,
-        checklist_answers: buildCrewChecklistResponsePayload({
-          arrived_on_time: values.arrived_on_time,
-          handover_docs: values.handover_docs,
-          google_reco_given: values.google_reco_given,
-          mark_after_sale: values.mark_after_sale,
-        }).reduce<Record<string, boolean>>((acc, row) => {
-          acc[row.key] = row.value;
-          return acc;
-        }, {}),
+        checklist_answers: checklistAnswers,
       });
 
       const checklistResponses = buildCrewChecklistResponsePayload({
         arrived_on_time: values.arrived_on_time,
-        handover_docs: values.handover_docs,
-        google_reco_given: values.google_reco_given,
-        mark_after_sale: values.mark_after_sale,
+        handover_docs: handoverDocs,
+        google_reco_given: googleRecoGiven,
+        mark_after_sale: markAfterSale,
       });
       if (checklistResponses.length > 0) {
-        await bulkUpsertChecklistResponses(jobId as UUID, {
-          responses: checklistResponses,
-          completed_at:
-            installStatus === 'successful' || installStatus === 'failed'
-              ? new Date().toISOString()
-              : null,
-        });
+        try {
+          await bulkUpsertChecklistResponses(jobId as UUID, {
+            responses: checklistResponses,
+            completed_at:
+              installStatus === 'successful' || installStatus === 'failed'
+                ? new Date().toISOString()
+                : null,
+          });
+        } catch (bulkErr) {
+          console.warn('checklist bulk upsert failed (checklist_answers still saved):', bulkErr);
+        }
       }
 
       if (photos.length > 0) {
