@@ -65,6 +65,7 @@ export type Installation = {
   checklist_result?: 'success' | 'failed' | null;
   checklist_failure_reason?: string | null;
   checklist_completed_at?: string | null;
+  checklist_answers?: Partial<Record<string, boolean>> | null;
   /** Crew checklist / site visit customer notes (persisted). */
   crew_after_installation_notes?: string | null;
   created_by?: UUID;
@@ -188,6 +189,7 @@ export async function updateInstallationChecklistResult(
     checklist_result?: 'success' | 'failed' | null;
     checklist_failure_reason?: string | null;
     checklist_completed_at?: string | null;
+    checklist_answers?: Partial<Record<string, boolean>> | null;
   }
 ): Promise<Installation> {
   return apiPatch<Installation>(`/installations/${id}/checklist-result`, payload);

@@ -10,7 +10,6 @@ import {
   Users,
   Info,
   FileText,
-  CheckSquare,
   Image as ImageIcon,
   XCircle,
   Trash2,
@@ -42,10 +41,11 @@ import {
   lineItemDescriptionFromLine,
   lineRowId,
 } from '../../lib/netsis-native';
-import { listChecklistResponsesForInstallation } from '../../api/checklist';
 import {
   crewChecklistLabelKey,
+  CREW_CHECKLIST_FIELD_KEYS,
   formatChecklistBooleanValue,
+  resolveChecklistAnswersForDisplay,
 } from '../../lib/crew-checklist-fields';
 
 function headerActionBtnClass(...parts: (string | false | undefined)[]) {
@@ -91,6 +91,12 @@ type InstallationWithRelations = Installation & {
   external_order_id?: string;
   crew_after_installation_notes?: string | null;
   checklist_failure_reason?: string | null;
+  checklist_answers?: Partial<Record<string, boolean>> | null;
+  checklistResponses?: Array<{
+    id: string;
+    value?: unknown;
+    item?: { key?: string | null; label?: string | null } | null;
+  }>;
   items?: InstallationItemDto[];
   crew?: CrewAssignmentDto[];
 };
@@ -157,6 +163,17 @@ export default function InstallationDetailPage() {
   const inst = query.data;
   const items = useMemo<InstallationItemDto[]>(() => inst?.items ?? [], [inst]);
   const crew = useMemo<CrewAssignmentDto[]>(() => inst?.crew ?? [], [inst]);
+  const checklistAnswers = useMemo(
+    () =>
+      resolveChecklistAnswersForDisplay(
+        inst?.checklist_answers ?? null,
+        inst?.checklistResponses
+      ),
+    [inst?.checklist_answers, inst?.checklistResponses]
+  );
+  const hasAnyChecklistAnswer = CREW_CHECKLIST_FIELD_KEYS.some(
+    (key) => checklistAnswers[key] === true || checklistAnswers[key] === false
+  );
   /** Netsis order lines: used to enrich local items (SKU / name / description) and as fallback when there are no local rows. */
   const netsisOrderItemsQuery = useQuery({
     queryKey: ['installation-netsis-order-lines', inst?.id, inst?.store_id, inst?.external_order_id],
@@ -281,22 +298,6 @@ export default function InstallationDetailPage() {
       ? mediaQuery.error.message
       : 'Could not load photos for this installation.'
     : '';
-
-  const checklistResponsesQuery = useQuery({
-    queryKey: ['installationChecklistResponses', id],
-    enabled: !!id,
-    queryFn: async () => {
-      if (!id) throw new Error('Missing installation id');
-      const res = await listChecklistResponsesForInstallation(id as UUID, {
-        limit: 50,
-        offset: 0,
-      });
-      return res.data ?? [];
-    },
-    retry: false,
-  });
-
-  const checklistResponses = checklistResponsesQuery.data ?? [];
 
   const photos: MediaAsset[] = useMemo(() => {
     const raw = mediaQuery.data?.data;
@@ -661,28 +662,11 @@ export default function InstallationDetailPage() {
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Crew checklist responses */}
-      <div className="card min-w-0">
-        <div className="card-header">
-          <h3 className="card-title flex items-center gap-2">
-            <CheckSquare className="h-4 w-4" />
-            {t('installationDetailPage.checklistCard.title')}
-          </h3>
-          <p className="card-description">
-            {t('installationDetailPage.checklistCard.subtitle')}
-          </p>
-        </div>
-        <div className="card-content space-y-4">
-          <div className="flex flex-wrap gap-4 text-sm">
             <div>
-              <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                {t('installationDetailPage.checklistCard.result')}
-              </span>
-              <div className="mt-1">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {t('installationDetailPage.checklistCard.title')}
+                </div>
                 {inst?.checklist_result === 'success' ? (
                   <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
                     {t('installationDetailPage.checklistCard.resultSuccess')}
@@ -691,53 +675,39 @@ export default function InstallationDetailPage() {
                   <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">
                     {t('installationDetailPage.checklistCard.resultFailed')}
                   </span>
-                ) : (
-                  <span className="text-gray-400">{t('installationDetailPage.checklistCard.none')}</span>
-                )}
+                ) : null}
               </div>
-            </div>
-            {inst?.checklist_completed_at ? (
-              <div>
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                  {t('installationDetailPage.checklistCard.completedAt')}
-                </span>
-                <div className="mt-1 text-gray-900">
-                  {formatUiDateTime(inst.checklist_completed_at)}
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          {checklistResponsesQuery.isLoading ? (
-            <p className="text-sm text-gray-500">{t('installationDetailPage.checklistCard.loading')}</p>
-          ) : checklistResponses.length === 0 ? (
-            <p className="text-sm text-gray-400">{t('installationDetailPage.checklistCard.noResponses')}</p>
-          ) : (
-            <ul className="divide-y divide-gray-100 rounded-md border">
-              {checklistResponses.map((row) => {
-                const itemKey = row.item?.key ?? '';
-                const label = itemKey
-                  ? t(crewChecklistLabelKey(itemKey))
-                  : row.item?.label ?? itemKey;
-                return (
+              {!hasAnyChecklistAnswer ? (
+                <p className="mb-2 text-xs text-gray-400">
+                  {t('installationDetailPage.checklistCard.noResponses')}
+                </p>
+              ) : null}
+              <ul className="divide-y divide-gray-100 rounded-md border bg-white">
+                {CREW_CHECKLIST_FIELD_KEYS.map((key) => (
                   <li
-                    key={row.id}
-                    className="flex items-start justify-between gap-4 px-4 py-3 text-sm"
+                    key={key}
+                    className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm"
                   >
-                    <span className="min-w-0 flex-1 text-gray-800">{label}</span>
+                    <span className="min-w-0 flex-1 text-gray-800">{t(crewChecklistLabelKey(key))}</span>
                     <span className="shrink-0 font-medium text-gray-900">
                       {formatChecklistBooleanValue(
-                        row.value,
+                        checklistAnswers[key],
                         t('crewPages.checklist.yes'),
                         t('crewPages.checklist.no'),
                         t('installationDetailPage.checklistCard.notAnswered')
                       )}
                     </span>
                   </li>
-                );
-              })}
-            </ul>
-          )}
+                ))}
+              </ul>
+              {inst?.checklist_completed_at ? (
+                <p className="mt-2 text-xs text-gray-500">
+                  {t('installationDetailPage.checklistCard.completedAt')}:{' '}
+                  {formatUiDateTime(inst.checklist_completed_at)}
+                </p>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 

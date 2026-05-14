@@ -49,3 +49,24 @@ export function formatChecklistBooleanValue(
   }
   return empty;
 }
+
+export type ChecklistAnswersMap = Partial<Record<CrewChecklistFieldKey, boolean>>;
+
+export function resolveChecklistAnswersForDisplay(
+  fromInstallation?: ChecklistAnswersMap | null,
+  fromResponses?: Array<{ item?: { key?: string | null } | null; value?: unknown }>
+): ChecklistAnswersMap {
+  const out: ChecklistAnswersMap = {};
+  for (const key of CREW_CHECKLIST_FIELD_KEYS) {
+    const instVal = fromInstallation?.[key];
+    if (instVal === true || instVal === false) {
+      out[key] = instVal;
+      continue;
+    }
+    const row = fromResponses?.find((r) => r.item?.key === key);
+    if (row?.value === true || row?.value === false) {
+      out[key] = row.value;
+    }
+  }
+  return out;
+}

@@ -235,6 +235,15 @@ export default function CrewChecklist() {
           installStatus === 'successful' || installStatus === 'failed'
             ? new Date().toISOString()
             : null,
+        checklist_answers: buildCrewChecklistResponsePayload({
+          arrived_on_time: values.arrived_on_time,
+          handover_docs: values.handover_docs,
+          google_reco_given: values.google_reco_given,
+          mark_after_sale: values.mark_after_sale,
+        }).reduce<Record<string, boolean>>((acc, row) => {
+          acc[row.key] = row.value;
+          return acc;
+        }, {}),
       });
 
       const checklistResponses = buildCrewChecklistResponsePayload({
