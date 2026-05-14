@@ -813,10 +813,14 @@ export default function InstallationsPage() {
                         <>
                           <button
                             onClick={() => handleStageInstallation(r.id)}
-                            disabled={r.status !== 'pending' || stagingId === r.id}
+                            disabled={
+                              (r.status !== 'pending' && r.status !== 'scheduled') ||
+                              stagingId === r.id
+                            }
                             className={cn(
                               'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium',
-                              r.status === 'pending' && stagingId !== r.id
+                              (r.status === 'pending' || r.status === 'scheduled') &&
+                                stagingId !== r.id
                                 ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
                                 : 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400'
                             )}

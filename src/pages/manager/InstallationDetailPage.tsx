@@ -42,6 +42,13 @@ import {
   lineRowId,
 } from '../../lib/netsis-native';
 
+function headerActionBtnClass(...parts: (string | false | undefined)[]) {
+  return cn(
+    'inline-flex h-10 w-[11.5rem] shrink-0 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium',
+    ...parts
+  );
+}
+
 // Minimal types from OpenAPI we actually use here
 type StoreDto = {
   id: string;
@@ -299,7 +306,9 @@ export default function InstallationDetailPage() {
     rawStatus !== 'completed';
 
   const canStage =
-    !isAdmin && inst && rawStatus === 'pending';
+    !isAdmin &&
+    inst &&
+    (rawStatus === 'pending' || rawStatus === 'scheduled');
 
   const handleStage = async () => {
     if (!id) return;
@@ -371,45 +380,53 @@ export default function InstallationDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
             to="/app/calendar"
-            className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50 inline-flex items-center gap-2"
+            className={headerActionBtnClass(
+              'border-gray-200 bg-white text-gray-800 hover:bg-gray-50'
+            )}
           >
-            <CalendarDays className="h-4 w-4" />
-            {t('installationDetailPage.buttons.openCalendar')}
+            <CalendarDays className="h-4 w-4 shrink-0" />
+            <span className="truncate">{t('installationDetailPage.buttons.openCalendar')}</span>
           </Link>
-          {inst?.external_order_id && (
+          {inst?.external_order_id ? (
             <Link
               to={`/app/orders/${encodeURIComponent(inst.external_order_id)}?store_id=${encodeURIComponent(inst.store_id)}`}
-              className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50 inline-flex items-center gap-2"
+              className={headerActionBtnClass(
+                'border-gray-200 bg-white text-gray-800 hover:bg-gray-50'
+              )}
             >
-              <ClipboardList className="h-4 w-4" />
-              {t('installationDetailPage.buttons.viewOrder')}
+              <ClipboardList className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t('installationDetailPage.buttons.viewOrder')}</span>
             </Link>
-          )}
+          ) : null}
           {id ? (
             <button
               type="button"
               onClick={() => setEditOpen(true)}
-              className="inline-flex items-center gap-2 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800 hover:bg-primary-100"
+              className={headerActionBtnClass(
+                'border-primary-200 bg-primary-50 text-primary-800 hover:bg-primary-100'
+              )}
             >
-              <Pencil className="h-4 w-4" />
-              {t('installationsPage.actions.edit')}
+              <Pencil className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t('installationsPage.actions.edit')}</span>
             </button>
           ) : null}
-          {canStage ? (
+          {!isAdmin && inst ? (
             <button
               type="button"
               onClick={() => void handleStage()}
-              disabled={staging}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800 hover:bg-primary-100',
+              disabled={!canStage || staging}
+              className={headerActionBtnClass(
+                canStage
+                  ? 'border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100'
+                  : 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400',
                 staging && 'opacity-50'
               )}
             >
-              <Package className="h-4 w-4" />
-              {t('installationsPage.actions.stageInstallation')}
+              <Package className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t('installationsPage.actions.stageInstallation')}</span>
             </button>
           ) : null}
           {canCancel ? (
@@ -417,13 +434,13 @@ export default function InstallationDetailPage() {
               type="button"
               onClick={() => void handleCancel()}
               disabled={canceling}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-800 hover:bg-zinc-100',
+              className={headerActionBtnClass(
+                'border-zinc-200 bg-zinc-50 text-zinc-800 hover:bg-zinc-100',
                 canceling && 'opacity-50'
               )}
             >
-              <XCircle className="h-4 w-4" />
-              {t('installationDetailPage.buttons.cancelInstallation')}
+              <XCircle className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t('installationDetailPage.buttons.cancelInstallation')}</span>
             </button>
           ) : null}
           {isAdmin ? (
@@ -431,13 +448,13 @@ export default function InstallationDetailPage() {
               type="button"
               onClick={() => void handleDelete()}
               disabled={deleting}
-              className={cn(
-                'inline-flex items-center gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 hover:bg-rose-100',
+              className={headerActionBtnClass(
+                'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100',
                 deleting && 'opacity-50'
               )}
             >
-              <Trash2 className="h-4 w-4" />
-              {t('installationDetailPage.buttons.deleteInstallation')}
+              <Trash2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t('installationDetailPage.buttons.deleteInstallation')}</span>
             </button>
           ) : null}
         </div>
