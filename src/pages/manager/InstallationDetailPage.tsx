@@ -662,52 +662,52 @@ export default function InstallationDetailPage() {
                 )}
               </div>
             </div>
-            <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                  {t('installationDetailPage.checklistCard.title')}
-                </div>
-                {inst?.checklist_result === 'success' ? (
-                  <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                    {t('installationDetailPage.checklistCard.resultSuccess')}
-                  </span>
-                ) : inst?.checklist_result === 'failed' ? (
-                  <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">
-                    {t('installationDetailPage.checklistCard.resultFailed')}
-                  </span>
-                ) : null}
-              </div>
-              {!hasAnyChecklistAnswer ? (
-                <p className="mb-2 text-xs text-gray-400">
-                  {t('installationDetailPage.checklistCard.noResponses')}
-                </p>
-              ) : null}
-              <ul className="divide-y divide-gray-100 rounded-md border bg-white">
-                {CREW_CHECKLIST_FIELD_KEYS.map((key) => (
-                  <li
-                    key={key}
-                    className="flex items-start justify-between gap-3 px-3 py-2.5 text-sm"
-                  >
-                    <span className="min-w-0 flex-1 text-gray-800">{t(crewChecklistLabelKey(key))}</span>
-                    <span className="shrink-0 font-medium text-gray-900">
-                      {formatChecklistBooleanValue(
-                        checklistAnswers[key],
-                        t('crewPages.checklist.yes'),
-                        t('crewPages.checklist.no'),
-                        t('installationDetailPage.checklistCard.notAnswered')
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              {inst?.checklist_completed_at ? (
-                <p className="mt-2 text-xs text-gray-500">
-                  {t('installationDetailPage.checklistCard.completedAt')}:{' '}
-                  {formatUiDateTime(inst.checklist_completed_at)}
-                </p>
-              ) : null}
-            </div>
           </div>
+        </div>
+      </div>
+
+      <div className="card min-w-0">
+        <div className="card-header">
+          <h3 className="card-title">{t('installationDetailPage.checklistCard.title')}</h3>
+          <p className="card-description">{t('installationDetailPage.checklistCard.subtitle')}</p>
+        </div>
+        <div className="card-content space-y-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {inst?.checklist_result === 'success' ? (
+              <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                {t('installationDetailPage.checklistCard.resultSuccess')}
+              </span>
+            ) : inst?.checklist_result === 'failed' ? (
+              <span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-800">
+                {t('installationDetailPage.checklistCard.resultFailed')}
+              </span>
+            ) : (
+              <span className="text-gray-400">{t('installationDetailPage.checklistCard.none')}</span>
+            )}
+            {inst?.checklist_completed_at ? (
+              <span className="text-xs text-gray-500">
+                {t('installationDetailPage.checklistCard.completedAt')}: {formatUiDateTime(inst.checklist_completed_at)}
+              </span>
+            ) : null}
+          </div>
+          {!hasAnyChecklistAnswer ? (
+            <p className="text-sm text-gray-400">{t('installationDetailPage.checklistCard.noResponses')}</p>
+          ) : null}
+          <ul className="divide-y divide-gray-100 rounded-md border bg-white">
+            {CREW_CHECKLIST_FIELD_KEYS.map((key) => (
+              <li key={key} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+                <span className="min-w-0 flex-1 text-gray-800">{t(crewChecklistLabelKey(key))}</span>
+                <span className="shrink-0 font-medium text-gray-900">
+                  {formatChecklistBooleanValue(
+                    checklistAnswers[key],
+                    t('crewPages.checklist.yes'),
+                    t('crewPages.checklist.no'),
+                    t('installationDetailPage.checklistCard.notAnswered')
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
 
