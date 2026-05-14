@@ -119,7 +119,7 @@ export default function OrdersPage() {
             limit: NETSIS_PAGE_SIZE,
             offset: offsets[s.id] ?? 0,
           });
-          return { store: s, hits: res.data ?? [] };
+          return { store: s, hits: res.data ?? [], hasMore: res.has_more };
         })
       );
 
@@ -129,11 +129,16 @@ export default function OrdersPage() {
 
       for (const r of results) {
         if (r.status !== "fulfilled") continue;
-        const { store: st, hits } = r.value;
+        const { store: st, hits, hasMore: storeHasMore } = r.value;
         const sortedHits = [...hits].sort((a, b) =>
-          String(b.order_id ?? '').localeCompare(String(a.order_id ?? ''))
+          String(b.order_id ?? '').localeCompare(String(a.order_id ?? ''), undefined, {
+            numeric: true,
+            sensitivity: 'base',
+          })
         );
-        const full = hits.length >= NETSIS_PAGE_SIZE;
+        const full =
+          storeHasMore === true ||
+          (storeHasMore === undefined && hits.length >= NETSIS_PAGE_SIZE);
         if (full) anyFull = true;
         nextCursors[st.id] = {
           offset: offsets[st.id] ?? 0,

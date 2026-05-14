@@ -12,6 +12,7 @@ export type NetsisOrderHit = {
 export type NetsisOrderSearchResponse = {
   data: NetsisOrderHit[];
   source?: 'http' | 'sql';
+  has_more?: boolean;
 };
 
 export async function searchNetsisOrders(params: {
