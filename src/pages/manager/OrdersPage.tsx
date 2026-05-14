@@ -130,25 +130,17 @@ export default function OrdersPage() {
       for (const r of results) {
         if (r.status !== "fulfilled") continue;
         const { store: st, hits, hasMore: storeHasMore } = r.value;
-        const sortedHits = [...hits].sort((a, b) =>
-          String(b.order_id ?? '').localeCompare(String(a.order_id ?? ''), undefined, {
-            numeric: true,
-            sensitivity: 'base',
-          })
-        );
-        const full =
-          storeHasMore === true ||
-          (storeHasMore === undefined && hits.length >= NETSIS_PAGE_SIZE);
+        const full = storeHasMore === true;
         if (full) anyFull = true;
         nextCursors[st.id] = {
           offset: offsets[st.id] ?? 0,
           lastPageFull: full,
         };
-        nextOrders.push(...netsisHitsToOrders(sortedHits, st));
+        nextOrders.push(...netsisHitsToOrders(hits, st));
       }
 
       return {
-        orders: dedupeOrders(nextOrders),
+        orders: sortOrdersByIdDesc(dedupeOrders(nextOrders)),
         cursors: nextCursors,
         hasMore: anyFull,
       };
@@ -291,14 +283,13 @@ export default function OrdersPage() {
 
     const offsets: Record<string, number> = {};
     for (const s of targetStores) {
-      const cur = netsisCursors[s.id];
-      offsets[s.id] = (cur?.offset ?? 0) + NETSIS_PAGE_SIZE;
+      offsets[s.id] = orders.filter((o) => orderMatchesStoreFilter(o, s.id)).length;
     }
 
     setLoadingMore(true);
     try {
       const batch = await fetchNetsisForStores(targetStores, debouncedFilterQ, offsets);
-      setOrders((prev) => dedupeOrders([...prev, ...batch.orders]));
+      setOrders((prev) => sortOrdersByIdDesc(dedupeOrders([...prev, ...batch.orders])));
       setNetsisCursors((prev) => ({ ...prev, ...batch.cursors }));
       setHasMore(batch.hasMore);
     } catch (err) {
@@ -311,6 +302,7 @@ export default function OrdersPage() {
     loadingMore,
     loading,
     stores,
+    orders,
     isAdmin,
     managerStoreId,
     store,
@@ -387,7 +379,7 @@ export default function OrdersPage() {
           return dir * A.localeCompare(B);
         }
         case "id":
-          return dir * a.id.localeCompare(b.id);
+          return dir * compareOrderIds(a.id, b.id);
         case "customer":
           return dir * (a.customer_name ?? "").localeCompare(b.customer_name ?? "");
         case "store":
@@ -694,6 +686,14 @@ export default function OrdersPage() {
 }
 
 /* ------------------------ Helpers & small components ------------------------ */
+
+function compareOrderIds(a: string, b: string): number {
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+}
+
+function sortOrdersByIdDesc(list: Order[]): Order[] {
+  return [...list].sort((a, b) => -compareOrderIds(a.id, b.id));
+}
 
 function dedupeOrders(list: Order[]): Order[] {
   const seen = new Set<string>();

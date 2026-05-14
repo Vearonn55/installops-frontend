@@ -13,6 +13,8 @@ export type NetsisOrderSearchResponse = {
   data: NetsisOrderHit[];
   source?: 'http' | 'sql';
   has_more?: boolean;
+  browse_mode?: string;
+  total?: number;
 };
 
 export async function searchNetsisOrders(params: {
