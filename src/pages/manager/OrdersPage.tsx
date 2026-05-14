@@ -59,7 +59,7 @@ export default function OrdersPage() {
   };
 
 
-  const [sortBy, setSortBy] = useState<"placed_at" | "id" | "customer" | "store" | "items_count" | "status">("placed_at");
+  const [sortBy, setSortBy] = useState<"placed_at" | "id" | "customer" | "store" | "items_count" | "status">("id");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [page, setPage] = useState(1);
@@ -130,13 +130,16 @@ export default function OrdersPage() {
       for (const r of results) {
         if (r.status !== "fulfilled") continue;
         const { store: st, hits } = r.value;
+        const sortedHits = [...hits].sort((a, b) =>
+          String(b.order_id ?? '').localeCompare(String(a.order_id ?? ''))
+        );
         const full = hits.length >= NETSIS_PAGE_SIZE;
         if (full) anyFull = true;
         nextCursors[st.id] = {
           offset: offsets[st.id] ?? 0,
           lastPageFull: full,
         };
-        nextOrders.push(...netsisHitsToOrders(hits, st));
+        nextOrders.push(...netsisHitsToOrders(sortedHits, st));
       }
 
       return {

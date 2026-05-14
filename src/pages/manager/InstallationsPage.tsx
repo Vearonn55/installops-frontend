@@ -205,8 +205,10 @@ export default function InstallationsPage() {
   const [to, setTo] = useState<string>(installationsRangeDefault.to);
 
   // Sort & pagination
-  const [sortBy, setSortBy] = useState<'start' | 'customer' | 'zone' | 'status'>('start');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState<'start' | 'installCode' | 'customer' | 'zone' | 'status'>(
+    'installCode'
+  );
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
@@ -293,6 +295,10 @@ export default function InstallationsPage() {
           const as = a.start ?? '';
           const bs = b.start ?? '';
           return sortDir === 'asc' ? as.localeCompare(bs) : bs.localeCompare(as);
+        }
+        case 'installCode': {
+          const cmp = compareInstallCodes(a.installCode, b.installCode);
+          return sortDir === 'asc' ? cmp : -cmp;
         }
         case 'customer': {
           const an = a.storeName;
@@ -677,9 +683,12 @@ export default function InstallationsPage() {
                 dir={sortDir}
                 onClick={() => toggleSort('start')}
               />
-              <th className="px-3 py-2 text-left">
-                {t('installationsPage.table.installation')}
-              </th>
+              <Th
+                label={t('installationsPage.table.installation')}
+                active={sortBy === 'installCode'}
+                dir={sortDir}
+                onClick={() => toggleSort('installCode')}
+              />
               <Th
                 label={t('installationsPage.table.store')}
                 active={sortBy === 'customer'}
@@ -781,27 +790,25 @@ export default function InstallationsPage() {
                       >
                         {t('installationsPage.actions.view')}
                       </button>
+                      <button
+                        onClick={() => openEdit(r.id)}
+                        className="inline-flex items-center gap-1 rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        {t('installationsPage.actions.edit')}
+                      </button>
                       {isAdmin ? (
-                        <>
-                          <button
-                            onClick={() => openEdit(r.id)}
-                            className="inline-flex items-center gap-1 rounded border border-primary-200 bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700 hover:bg-primary-100"
-                          >
-                            <Edit3 className="h-3.5 w-3.5" />
-                            {t('installationsPage.actions.edit')}
-                          </button>
-                          <button
-                            onClick={() => void handleDeleteInstallation(r.id)}
-                            disabled={deletingId === r.id}
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-100',
-                              deletingId === r.id && 'opacity-50'
-                            )}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            {t('installationsPage.actions.deleteInstallation')}
-                          </button>
-                        </>
+                        <button
+                          onClick={() => void handleDeleteInstallation(r.id)}
+                          disabled={deletingId === r.id}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-100',
+                            deletingId === r.id && 'opacity-50'
+                          )}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {t('installationsPage.actions.deleteInstallation')}
+                        </button>
                       ) : (
                         <>
                           <button
@@ -909,12 +916,27 @@ export default function InstallationsPage() {
         installationId={editingId}
         open={Boolean(editingId)}
         onClose={() => setEditingId(null)}
+        canEditStatus={isAdmin}
       />
     </div>
   );
 }
 
 /* -------------------------------- Bits -------------------------------- */
+function installCodeNumeric(code: string): number | null {
+  const matches = code.match(/\d+/g);
+  if (!matches?.length) return null;
+  const n = Number(matches[matches.length - 1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function compareInstallCodes(a: string, b: string): number {
+  const an = installCodeNumeric(a);
+  const bn = installCodeNumeric(b);
+  if (an != null && bn != null && an !== bn) return an - bn;
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+
 function statusRank(s: InstallationStatus | string): number {
   const order: InstallationStatus[] = [
     'pending',
@@ -1019,7 +1041,7 @@ function Th({
         onClick={onClick}
         className={cn(
           'inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-gray-100',
-          active && 'text-primary-700'
+          active && 'text-violet-700'
         )}
         title={t('installationsPage.sort')}
       >
@@ -1066,7 +1088,7 @@ function QuickChip({
       className={cn(
         'mx-1 inline-flex max-w-[min(100%,18rem)] shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-left text-sm sm:max-w-none sm:gap-2 sm:px-3',
         tones[tone],
-        active && 'ring-2 ring-primary-500 ring-offset-1'
+        active && 'ring-2 ring-violet-500 ring-offset-1 border-violet-300 bg-violet-50 text-violet-800'
       )}
     >
       {icon && <span className="shrink-0">{icon}</span>}

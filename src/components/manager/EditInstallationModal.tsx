@@ -45,6 +45,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  canEditStatus?: boolean;
 };
 
 function formFromInstallation(inst: Installation): FormState {
@@ -67,6 +68,7 @@ export default function EditInstallationModal({
   open,
   onClose,
   onSaved,
+  canEditStatus = true,
 }: Props) {
   const { t } = useTranslation('common');
   const queryClient = useQueryClient();
@@ -148,7 +150,7 @@ export default function EditInstallationModal({
         customer_payment_note: form.customer_payment_note.trim() || null,
       });
 
-      if (form.status !== inst.status) {
+      if (canEditStatus && form.status !== inst.status) {
         await updateInstallationStatus(installationId, { status: form.status });
       }
 
@@ -262,29 +264,37 @@ export default function EditInstallationModal({
                 <label className="mb-1 block text-xs font-medium text-gray-600">
                   {t('installationsPage.editModal.status')}
                 </label>
-                <select
-                  className="input w-full"
-                  value={form.status}
-                  onChange={(e) =>
-                    setForm((p) =>
-                      p ? { ...p, status: e.target.value as InstallStatus } : p
-                    )
-                  }
-                >
-                  <option value="scheduled">{t('installationsPage.statusLabels.scheduled')}</option>
-                  <option value="staged">{t('installationsPage.filters.status.staged')}</option>
-                  <option value="in_progress">
-                    {t('installationsPage.filters.status.in_progress')}
-                  </option>
-                  <option value="completed">
-                    {t('installationsPage.filters.status.completed')}
-                  </option>
-                  <option value="failed">{t('installationsPage.filters.status.failed')}</option>
-                  <option value="canceled">{t('installationsPage.statusLabels.canceled')}</option>
-                  <option value="after_sale_service">
-                    {t('installationsPage.filters.status.after_sale_service')}
-                  </option>
-                </select>
+                {canEditStatus ? (
+                  <select
+                    className="input w-full"
+                    value={form.status}
+                    onChange={(e) =>
+                      setForm((p) =>
+                        p ? { ...p, status: e.target.value as InstallStatus } : p
+                      )
+                    }
+                  >
+                    <option value="scheduled">{t('installationsPage.statusLabels.scheduled')}</option>
+                    <option value="staged">{t('installationsPage.filters.status.staged')}</option>
+                    <option value="in_progress">
+                      {t('installationsPage.filters.status.in_progress')}
+                    </option>
+                    <option value="completed">
+                      {t('installationsPage.filters.status.completed')}
+                    </option>
+                    <option value="failed">{t('installationsPage.filters.status.failed')}</option>
+                    <option value="canceled">{t('installationsPage.statusLabels.canceled')}</option>
+                    <option value="after_sale_service">
+                      {t('installationsPage.filters.status.after_sale_service')}
+                    </option>
+                  </select>
+                ) : (
+                  <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+                    {t(`installationsPage.statusLabels.${form.status}`, {
+                      defaultValue: String(form.status).replace(/_/g, ' '),
+                    })}
+                  </p>
+                )}
               </div>
 
               <div>

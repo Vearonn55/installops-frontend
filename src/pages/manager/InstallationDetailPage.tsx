@@ -122,6 +122,7 @@ export default function InstallationDetailPage() {
   const { hasRole } = useAuthStore();
   const isAdmin = hasRole('ADMIN');
   const [canceling, setCanceling] = useState(false);
+  const [staging, setStaging] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -297,6 +298,26 @@ export default function InstallationDetailPage() {
     rawStatus !== 'cancelled' &&
     rawStatus !== 'completed';
 
+  const canStage =
+    !isAdmin && inst && rawStatus === 'pending';
+
+  const handleStage = async () => {
+    if (!id) return;
+    setStaging(true);
+    try {
+      await updateInstallationStatus(id as UUID, { status: 'staged' });
+      await queryClient.invalidateQueries({ queryKey: ['installation', id] });
+      await queryClient.invalidateQueries({ queryKey: ['installations'] });
+      await queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success(t('installationsPage.actions.stageInstallation'));
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : t('installationsPage.loadError');
+      toast.error(msg);
+    } finally {
+      setStaging(false);
+    }
+  };
+
   const handleCancel = async () => {
     if (!id || !window.confirm(t('installationsPage.confirmCancel'))) return;
     setCanceling(true);
@@ -375,6 +396,20 @@ export default function InstallationDetailPage() {
             >
               <Pencil className="h-4 w-4" />
               {t('installationsPage.actions.edit')}
+            </button>
+          ) : null}
+          {canStage ? (
+            <button
+              type="button"
+              onClick={() => void handleStage()}
+              disabled={staging}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md border border-primary-200 bg-primary-50 px-3 py-2 text-sm text-primary-800 hover:bg-primary-100',
+                staging && 'opacity-50'
+              )}
+            >
+              <Package className="h-4 w-4" />
+              {t('installationsPage.actions.stageInstallation')}
             </button>
           ) : null}
           {canCancel ? (
@@ -761,6 +796,7 @@ export default function InstallationDetailPage() {
         installationId={(id as UUID) ?? null}
         open={editOpen}
         onClose={() => setEditOpen(false)}
+        canEditStatus={isAdmin}
         onSaved={() => {
           void queryClient.invalidateQueries({ queryKey: ['installation', id] });
         }}
