@@ -1,6 +1,5 @@
 import { format, isValid, parseISO } from 'date-fns';
 import {
-  useDateDisplayStore,
   type DatePattern,
 } from '../stores/date-display';
 
@@ -44,7 +43,8 @@ function coerceDate(input: string | Date | null | undefined): Date | null {
 }
 
 function activePattern(): DatePattern {
-  return useDateDisplayStore.getState().datePattern;
+  // App display is always day/month/year; other patterns appear only in Settings option labels.
+  return 'DMY';
 }
 
 const SETTINGS_PREVIEW_SAMPLE = new Date('2026-04-08T14:30:00');

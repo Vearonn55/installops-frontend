@@ -89,6 +89,18 @@
     color-scheme: light;
   }
 
+  /** Native time / datetime-local — force 24h picker UI where the browser allows */
+  .input-datetime-native,
+  input[type='time'] {
+    @apply input min-w-0;
+    color-scheme: light;
+  }
+
+  .input-datetime-native::-webkit-datetime-edit-ampm-field,
+  input[type='time']::-webkit-datetime-edit-ampm-field {
+    display: none;
+  }
+
   .input-select-chevron-only {
     @apply input min-w-0 cursor-pointer pr-9;
     -webkit-appearance: none;

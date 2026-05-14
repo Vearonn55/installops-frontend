@@ -739,7 +739,7 @@ export default function InstallationsPage() {
               paged.map((r) => (
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2">
-                    <div className="flex items-center gap-1 text-xs text-gray-600">
+                    <div className="flex items-center gap-1 text-xs tabular-nums text-gray-600">
                       <CalendarIcon className="h-3.5 w-3.5" />
                       {formatUiDateTime(r.start)}
                     </div>

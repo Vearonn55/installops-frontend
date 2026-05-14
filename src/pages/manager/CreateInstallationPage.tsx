@@ -28,8 +28,7 @@ import { listUsers, type User } from '../../api/users';
 import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
-import { formatUiDate } from '../../lib/date-display';
-import { useDateDisplayStore } from '../../stores/date-display';
+import { formatUiDate, formatUiDateTime } from '../../lib/date-display';
 import { OrderIdSearchCombobox } from '../../components/OrderIdSearchCombobox';
 import type { UUID } from '../../api/http';
 
@@ -78,7 +77,6 @@ export default function CreateInstallationPage() {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const { t } = useTranslation('common');
-  useDateDisplayStore((s) => s.datePattern);
 
   const myStoreId = (user as any)?.store_id as string | undefined;
   const prefillOrderId = (searchParams.get('external_order_id') || searchParams.get('order_id') || '').trim();
@@ -384,10 +382,16 @@ export default function CreateInstallationPage() {
                 </span>
                 <input
                   type="time"
-                  className="input"
+                  lang="en-GB"
+                  className="input input-datetime-native w-full"
                   value={timeStart}
                   onChange={(e) => setTimeStart(e.target.value)}
                 />
+                {date && timeStart ? (
+                  <span className="text-xs tabular-nums text-gray-500">
+                    {formatUiDateTime(toISODateTime(date, timeStart))}
+                  </span>
+                ) : null}
               </label>
             </div>
           </section>

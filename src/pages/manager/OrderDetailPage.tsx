@@ -31,7 +31,8 @@ import {
   placedAtFromDoc,
   statusFromDoc,
 } from '../../lib/netsis-native';
-import { cn, formatDateTime } from '../../lib/utils';
+import { formatUiDateTime } from '../../lib/date-display';
+import { cn } from '../../lib/utils';
 import {
   auditRowToOrderTrackingEvent,
   orderTrackingAccentClass,
@@ -395,7 +396,7 @@ export default function OrderDetailPage() {
                 </div>
               </div>
               <div className="border-t px-6 py-3 text-sm text-gray-600">
-                Placed: {order?.placed_at ? formatDateTime(order.placed_at) : '—'} · Store:{' '}
+                Placed: {order?.placed_at ? formatUiDateTime(order.placed_at) : '—'} · Store:{' '}
                 {order?.store_name ?? order?.store_id ?? '—'}
               </div>
             </div>
@@ -465,7 +466,7 @@ export default function OrderDetailPage() {
                           className="shrink-0 text-xs tabular-nums text-gray-500 sm:text-right"
                           dateTime={ev.date}
                         >
-                          {formatDateTime(ev.date)}
+                          {formatUiDateTime(ev.date)}
                         </time>
                       </div>
                       {ev.detail ? (

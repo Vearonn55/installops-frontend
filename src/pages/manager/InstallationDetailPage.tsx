@@ -516,7 +516,7 @@ export default function InstallationDetailPage() {
             </div>
             <div>
               {t('installationDetailPage.statusCard.start')}{' '}
-              <span className="text-gray-700">
+              <span className="tabular-nums text-gray-700">
                 {inst?.scheduled_start
                   ? formatUiDateTime(inst.scheduled_start)
                   : '—'}
@@ -524,7 +524,7 @@ export default function InstallationDetailPage() {
             </div>
             <div>
               {t('installationDetailPage.statusCard.end')}{' '}
-              <span className="text-gray-700">
+              <span className="tabular-nums text-gray-700">
                 {inst?.scheduled_end
                   ? formatUiDateTime(inst.scheduled_end)
                   : '—'}

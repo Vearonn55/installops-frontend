@@ -17,6 +17,7 @@ import {
 } from '../../api/installations';
 import { listUsers, type User } from '../../api/users';
 import { isoToLocalInput, localInputToIso } from '../../lib/installation-datetime';
+import { formatUiDateTime } from '../../lib/date-display';
 import {
   INSTALLATION_ZONES,
   zoneLabelFromValue,
@@ -238,12 +239,18 @@ export default function EditInstallationModal({
                   </label>
                   <input
                     type="datetime-local"
-                    className="input w-full"
+                    lang="en-GB"
+                    className="input input-datetime-native w-full"
                     value={form.scheduled_start}
                     onChange={(e) =>
                       setForm((p) => (p ? { ...p, scheduled_start: e.target.value } : p))
                     }
                   />
+                  {form.scheduled_start ? (
+                    <p className="mt-1 text-xs tabular-nums text-gray-500">
+                      {formatUiDateTime(localInputToIso(form.scheduled_start) ?? form.scheduled_start)}
+                    </p>
+                  ) : null}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">
@@ -251,12 +258,18 @@ export default function EditInstallationModal({
                   </label>
                   <input
                     type="datetime-local"
-                    className="input w-full"
+                    lang="en-GB"
+                    className="input input-datetime-native w-full"
                     value={form.scheduled_end}
                     onChange={(e) =>
                       setForm((p) => (p ? { ...p, scheduled_end: e.target.value } : p))
                     }
                   />
+                  {form.scheduled_end ? (
+                    <p className="mt-1 text-xs tabular-nums text-gray-500">
+                      {formatUiDateTime(localInputToIso(form.scheduled_end) ?? form.scheduled_end)}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

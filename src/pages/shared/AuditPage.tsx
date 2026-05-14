@@ -285,7 +285,7 @@ export default function AuditPage() {
           <tbody className="divide-y divide-gray-200 bg-white">
             {sortedLogs.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm text-gray-700">
+                <td className="px-4 py-3 text-sm tabular-nums text-gray-700">
                   {formatUiDateTime(row.created_at)}
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-700">
