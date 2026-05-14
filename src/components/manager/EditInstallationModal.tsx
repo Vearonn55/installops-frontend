@@ -17,7 +17,9 @@ import {
 } from '../../api/installations';
 import { listUsers, type User } from '../../api/users';
 import {
+  finalizeScheduleDateTimeInput,
   formatScheduleDateTimeInput,
+  normalizeScheduleDateTimeInput,
   parseScheduleDateTimeInput,
 } from '../../lib/schedule-input';
 import {
@@ -261,7 +263,16 @@ export default function EditInstallationModal({
                     placeholder={t('createInstallationPage.schedule.dateTimePlaceholder')}
                     value={form.scheduled_start}
                     onChange={(e) =>
-                      setForm((p) => (p ? { ...p, scheduled_start: e.target.value } : p))
+                      setForm((p) =>
+                        p ? { ...p, scheduled_start: normalizeScheduleDateTimeInput(e.target.value) } : p
+                      )
+                    }
+                    onBlur={(e) =>
+                      setForm((p) =>
+                        p
+                          ? { ...p, scheduled_start: finalizeScheduleDateTimeInput(e.target.value) }
+                          : p
+                      )
                     }
                   />
                 </div>
@@ -277,7 +288,14 @@ export default function EditInstallationModal({
                     placeholder={t('createInstallationPage.schedule.dateTimePlaceholder')}
                     value={form.scheduled_end}
                     onChange={(e) =>
-                      setForm((p) => (p ? { ...p, scheduled_end: e.target.value } : p))
+                      setForm((p) =>
+                        p ? { ...p, scheduled_end: normalizeScheduleDateTimeInput(e.target.value) } : p
+                      )
+                    }
+                    onBlur={(e) =>
+                      setForm((p) =>
+                        p ? { ...p, scheduled_end: finalizeScheduleDateTimeInput(e.target.value) } : p
+                      )
                     }
                   />
                 </div>

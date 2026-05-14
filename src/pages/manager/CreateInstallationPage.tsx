@@ -29,7 +29,11 @@ import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import {
+  finalizeScheduleDateInput,
+  finalizeScheduleTimeInput,
   formatScheduleDateInput,
+  normalizeScheduleDateInput,
+  normalizeScheduleTimeInput,
   parseScheduleDateInput,
   parseScheduleTimeInput,
 } from '../../lib/schedule-input';
@@ -102,8 +106,9 @@ export default function CreateInstallationPage() {
   );
   const [selectedStoreId, setSelectedStoreId] = useState<string>(prefillStoreId || myStoreId || '');
 
-  const commitDateInput = () => {
-    const parsed = parseScheduleDateInput(dateInput);
+  const handleDateBlur = () => {
+    const finalized = finalizeScheduleDateInput(dateInput);
+    const parsed = parseScheduleDateInput(finalized);
     if (parsed) {
       setDate(parsed);
       setDateInput(formatScheduleDateInput(parsed));
@@ -112,8 +117,9 @@ export default function CreateInstallationPage() {
     setDateInput(formatScheduleDateInput(date));
   };
 
-  const commitTimeInput = () => {
-    const parsed = parseScheduleTimeInput(timeInput);
+  const handleTimeBlur = () => {
+    const finalized = finalizeScheduleTimeInput(timeInput);
+    const parsed = parseScheduleTimeInput(finalized);
     if (parsed) {
       setTimeStart(parsed);
       setTimeInput(parsed);
@@ -394,8 +400,8 @@ export default function CreateInstallationPage() {
                   className="input w-full tabular-nums"
                   placeholder={t('createInstallationPage.schedule.datePlaceholder')}
                   value={dateInput}
-                  onChange={(e) => setDateInput(e.target.value)}
-                  onBlur={commitDateInput}
+                  onChange={(e) => setDateInput(normalizeScheduleDateInput(e.target.value))}
+                  onBlur={handleDateBlur}
                 />
               </label>
 
@@ -411,8 +417,8 @@ export default function CreateInstallationPage() {
                   className="input w-full tabular-nums"
                   placeholder={t('createInstallationPage.schedule.timePlaceholder')}
                   value={timeInput}
-                  onChange={(e) => setTimeInput(e.target.value)}
-                  onBlur={commitTimeInput}
+                  onChange={(e) => setTimeInput(normalizeScheduleTimeInput(e.target.value))}
+                  onBlur={handleTimeBlur}
                 />
               </label>
             </div>
