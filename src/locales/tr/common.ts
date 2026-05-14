@@ -587,6 +587,21 @@ installationDetailPage: {
     none: 'Henüz ekip müşteri notu yok.',
   },
 
+  checklistCard: {
+    title: 'Ekip kontrol listesi',
+    subtitle: 'Kurulum ekibinin sahada gönderdiği yanıtlar',
+    result: 'Genel sonuç',
+    resultSuccess: 'Başarılı',
+    resultFailed: 'Başarısız',
+    completedAt: 'Gönderim zamanı',
+    none: 'Gönderilmedi',
+    loading: 'Kontrol listesi yanıtları yükleniyor…',
+    noResponses: 'Henüz kontrol listesi yanıtı kaydedilmedi.',
+    notAnswered: '—',
+    failureReason: 'Hata nedeni',
+    noFailureReason: 'Kayıtlı hata nedeni yok.',
+  },
+
   itemsCard: {
     title: 'Ürünler',
     subtitle: 'Bu kuruluma ait sipariş ürünleri',

@@ -587,6 +587,21 @@ installationDetailPage: {
     none: 'No crew customer notes yet.',
   },
 
+  checklistCard: {
+    title: 'Crew checklist',
+    subtitle: 'Answers submitted by the installation crew on site',
+    result: 'Overall result',
+    resultSuccess: 'Successful',
+    resultFailed: 'Failed',
+    completedAt: 'Submitted at',
+    none: 'Not submitted',
+    loading: 'Loading checklist responses…',
+    noResponses: 'No checklist answers recorded yet.',
+    notAnswered: '—',
+    failureReason: 'Failure reason',
+    noFailureReason: 'No failure reason recorded.',
+  },
+
   itemsCard: {
     title: 'Items',
     subtitle: 'Order items scoped to this installation',

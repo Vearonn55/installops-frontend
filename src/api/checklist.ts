@@ -69,11 +69,11 @@ export type ChecklistResponse = {
   id: UUID;
   installation_id: UUID;
   item_id: UUID;
-  value?: Record<string, unknown> | null;
+  value?: unknown;
   completed_at?: string | null;
-  created_by: UUID;
   created_at: string;
   updated_at: string;
+  item?: ChecklistItem;
 };
 
 export type ChecklistResponseList = {
@@ -139,7 +139,17 @@ export async function updateChecklistItem(
 // responses per installation
 export type UpsertChecklistResponsePayload = {
   item_id: UUID;
-  value?: Record<string, unknown> | null;
+  value?: unknown;
+  completed_at?: string | null;
+};
+
+export type BulkChecklistResponseEntry = {
+  key: string;
+  value?: unknown;
+};
+
+export type BulkUpsertChecklistResponsesPayload = {
+  responses: BulkChecklistResponseEntry[];
   completed_at?: string | null;
 };
 
@@ -164,6 +174,16 @@ export async function upsertChecklistResponse(
 ): Promise<void> {
   await apiPost<unknown>(
     `/installations/${installationId}/checklist-responses`,
+    payload
+  );
+}
+
+export async function bulkUpsertChecklistResponses(
+  installationId: UUID,
+  payload: BulkUpsertChecklistResponsesPayload
+): Promise<ChecklistResponseList> {
+  return apiPost<ChecklistResponseList>(
+    `/installations/${installationId}/checklist-responses/bulk`,
     payload
   );
 }

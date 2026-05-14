@@ -31,6 +31,8 @@ import {
   pickInstallationRecordStatus,
 } from '../../lib/installation-status';
 import { crewReadOnlyBannerKey, isCrewChecklistAllowedStatus } from '../../lib/crew-job';
+import { buildCrewChecklistResponsePayload } from '../../lib/crew-checklist-fields';
+import { bulkUpsertChecklistResponses } from '../../api/checklist';
 
 function storageKey(jobId: string) {
   return `crew_checklist_${jobId}`;
@@ -235,6 +237,22 @@ export default function CrewChecklist() {
             : null,
       });
 
+      const checklistResponses = buildCrewChecklistResponsePayload({
+        arrived_on_time: values.arrived_on_time,
+        handover_docs: values.handover_docs,
+        google_reco_given: values.google_reco_given,
+        mark_after_sale: values.mark_after_sale,
+      });
+      if (checklistResponses.length > 0) {
+        await bulkUpsertChecklistResponses(jobId as UUID, {
+          responses: checklistResponses,
+          completed_at:
+            installStatus === 'successful' || installStatus === 'failed'
+              ? new Date().toISOString()
+              : null,
+        });
+      }
+
       if (photos.length > 0) {
         let uploaded = 0;
         let lastUploadError: string | null = null;
@@ -282,6 +300,7 @@ export default function CrewChecklist() {
 
       await queryClient.invalidateQueries({ queryKey: ['installation', jobId] });
       await queryClient.invalidateQueries({ queryKey: ['installationMedia', jobId] });
+      await queryClient.invalidateQueries({ queryKey: ['installationChecklistResponses', jobId] });
       await queryClient.invalidateQueries({ queryKey: ['crew-jobs-installations'] });
       await queryClient.invalidateQueries({ queryKey: ['crew-installations'] });
 
