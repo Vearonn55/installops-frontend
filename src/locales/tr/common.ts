@@ -441,6 +441,8 @@ installationsPage: {
     saveFailed: 'Kurulum güncellenemedi',
     validation: {
       startRequired: 'Planlanan başlangıç zorunludur',
+      startInvalid: 'Başlangıç GG/AA/YYYY SS:DD biçiminde olmalıdır (24 saat)',
+      endInvalid: 'Bitiş GG/AA/YYYY SS:DD biçiminde olmalıdır (24 saat)',
       difficultyRequired: 'Kurulum zorluğu seçimi zorunludur',
     },
   },
@@ -679,6 +681,9 @@ profilePage: {
       title: 'Zamanlama',
       dateLabel: 'Tarih',
       timeLabel: 'Başlangıç saati',
+      datePlaceholder: 'GG/AA/YYYY',
+      timePlaceholder: 'SS:DD',
+      dateTimePlaceholder: 'GG/AA/YYYY SS:DD',
     },
 
     zone: {

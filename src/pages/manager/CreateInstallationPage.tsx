@@ -28,7 +28,11 @@ import { listUsers, type User } from '../../api/users';
 import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
-import { formatUiDate, formatUiDateTime } from '../../lib/date-display';
+import {
+  formatScheduleDateInput,
+  parseScheduleDateInput,
+  parseScheduleTimeInput,
+} from '../../lib/schedule-input';
 import { OrderIdSearchCombobox } from '../../components/OrderIdSearchCombobox';
 import type { UUID } from '../../api/http';
 
@@ -84,10 +88,11 @@ export default function CreateInstallationPage() {
 
   // ----- form state -----
   const [externalOrderId, setExternalOrderId] = useState<string>(prefillOrderId);
-  const [date, setDate] = useState<string>(
-    () => defaultDateRangeOneMonthAhead().from
-  );
+  const initialDate = defaultDateRangeOneMonthAhead().from;
+  const [date, setDate] = useState<string>(initialDate);
   const [timeStart, setTimeStart] = useState<string>('09:00');
+  const [dateInput, setDateInput] = useState(() => formatScheduleDateInput(initialDate));
+  const [timeInput, setTimeInput] = useState('09:00');
   const [zone, setZone] = useState<string>('');
   const [crewIds, setCrewIds] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>('');
@@ -96,6 +101,26 @@ export default function CreateInstallationPage() {
     prefillOrderId ? 'intermediate' : ''
   );
   const [selectedStoreId, setSelectedStoreId] = useState<string>(prefillStoreId || myStoreId || '');
+
+  const commitDateInput = () => {
+    const parsed = parseScheduleDateInput(dateInput);
+    if (parsed) {
+      setDate(parsed);
+      setDateInput(formatScheduleDateInput(parsed));
+      return;
+    }
+    setDateInput(formatScheduleDateInput(date));
+  };
+
+  const commitTimeInput = () => {
+    const parsed = parseScheduleTimeInput(timeInput);
+    if (parsed) {
+      setTimeStart(parsed);
+      setTimeInput(parsed);
+      return;
+    }
+    setTimeInput(timeStart);
+  };
 
   // ----- data: stores (for admins / multi-store setups) -----
   const storesQuery = useQuery({
@@ -363,16 +388,15 @@ export default function CreateInstallationPage() {
                   {t('createInstallationPage.schedule.dateLabel')}
                 </span>
                 <input
-                  type="date"
-                  className="input-date-native w-full"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  className="input w-full tabular-nums"
+                  placeholder={t('createInstallationPage.schedule.datePlaceholder')}
+                  value={dateInput}
+                  onChange={(e) => setDateInput(e.target.value)}
+                  onBlur={commitDateInput}
                 />
-                {date ? (
-                  <span className="text-xs text-gray-500">
-                    {formatUiDate(date)}
-                  </span>
-                ) : null}
               </label>
 
               <label className="flex flex-col gap-1">
@@ -381,17 +405,15 @@ export default function CreateInstallationPage() {
                   {t('createInstallationPage.schedule.timeLabel')}
                 </span>
                 <input
-                  type="time"
-                  lang="en-GB"
-                  className="input input-datetime-native w-full"
-                  value={timeStart}
-                  onChange={(e) => setTimeStart(e.target.value)}
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  className="input w-full tabular-nums"
+                  placeholder={t('createInstallationPage.schedule.timePlaceholder')}
+                  value={timeInput}
+                  onChange={(e) => setTimeInput(e.target.value)}
+                  onBlur={commitTimeInput}
                 />
-                {date && timeStart ? (
-                  <span className="text-xs tabular-nums text-gray-500">
-                    {formatUiDateTime(toISODateTime(date, timeStart))}
-                  </span>
-                ) : null}
               </label>
             </div>
           </section>

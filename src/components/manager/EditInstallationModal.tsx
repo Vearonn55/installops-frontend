@@ -16,8 +16,10 @@ import {
   type Installation,
 } from '../../api/installations';
 import { listUsers, type User } from '../../api/users';
-import { isoToLocalInput, localInputToIso } from '../../lib/installation-datetime';
-import { formatUiDateTime } from '../../lib/date-display';
+import {
+  formatScheduleDateTimeInput,
+  parseScheduleDateTimeInput,
+} from '../../lib/schedule-input';
 import {
   INSTALLATION_ZONES,
   zoneLabelFromValue,
@@ -52,8 +54,8 @@ type Props = {
 function formFromInstallation(inst: Installation): FormState {
   return {
     status: inst.status,
-    scheduled_start: isoToLocalInput(inst.scheduled_start ?? null),
-    scheduled_end: isoToLocalInput(inst.scheduled_end ?? null),
+    scheduled_start: formatScheduleDateTimeInput(inst.scheduled_start ?? null),
+    scheduled_end: formatScheduleDateTimeInput(inst.scheduled_end ?? null),
     zone: zoneValueFromLocation(inst.location),
     difficulty: (inst.difficulty as DifficultyValue | null) ?? '',
     customer_name: inst.customer_name?.trim() ?? '',
@@ -139,10 +141,24 @@ export default function EditInstallationModal({
     setSaving(true);
     try {
       const zoneLabel = zoneLabelFromValue(form.zone);
+      const scheduledStartIso = parseScheduleDateTimeInput(form.scheduled_start);
+      if (!scheduledStartIso) {
+        toast.error(t('installationsPage.editModal.validation.startInvalid'));
+        setSaving(false);
+        return;
+      }
+      const scheduledEndIso = form.scheduled_end.trim()
+        ? parseScheduleDateTimeInput(form.scheduled_end)
+        : null;
+      if (form.scheduled_end.trim() && !scheduledEndIso) {
+        toast.error(t('installationsPage.editModal.validation.endInvalid'));
+        setSaving(false);
+        return;
+      }
 
       await updateInstallationSchedule(installationId, {
-        scheduled_start: localInputToIso(form.scheduled_start),
-        scheduled_end: localInputToIso(form.scheduled_end),
+        scheduled_start: scheduledStartIso,
+        scheduled_end: scheduledEndIso,
         notes: form.notes.trim() || null,
         location: zoneLabel,
         difficulty: form.difficulty,
@@ -238,38 +254,32 @@ export default function EditInstallationModal({
                     {t('installationsPage.editModal.scheduledStart')}
                   </label>
                   <input
-                    type="datetime-local"
-                    lang="en-GB"
-                    className="input input-datetime-native w-full"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="input w-full tabular-nums"
+                    placeholder={t('createInstallationPage.schedule.dateTimePlaceholder')}
                     value={form.scheduled_start}
                     onChange={(e) =>
                       setForm((p) => (p ? { ...p, scheduled_start: e.target.value } : p))
                     }
                   />
-                  {form.scheduled_start ? (
-                    <p className="mt-1 text-xs tabular-nums text-gray-500">
-                      {formatUiDateTime(localInputToIso(form.scheduled_start) ?? form.scheduled_start)}
-                    </p>
-                  ) : null}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">
                     {t('installationsPage.editModal.scheduledEnd')}
                   </label>
                   <input
-                    type="datetime-local"
-                    lang="en-GB"
-                    className="input input-datetime-native w-full"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    className="input w-full tabular-nums"
+                    placeholder={t('createInstallationPage.schedule.dateTimePlaceholder')}
                     value={form.scheduled_end}
                     onChange={(e) =>
                       setForm((p) => (p ? { ...p, scheduled_end: e.target.value } : p))
                     }
                   />
-                  {form.scheduled_end ? (
-                    <p className="mt-1 text-xs tabular-nums text-gray-500">
-                      {formatUiDateTime(localInputToIso(form.scheduled_end) ?? form.scheduled_end)}
-                    </p>
-                  ) : null}
                 </div>
               </div>
 

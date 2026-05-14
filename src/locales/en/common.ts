@@ -441,6 +441,8 @@ installationsPage: {
     saveFailed: 'Failed to update installation',
     validation: {
       startRequired: 'Scheduled start is required',
+      startInvalid: 'Start must be DD/MM/YYYY HH:mm (24-hour)',
+      endInvalid: 'End must be DD/MM/YYYY HH:mm (24-hour)',
       difficultyRequired: 'Installation difficulty is required',
     },
   },
@@ -679,6 +681,9 @@ profilePage: {
       title: 'Schedule',
       dateLabel: 'Date',
       timeLabel: 'Start time',
+      datePlaceholder: 'DD/MM/YYYY',
+      timePlaceholder: 'HH:mm',
+      dateTimePlaceholder: 'DD/MM/YYYY HH:mm',
     },
 
     zone: {
