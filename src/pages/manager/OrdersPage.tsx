@@ -17,7 +17,7 @@ import { defaultDateRangeOrdersList, parseOrderDate } from "../../lib/date-range
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
-import { searchNetsisOrders, fetchNetsisOrderIndex, type NetsisOrderHit } from "../../api/integrations";
+import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations";
 import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
@@ -116,12 +116,6 @@ export default function OrdersPage() {
       const results = await Promise.allSettled(
         targetStores.map(async (s) => {
           const detailOffset = offsets[s.id] ?? 0;
-          let total: number | undefined;
-
-          if (!q.trim() && detailOffset === 0) {
-            const indexRes = await fetchNetsisOrderIndex({ store_id: s.id as UUID });
-            total = indexRes.total;
-          }
 
           const res = await searchNetsisOrders({
             store_id: s.id as UUID,
@@ -130,11 +124,21 @@ export default function OrdersPage() {
             offset: detailOffset,
           });
 
+          const hits = res.data ?? [];
+          const total = res.total;
+          const hasMore =
+            res.has_more === true ||
+            (res.has_more == null &&
+              !q.trim() &&
+              typeof total === "number" &&
+              detailOffset + hits.length < total) ||
+            (res.has_more == null && hits.length >= NETSIS_PAGE_SIZE);
+
           return {
             store: s,
-            hits: res.data ?? [],
-            hasMore: res.has_more,
-            total: total ?? res.total,
+            hits,
+            hasMore,
+            total,
           };
         })
       );
@@ -145,18 +149,27 @@ export default function OrdersPage() {
       let anyFull = false;
 
       for (const r of results) {
-        if (r.status !== "fulfilled") continue;
+        if (r.status !== "fulfilled") {
+          console.error("searchNetsisOrders failed for store:", r.reason);
+          continue;
+        }
         const { store: st, hits, hasMore: storeHasMore, total } = r.value;
         if (typeof total === "number") {
           totalsByStore[st.id] = total;
         }
-        const full = storeHasMore === true;
-        if (full) anyFull = true;
+        if (storeHasMore) anyFull = true;
         nextCursors[st.id] = {
           offset: offsets[st.id] ?? 0,
-          lastPageFull: full,
+          lastPageFull: storeHasMore,
         };
         nextOrders.push(...netsisHitsToOrders(hits, st));
+      }
+
+      if (targetStores.length && !nextOrders.length) {
+        const fail = results.find((r) => r.status === "rejected");
+        if (fail?.status === "rejected") {
+          throw fail.reason;
+        }
       }
 
       return {
@@ -315,6 +328,7 @@ export default function OrdersPage() {
       const batch = await fetchNetsisForStores(targetStores, debouncedFilterQ, offsets);
       setOrders((prev) => sortOrdersByIdDesc(dedupeOrders([...prev, ...batch.orders])));
       setNetsisCursors((prev) => ({ ...prev, ...batch.cursors }));
+      setNetsisTotalsByStore((prev) => ({ ...prev, ...batch.totalsByStore }));
       setHasMore(batch.hasMore);
     } catch (err) {
       console.error("loadMoreNetsis failed:", err);
