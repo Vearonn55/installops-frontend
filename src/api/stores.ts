@@ -36,6 +36,8 @@ export type Store = {
   netsis_sql_encrypt?: boolean | null;
   netsis_sql_trust_server_certificate?: boolean | null;
   netsis_order_sql?: string | null;
+  /** When true, order detail lines enriched from TBLSSATIRAC via SQL Server. */
+  netsis_sql_line_aciklama?: boolean | null;
   /** Only when listing/GET with reveal_netsis_secrets (admins). */
   netsis_password?: string | null;
   netsis_db_password?: string | null;
@@ -118,6 +120,8 @@ export type StoreNetsisUpdate = {
   netsis_sql_encrypt?: boolean | null;
   netsis_sql_trust_server_certificate?: boolean | null;
   netsis_order_sql?: string | null;
+  /** When true, order detail lines enriched from TBLSSATIRAC via SQL Server. */
+  netsis_sql_line_aciklama?: boolean | null;
 };
 
 export async function patchStoreNetsis(

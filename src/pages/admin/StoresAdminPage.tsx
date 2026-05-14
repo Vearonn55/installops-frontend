@@ -184,6 +184,7 @@ function StoreRow({
   const [sqlPort, setSqlPort] = useState(String(store.netsis_sql_port ?? 1433));
   const [sqlEncrypt, setSqlEncrypt] = useState(store.netsis_sql_encrypt !== false);
   const [sqlTrustCert, setSqlTrustCert] = useState(Boolean(store.netsis_sql_trust_server_certificate));
+  const [sqlLineAciklama, setSqlLineAciklama] = useState(Boolean(store.netsis_sql_line_aciklama));
   const [orderSql, setOrderSql] = useState(store.netsis_order_sql || '');
   const [username, setUsername] = useState(store.netsis_username || '');
   const [password, setPassword] = useState('');
@@ -214,6 +215,7 @@ function StoreRow({
     setSqlPort(String(store.netsis_sql_port ?? 1433));
     setSqlEncrypt(store.netsis_sql_encrypt !== false);
     setSqlTrustCert(Boolean(store.netsis_sql_trust_server_certificate));
+    setSqlLineAciklama(Boolean(store.netsis_sql_line_aciklama));
     setOrderSql(store.netsis_order_sql || '');
     setUsername(store.netsis_username || '');
     setTimeoutMs(String(store.netsis_timeout_ms ?? 15000));
@@ -241,6 +243,9 @@ function StoreRow({
     setDbPassword(s.netsis_db_password ?? '');
   };
 
+  const needsSqlDbCreds =
+    authMode === 'token_password' || ordersSearchSource === 'sql' || sqlLineAciklama;
+
   const saveMut = useMutation({
     mutationFn: async () => {
       const to = Number(timeoutMs);
@@ -257,6 +262,7 @@ function StoreRow({
         netsis_sql_port: Number.isFinite(Number(sqlPort)) ? Math.floor(Number(sqlPort)) : 1433,
         netsis_sql_encrypt: sqlEncrypt,
         netsis_sql_trust_server_certificate: sqlTrustCert,
+        netsis_sql_line_aciklama: sqlLineAciklama,
         netsis_order_sql: orderSql.trim() ? orderSql : null,
         netsis_username: username || null,
         netsis_password:
@@ -269,7 +275,7 @@ function StoreRow({
         netsis_branch_code: branchCode.trim() || null,
         netsis_db_name: dbName.trim() || null,
         netsis_db_user: dbUser.trim() || null,
-        ...(authMode === 'token_password'
+        ...(needsSqlDbCreds
           ? {
               netsis_db_password:
                 dbPwTrim !== '' ? dbPwTrim : hadDbPwStored ? null : undefined,
@@ -344,6 +350,7 @@ function StoreRow({
             ? ' · db-pwd'
             : ''}
           {store.netsis_orders_search_source === 'sql' ? ' · orders:sql' : ''}
+          {store.netsis_sql_line_aciklama ? ' · line-sql' : ''}
         </td>
         <td className="px-4 py-3 text-right text-sm">
           <button
@@ -392,12 +399,12 @@ function StoreRow({
                   value={ordersSearchSource}
                   onChange={(e) => setOrdersSearchSource(e.target.value === 'sql' ? 'sql' : 'http')}
                 >
-                  <option value="http">HTTP — call Netsis path below (Bearer/Basic)</option>
-                  <option value="sql">SQL Server — query Netsis DB directly (TCP)</option>
+                  <option value="http">HTTP — NetOpenX / REST path below</option>
+                  <option value="sql">SQL Server — custom SELECT for combobox only</option>
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  SQL mode uses <strong>DB name / DB user / DB password</strong> from Logo token fields below for the
-                  database connection (not the HTTP API).
+                  Independent of order <strong>detail</strong> (always HTTP when a detail path is set) and independent
+                  of <strong>line açıklama SQL</strong> below. You can keep HTTP search + SQL enrich together.
                 </p>
               </label>
               {ordersSearchSource === 'http' ? (
@@ -455,12 +462,21 @@ function StoreRow({
                   onChange={(e) => setLinesPathTpl(e.target.value)}
                 />
               </label>
-              {ordersSearchSource === 'http' ? null : (
-                <>
+
+              <div className="flex flex-col gap-3 rounded-md border border-violet-200 bg-violet-50/40 p-3 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-violet-900">
+                  SQL Server (TCP) — optional
+                </p>
+                <p className="text-xs text-gray-600">
+                  Same host/port for <strong>SQL order search</strong> (if selected above) and/or{' '}
+                  <strong>kalem satır açıklama</strong> from <code className="rounded bg-white px-1">TBLSSATIRAC</code>.
+                  Does not replace HTTP base URL / NetOpenX for slips.
+                </p>
+                <div className="grid gap-3 md:grid-cols-2">
                   <label className="block text-xs font-medium text-gray-600">
                     SQL Server host
                     <input
-                      className="mt-1 w-full rounded-md border px-2 py-1.5 font-mono text-sm"
+                      className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 font-mono text-sm"
                       placeholder="192.168.1.10 or SERVER\\INSTANCE"
                       value={sqlHost}
                       onChange={(e) => setSqlHost(e.target.value)}
@@ -470,48 +486,66 @@ function StoreRow({
                   <label className="block text-xs font-medium text-gray-600">
                     SQL port
                     <input
-                      className="mt-1 w-full max-w-xs rounded-md border px-2 py-1.5 font-mono text-sm"
+                      className="mt-1 w-full max-w-xs rounded-md border bg-white px-2 py-1.5 font-mono text-sm"
                       value={sqlPort}
                       onChange={(e) => setSqlPort(e.target.value)}
                     />
                   </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 md:col-span-2">
-                    <input
-                      type="checkbox"
-                      checked={sqlEncrypt}
-                      onChange={(e) => setSqlEncrypt(e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    Encrypt SQL connection (TLS)
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700 md:col-span-2">
-                    <input
-                      type="checkbox"
-                      checked={sqlTrustCert}
-                      onChange={(e) => setSqlTrustCert(e.target.checked)}
-                      className="rounded border-gray-300"
-                    />
-                    Trust server certificate (self-signed SQL — dev only)
-                  </label>
-                  <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                </div>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={sqlEncrypt}
+                    onChange={(e) => setSqlEncrypt(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Encrypt SQL connection (TLS)
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={sqlTrustCert}
+                    onChange={(e) => setSqlTrustCert(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Trust server certificate (self-signed SQL — dev only)
+                </label>
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={sqlLineAciklama}
+                    onChange={(e) => setSqlLineAciklama(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Enrich order line descriptions from SQL (TBLSSATIRAC → SatirBaziAciks)
+                </label>
+                {sqlLineAciklama ? (
+                  <p className="text-xs text-gray-600">
+                    After HTTP order detail + Items lookup, backend loads{' '}
+                    <code className="rounded bg-white px-1">ACIKLAMA1–3</code> per kalem. Requires SQL host and DB
+                    name / user / password (Logo token fields).
+                  </p>
+                ) : null}
+                {ordersSearchSource === 'sql' ? (
+                  <label className="block text-xs font-medium text-gray-600">
                     Order search SQL (SELECT only)
                     <textarea
-                      className="mt-1 min-h-[140px] w-full rounded-md border px-2 py-1.5 font-mono text-xs"
+                      className="mt-1 min-h-[140px] w-full rounded-md border bg-white px-2 py-1.5 font-mono text-xs"
                       spellCheck={false}
                       placeholder={`SELECT TOP (@netsis_limit) CAST(FISNO AS NVARCHAR(64)) AS order_id,\n  CAST(ISNULL(UNVAN,'') AS NVARCHAR(200)) AS label\nFROM ...\nWHERE CAST(FISNO AS NVARCHAR(64)) LIKE '%' + @netsis_q + '%'`}
                       value={orderSql}
                       onChange={(e) => setOrderSql(e.target.value)}
                     />
                     <span className="mt-1 block text-xs text-gray-500">
-                      Must bind <code className="rounded bg-gray-100 px-1">@netsis_q</code> (search text) and{' '}
-                      <code className="rounded bg-gray-100 px-1">@netsis_limit</code> (row cap). Result columns{' '}
-                      <code className="rounded bg-gray-100 px-1">order_id</code> and{' '}
-                      <code className="rounded bg-gray-100 px-1">label</code> (aliases OK). Adjust table/column names
-                      for your Netsis schema.
+                      Must bind <code className="rounded bg-gray-100 px-1">@netsis_q</code> and{' '}
+                      <code className="rounded bg-gray-100 px-1">@netsis_limit</code>. Columns{' '}
+                      <code className="rounded bg-gray-100 px-1">order_id</code>,{' '}
+                      <code className="rounded bg-gray-100 px-1">label</code>.
                     </span>
                   </label>
-                </>
-              )}
+                ) : null}
+              </div>
+
               <label className="block text-xs font-medium text-gray-600">
                 {authMode === 'token_password' ? 'Token: username (form field)' : 'HTTP Basic username'}
                 <input
@@ -569,6 +603,15 @@ function StoreRow({
                       onChange={(e) => setBranchCode(e.target.value)}
                     />
                   </label>
+                </>
+              ) : null}
+              {needsSqlDbCreds ? (
+                <>
+                  <label className="block text-xs font-medium text-gray-600 md:col-span-2">
+                    <span className="text-gray-500">
+                      Netsis database login — used for Logo token <em>and/or</em> direct SQL (search / line açıklama).
+                    </span>
+                  </label>
                   <label className="block text-xs font-medium text-gray-600">
                     DB name (dbname)
                     <input
@@ -588,9 +631,8 @@ function StoreRow({
                   <label className="block text-xs font-medium text-gray-600 md:col-span-2">
                     DB password (dbpassword)
                     <p className="mt-1 font-normal text-gray-500">
-                      Clear button or empty field + Save removes a stored DB password. Leave empty if the SQL user has
-                      no password (e.g. TEMELSET) — the token request still sends{' '}
-                      <code className="rounded bg-gray-100 px-1">dbpassword=</code> empty.
+                      Used for SQL TCP (line açıklama / order search) and Logo token when enabled. Clear button or
+                      empty field + Save removes a stored DB password.
                     </p>
                     <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
                       <input
