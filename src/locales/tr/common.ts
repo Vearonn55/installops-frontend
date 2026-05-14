@@ -30,7 +30,7 @@ const trCommon = {
     turkish: 'Türkçe',
     dateFormatSectionTitle: 'Tarih biçimi',
     dateFormatSectionDescription:
-      'Uygulamada tarihlerin nasıl gösterileceği (listeler, takvimler, zaman çizelgeleri). Varsayılan gün/ay/yıl.',
+      'Uygulamada tarih ve saat gösterimi. Varsayılan gün/ay/yıl ve 24 saat.',
     dateFormatDmy: 'GG/AA/YYYY (önce gün)',
     dateFormatMdy: 'AA/GG/YYYY (önce ay)',
     dateFormatYmd: 'YYYY-AA-GG (ISO)',

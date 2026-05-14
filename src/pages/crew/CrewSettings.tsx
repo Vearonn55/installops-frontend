@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LogOut, User } from 'lucide-react';
 
-import { formatUiDate, formatUiDateTime } from '../../lib/date-display';
+import { formatDatePatternPreview } from '../../lib/date-display';
 import { useDateDisplayStore, type DatePattern } from '../../stores/date-display';
 import { useAuthStore } from '../../stores/auth';
 
@@ -33,7 +33,6 @@ export default function CrewSettings() {
   };
 
   const currentLang = i18n.language.startsWith('tr') ? 'tr' : 'en';
-  const previewInstant = new Date('2026-04-08T14:30:00');
 
   const initial =
     (user?.name?.trim() || user?.email?.trim() || '?').charAt(0).toUpperCase();
@@ -119,17 +118,17 @@ export default function CrewSettings() {
             onChange={handleDatePatternChange}
             className={selectCls}
           >
-            <option value="DMY">{t('settings.dateFormatDmy')}</option>
-            <option value="MDY">{t('settings.dateFormatMdy')}</option>
-            <option value="YMD">{t('settings.dateFormatYmd')}</option>
+            <option value="DMY">
+              {t('settings.dateFormatDmy')} — {formatDatePatternPreview('DMY')}
+            </option>
+            <option value="MDY">
+              {t('settings.dateFormatMdy')} — {formatDatePatternPreview('MDY')}
+            </option>
+            <option value="YMD">
+              {t('settings.dateFormatYmd')} — {formatDatePatternPreview('YMD')}
+            </option>
           </select>
         </div>
-        <p className="mt-3 text-xs text-gray-600">
-          <span className="font-medium text-gray-800">
-            {t('settings.dateFormatPreview')}:
-          </span>{' '}
-          {formatUiDate(previewInstant)} · {formatUiDateTime(previewInstant)}
-        </p>
       </section>
     </div>
   );

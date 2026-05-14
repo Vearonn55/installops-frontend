@@ -13,6 +13,7 @@ import {
   pickInstallationRecordStatus,
   type CrewJobsUiStatus,
 } from './installation-status';
+import { formatUiTime } from './date-display';
 
 export type CrewJobView = {
   id: string;
@@ -218,7 +219,6 @@ export function mergeArpIntoCrewJobView(
 }
 
 export function fmtTimeRange(startISO: string, endISO: string): string {
-  const f = (iso: string) =>
-    new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const f = (iso: string) => formatUiTime(iso);
   return `${f(startISO)}–${f(endISO)}`;
 }

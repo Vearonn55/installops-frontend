@@ -2,7 +2,7 @@
 import type { ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { formatUiDate, formatUiDateTime } from '../../lib/date-display';
+import { formatDatePatternPreview } from '../../lib/date-display';
 import { useDateDisplayStore, type DatePattern } from '../../stores/date-display';
 
 const selectCls =
@@ -23,8 +23,6 @@ export default function SettingsPage() {
   };
 
   const currentLang = i18n.language.startsWith('tr') ? 'tr' : 'en';
-
-  const previewInstant = new Date('2026-04-08T14:30:00');
 
   return (
     <div className="space-y-8 p-6">
@@ -73,18 +71,17 @@ export default function SettingsPage() {
             onChange={handleDatePatternChange}
             className={selectCls}
           >
-            <option value="DMY">{t('settings.dateFormatDmy')}</option>
-            <option value="MDY">{t('settings.dateFormatMdy')}</option>
-            <option value="YMD">{t('settings.dateFormatYmd')}</option>
+            <option value="DMY">
+              {t('settings.dateFormatDmy')} — {formatDatePatternPreview('DMY')}
+            </option>
+            <option value="MDY">
+              {t('settings.dateFormatMdy')} — {formatDatePatternPreview('MDY')}
+            </option>
+            <option value="YMD">
+              {t('settings.dateFormatYmd')} — {formatDatePatternPreview('YMD')}
+            </option>
           </select>
         </div>
-
-        <p className="mt-3 text-sm text-gray-600">
-          <span className="font-medium text-gray-700">
-            {t('settings.dateFormatPreview')}:
-          </span>{' '}
-          {formatUiDate(previewInstant)} · {formatUiDateTime(previewInstant)}
-        </p>
       </section>
     </div>
   );

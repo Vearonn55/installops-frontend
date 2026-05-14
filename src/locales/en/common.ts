@@ -30,7 +30,7 @@ const enCommon = {
     turkish: 'Turkish',
     dateFormatSectionTitle: 'Date format',
     dateFormatSectionDescription:
-      'How dates appear across the app (lists, calendars, timelines). Default is day/month/year.',
+      'How dates and times appear across the app. Default is day/month/year with 24-hour time.',
     dateFormatDmy: 'DD/MM/YYYY (day first)',
     dateFormatMdy: 'MM/DD/YYYY (month first)',
     dateFormatYmd: 'YYYY-MM-DD (ISO)',

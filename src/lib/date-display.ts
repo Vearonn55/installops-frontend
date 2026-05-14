@@ -47,6 +47,14 @@ function activePattern(): DatePattern {
   return useDateDisplayStore.getState().datePattern;
 }
 
+const SETTINGS_PREVIEW_SAMPLE = new Date('2026-04-08T14:30:00');
+
+/** Example date + 24h time for Settings `<option>` labels only. */
+export function formatDatePatternPreview(pattern: DatePattern): string {
+  const p = PATTERNS[pattern];
+  return `${format(SETTINGS_PREVIEW_SAMPLE, p.date)} · ${format(SETTINGS_PREVIEW_SAMPLE, 'HH:mm')}`;
+}
+
 /** Calendar / list date only (respects Settings → date format). */
 export function formatUiDate(input: string | Date | null | undefined): string {
   const d = coerceDate(input);

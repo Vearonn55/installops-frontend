@@ -21,7 +21,7 @@ import { listInstallations, type Installation as ApiInstallation } from '../../a
 import { listStores } from '../../api/stores';
 import { useManagerStoreId } from '../../hooks/use-manager-store-id';
 import { useTranslation } from 'react-i18next';
-import { formatUiDayMonth, formatUiFullFromDate } from '../../lib/date-display';
+import { formatUiDayMonth, formatUiFullFromDate, formatUiTime } from '../../lib/date-display';
 
 /* =============== Date helpers =============== */
 const MONDAY = 1;
@@ -106,8 +106,7 @@ function isoToLocalYMD(iso?: string) {
 }
 function toLocalHM(iso?: string) {
   if (!iso) return '';
-  const dt = new Date(iso);
-  return dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return formatUiTime(iso);
 }
 
 /* =============== Week layout constants =============== */
