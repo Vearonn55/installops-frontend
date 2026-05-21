@@ -7,6 +7,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 import { useAuthStore } from '../../stores/auth';
 import { login as apiLogin } from '../../api/auth';
+import OzermanLogoAnimated from '../../components/auth/OzermanLogoAnimated';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -81,11 +82,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="mx-auto flex w-fit items-center justify-center px-2 py-1">
-            <img
-              src="/ozerman-mark.png"
-              alt="Özerman"
-              className="mx-auto h-20 w-auto object-contain"
-            />
+            <OzermanLogoAnimated className="mx-auto h-20 w-auto" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             InstallOps
