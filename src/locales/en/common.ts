@@ -50,6 +50,11 @@ const enCommon = {
     searchPlaceholder: 'Search...',
   },
 
+  auth: {
+    checkingSession: 'Checking session…',
+    sessionExpired: 'Your session has ended. Please sign in again.',
+  },
+
   commandPalette: {
     placeholder: 'Search or type a command…',
     noResults: 'No results',

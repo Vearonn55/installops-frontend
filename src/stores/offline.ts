@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { OfflineAction } from '../types';
-import { apiClient } from '../lib/api';
+import { apiPost } from '../api/http';
+import type { UUID } from '../api/http';
 
 interface OfflineState {
   actions: OfflineAction[];
@@ -25,13 +26,11 @@ type OfflineStore = OfflineState & OfflineActions;
 export const useOfflineStore = create<OfflineStore>()(
   persist(
     (set, get) => ({
-      // State
       actions: [],
       isOnline: navigator.onLine,
       isSyncing: false,
       lastSyncTime: null,
 
-      // Actions
       addAction: (actionData) => {
         const action: OfflineAction = {
           ...actionData,
@@ -45,7 +44,6 @@ export const useOfflineStore = create<OfflineStore>()(
           actions: [...state.actions, action],
         }));
 
-        // Try to sync immediately if online
         if (get().isOnline) {
           get().syncActions();
         }
@@ -67,8 +65,6 @@ export const useOfflineStore = create<OfflineStore>()(
 
       setOnlineStatus: (isOnline) => {
         set({ isOnline });
-        
-        // Auto-sync when coming back online
         if (isOnline) {
           get().syncActions();
         }
@@ -76,7 +72,7 @@ export const useOfflineStore = create<OfflineStore>()(
 
       syncActions: async () => {
         const { actions, isOnline } = get();
-        
+
         if (!isOnline || actions.length === 0) {
           return;
         }
@@ -104,7 +100,7 @@ export const useOfflineStore = create<OfflineStore>()(
             }));
           } catch (error) {
             console.error(`Failed to sync action ${action.id}:`, error);
-            
+
             set((state) => ({
               actions: state.actions.map((a) =>
                 a.id === action.id
@@ -119,7 +115,7 @@ export const useOfflineStore = create<OfflineStore>()(
           }
         }
 
-        set({ 
+        set({
           isSyncing: false,
           lastSyncTime: new Date().toISOString(),
         });
@@ -132,17 +128,12 @@ export const useOfflineStore = create<OfflineStore>()(
       },
 
       retryFailedActions: async () => {
-        const { actions } = get();
-        const failedActions = actions.filter((action) => action.status === 'failed');
-        
-        // Reset failed actions to pending for retry
         set((state) => ({
           actions: state.actions.map((action) =>
             action.status === 'failed' ? { ...action, status: 'pending' as const } : action
           ),
         }));
 
-        // Try to sync again
         await get().syncActions();
       },
     }),
@@ -156,41 +147,40 @@ export const useOfflineStore = create<OfflineStore>()(
   )
 );
 
-// Execute individual offline action
 async function executeAction(action: OfflineAction): Promise<void> {
   const { type, installation_id, payload } = action;
+  const id = installation_id as UUID;
 
   switch (type) {
     case 'accept':
-      await apiClient.acceptInstallation(installation_id);
+      await apiPost(`/installations/${id}/accept`);
       break;
-      
+
     case 'start':
-      await apiClient.startInstallation(installation_id, payload);
+      await apiPost(`/installations/${id}/start`, payload);
       break;
-      
+
     case 'checklist':
-      await apiClient.submitChecklist(installation_id, payload.responses);
+      await apiPost(`/installations/${id}/checklist`, { responses: payload.responses });
       break;
-      
+
     case 'media':
-      await apiClient.completeMediaUpload(installation_id, payload);
+      await apiPost(`/installations/${id}/media/complete`, payload);
       break;
-      
+
     case 'finish':
-      await apiClient.finishInstallation(installation_id);
+      await apiPost(`/installations/${id}/finish`);
       break;
-      
+
     case 'fail':
-      await apiClient.failInstallation(installation_id, payload);
+      await apiPost(`/installations/${id}/fail`, payload);
       break;
-      
+
     default:
       throw new Error(`Unknown action type: ${type}`);
   }
 }
 
-// Listen for online/offline events
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
     useOfflineStore.getState().setOnlineStatus(true);

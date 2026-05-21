@@ -50,6 +50,11 @@ const trCommon = {
     searchPlaceholder: 'Ara...',
   },
 
+  auth: {
+    checkingSession: 'Oturum kontrol ediliyor…',
+    sessionExpired: 'Oturumunuz sona erdi. Lütfen tekrar giriş yapın.',
+  },
+
   commandPalette: {
     placeholder: 'Ara veya komut yaz…',
     noResults: 'Sonuç yok',

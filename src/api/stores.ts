@@ -40,7 +40,9 @@ export type Store = {
   netsis_sql_line_aciklama?: boolean | null;
   /** When true, parse kalem Ekalan (#name# #K:code#) on HTTP order detail. */
   netsis_ekalan_parse?: boolean | null;
-  /** Only when listing/GET with reveal_netsis_secrets (admins). */
+  /** True when store has enough Netsis config to search orders (role-safe list field). */
+  netsis_configured?: boolean;
+  /** Plaintext passwords are never returned on GET; use *_configured flags. */
   netsis_password?: string | null;
   netsis_db_password?: string | null;
   created_at: string;
@@ -69,7 +71,7 @@ export type ListStoresParams = {
   external_store_id?: string;
   limit?: number;
   offset?: number;
-  /** Admin session only: response includes decrypted Netsis passwords. */
+  /** @deprecated Passwords are not returned on GET; ignored by the API. */
   reveal_netsis_secrets?: boolean;
 };
 

@@ -1,3 +1,6 @@
+/**
+ * @deprecated Legacy JWT client without cookie sessions. Use `api/http.ts` and `api/*.ts` modules.
+ */
 import type { ApiResponse, User } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';

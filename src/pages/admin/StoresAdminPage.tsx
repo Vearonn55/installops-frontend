@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 
 import {
   listStores,
+  getStore,
   createStore,
   patchStoreNetsis,
   testStoreNetsis,
@@ -23,7 +24,7 @@ export default function StoresAdminPage() {
   const storesQuery = useQuery({
     queryKey: ['stores', 'admin'],
     queryFn: async () => {
-      const res = await listStores({ limit: 100, offset: 0, reveal_netsis_secrets: true });
+      const res = await listStores({ limit: 100, offset: 0 });
       return res.data as Store[];
     },
   });
@@ -55,7 +56,7 @@ export default function StoresAdminPage() {
           <h1 className="text-2xl font-bold text-gray-900">Stores & Netsis</h1>
           <p className="mt-1 text-sm text-gray-500">
             Configure each store&apos;s Netsis base URL and search path. Passwords are stored encrypted;
-            on this admin page they are loaded in plain text for editing.
+            re-enter only when changing credentials (configured passwords are not returned over the API).
           </p>
         </div>
         <button
@@ -172,6 +173,13 @@ function StoreRow({
   onSaved: () => void;
 }) {
   const qc = useQueryClient();
+  const detailQuery = useQuery({
+    queryKey: ['stores', store.id, 'admin-detail'],
+    queryFn: () => getStore(store.id),
+    enabled: expanded,
+    staleTime: 30_000,
+  });
+  const activeStore = detailQuery.data ?? store;
   const [baseUrl, setBaseUrl] = useState(store.netsis_base_url || '');
   const [pathTpl, setPathTpl] = useState(store.netsis_order_search_path || '');
   const [searchQLikeCol, setSearchQLikeCol] = useState(store.netsis_search_q_like_column || '');
@@ -206,43 +214,40 @@ function StoreRow({
   const [dbType, setDbType] = useState(store.netsis_db_type || '0');
 
   useEffect(() => {
-    setBaseUrl(store.netsis_base_url || '');
-    setPathTpl(store.netsis_order_search_path || '');
-    setSearchQLikeCol(store.netsis_search_q_like_column || '');
-    setDetailPathTpl(store.netsis_order_detail_path || '');
-    setLinesPathTpl(store.netsis_order_lines_path || '');
-    setOrdersSearchSource(store.netsis_orders_search_source === 'sql' ? 'sql' : 'http');
-    setSqlHost(store.netsis_sql_host || '');
-    setSqlPort(String(store.netsis_sql_port ?? 1433));
-    setSqlEncrypt(store.netsis_sql_encrypt !== false);
-    setSqlTrustCert(Boolean(store.netsis_sql_trust_server_certificate));
-    setSqlLineAciklama(Boolean(store.netsis_sql_line_aciklama));
-    setEkalanParse(Boolean(store.netsis_ekalan_parse));
-    setOrderSql(store.netsis_order_sql || '');
-    setUsername(store.netsis_username || '');
-    setTimeoutMs(String(store.netsis_timeout_ms ?? 15000));
-    setUseHostHeader(Boolean(store.netsis_request_host));
-    setRequestHost(store.netsis_request_host || '');
-    setPingPath(store.netsis_ping_path || '/api/v2/public/Ping');
-    setAuthMode(store.netsis_auth_mode === 'token_password' ? 'token_password' : 'basic');
-    setTokenPath(store.netsis_token_path || '/api/v2/token');
-    setBranchCode(store.netsis_branch_code || '0');
-    setDbName(store.netsis_db_name || '');
-    setDbUser(store.netsis_db_user || '');
-    setPassword(store.netsis_password ?? '');
-    setDbPassword(store.netsis_db_password ?? '');
-    setDbType(store.netsis_db_type || '0');
-  }, [store]);
+    setBaseUrl(activeStore.netsis_base_url || '');
+    setPathTpl(activeStore.netsis_order_search_path || '');
+    setSearchQLikeCol(activeStore.netsis_search_q_like_column || '');
+    setDetailPathTpl(activeStore.netsis_order_detail_path || '');
+    setLinesPathTpl(activeStore.netsis_order_lines_path || '');
+    setOrdersSearchSource(activeStore.netsis_orders_search_source === 'sql' ? 'sql' : 'http');
+    setSqlHost(activeStore.netsis_sql_host || '');
+    setSqlPort(String(activeStore.netsis_sql_port ?? 1433));
+    setSqlEncrypt(activeStore.netsis_sql_encrypt !== false);
+    setSqlTrustCert(Boolean(activeStore.netsis_sql_trust_server_certificate));
+    setSqlLineAciklama(Boolean(activeStore.netsis_sql_line_aciklama));
+    setEkalanParse(Boolean(activeStore.netsis_ekalan_parse));
+    setOrderSql(activeStore.netsis_order_sql || '');
+    setUsername(activeStore.netsis_username || '');
+    setTimeoutMs(String(activeStore.netsis_timeout_ms ?? 15000));
+    setUseHostHeader(Boolean(activeStore.netsis_request_host));
+    setRequestHost(activeStore.netsis_request_host || '');
+    setPingPath(activeStore.netsis_ping_path || '/api/v2/public/Ping');
+    setAuthMode(activeStore.netsis_auth_mode === 'token_password' ? 'token_password' : 'basic');
+    setTokenPath(activeStore.netsis_token_path || '/api/v2/token');
+    setBranchCode(activeStore.netsis_branch_code || '0');
+    setDbName(activeStore.netsis_db_name || '');
+    setDbUser(activeStore.netsis_db_user || '');
+    setPassword('');
+    setDbPassword('');
+    setDbType(activeStore.netsis_db_type || '0');
+  }, [activeStore]);
 
-  const hadApiPwStored =
-    Boolean(store.netsis_password_configured) || Boolean(String(store.netsis_password ?? '').length);
-  const hadDbPwStored =
-    Boolean(store.netsis_db_password_configured) ||
-    Boolean(String(store.netsis_db_password ?? '').length);
+  const hadApiPwStored = Boolean(activeStore.netsis_password_configured);
+  const hadDbPwStored = Boolean(activeStore.netsis_db_password_configured);
 
-  const applyStoreFromServer = (s: Store) => {
-    setPassword(s.netsis_password ?? '');
-    setDbPassword(s.netsis_db_password ?? '');
+  const applyStoreFromServer = () => {
+    setPassword('');
+    setDbPassword('');
   };
 
   const needsSqlDbCreds =
@@ -289,7 +294,7 @@ function StoreRow({
     },
     onSuccess: (updated: Store) => {
       toast.success('Netsis settings saved');
-      applyStoreFromServer(updated);
+      applyStoreFromServer();
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -301,7 +306,7 @@ function StoreRow({
     mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_password: true }),
     onSuccess: (updated: Store) => {
       toast.success('Saved Netsis API password removed');
-      applyStoreFromServer(updated);
+      applyStoreFromServer();
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -313,7 +318,7 @@ function StoreRow({
     mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_db_password: true }),
     onSuccess: (updated: Store) => {
       toast.success('Saved DB password removed');
-      applyStoreFromServer(updated);
+      applyStoreFromServer();
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },

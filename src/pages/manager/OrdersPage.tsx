@@ -1,5 +1,6 @@
 // src/pages/manager/OrdersPage.tsx
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -17,13 +18,17 @@ import { defaultDateRangeOrdersList, parseOrderDate } from "../../lib/date-range
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
-import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations";
+import {
+  fetchNetsisOrderIndex,
+  searchNetsisOrders,
+  type NetsisOrderHit,
+} from "../../api/integrations";
 import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../stores/auth";
+import { queryKeys } from "../../lib/query-client";
 import { useManagerStoreId } from "../../hooks/use-manager-store-id";
-import { inferManagerStoreId } from "../../lib/manager-store";
 import { textMatchesSearch } from "../../lib/search-text";
 
 const NETSIS_PAGE_SIZE = 50;
@@ -33,7 +38,6 @@ type StoreFetchCursor = { offset: number; lastPageFull: boolean };
 export default function OrdersPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
-  const user = useAuthStore((s) => s.user);
   const isAdmin = useAuthStore((s) => s.hasRole("ADMIN"));
 
   // 🔹 Local UI state — date range includes past orders (placed_at = installation created_at)
@@ -41,7 +45,7 @@ export default function OrdersPage() {
 
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
-  const [store, setStore] = useState<string>("all");
+  const [store, setStore] = useState<string>("");
   const [from, setFrom] = useState<string>(ordersRangeDefault.from);
   const [to, setTo] = useState<string>(ordersRangeDefault.to);
 
@@ -65,17 +69,7 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  // 🔹 Data state
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [stores, setStores] = useState<StoreType[]>([]);
-  const [ordersSource, setOrdersSource] = useState<"installations" | "netsis">("installations");
-  const [loading, setLoading] = useState(true);
-  const [ordersFetchError, setOrdersFetchError] = useState<string | null>(null);
   const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [netsisTotalsByStore, setNetsisTotalsByStore] = useState<Record<string, number>>({});
-  const [netsisCursors, setNetsisCursors] = useState<Record<string, StoreFetchCursor>>({});
   /** Netsis ItemSlips are not date-scoped at the API; only filter by date after the user changes pickers. */
   const [netsisDateFilterActive, setNetsisDateFilterActive] = useState(false);
 
@@ -88,19 +82,36 @@ export default function OrdersPage() {
     setPage(1);
   }, [store, debouncedFilterQ, from, to, status]);
 
+  const storesQuery = useQuery({
+    queryKey: queryKeys.stores,
+    queryFn: () => listStores({ limit: 200 }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const stores = storesQuery.data?.data ?? [];
   const managerStoreId = useManagerStoreId(stores);
 
-  const ordersFetchKey = useMemo(() => {
-    const effectiveStoreId =
-      isAdmin && store !== "all" ? store : !isAdmin ? managerStoreId : store !== "all" ? store : null;
-    return `${store}:${effectiveStoreId ?? "all"}:${debouncedFilterQ}`;
-  }, [store, isAdmin, managerStoreId, debouncedFilterQ]);
+  const effectiveStoreId = isAdmin ? store || null : managerStoreId ?? null;
+  const selectedStore = useMemo(
+    () => (effectiveStoreId ? stores.find((s) => s.id === effectiveStoreId) : undefined),
+    [stores, effectiveStoreId]
+  );
+  const useNetsisList = Boolean(selectedStore && storeUsesNetsisItemSlipsList(selectedStore));
 
   useEffect(() => {
-    if (!isAdmin && managerStoreId && store === "all") {
+    if (!isAdmin && managerStoreId && !store) {
       setStore(managerStoreId);
     }
   }, [isAdmin, managerStoreId, store]);
+
+  useEffect(() => {
+    if (!isAdmin || store || stores.length === 0) return;
+    setStore(stores[0].id);
+  }, [isAdmin, store, stores]);
+
+  useEffect(() => {
+    setNetsisDateFilterActive(false);
+  }, [effectiveStoreId, debouncedFilterQ]);
 
   const fetchNetsisForStores = useCallback(
     async (
@@ -159,7 +170,7 @@ export default function OrdersPage() {
         }
         if (storeHasMore) anyFull = true;
         nextCursors[st.id] = {
-          offset: offsets[st.id] ?? 0,
+          offset: (offsets[st.id] ?? 0) + hits.length,
           lastPageFull: storeHasMore,
         };
         nextOrders.push(...netsisHitsToOrders(hits, st));
@@ -182,172 +193,96 @@ export default function OrdersPage() {
     []
   );
 
-  // Stores + orders: NetOpenX ItemSlips for Netsis stores; managers are single-store scoped.
-  useEffect(() => {
-    let cancelled = false;
+  const listEnabled =
+    !storesQuery.isLoading &&
+    (isAdmin ? Boolean(store) : Boolean(managerStoreId));
 
-    async function fetchData() {
-      setLoading(true);
-      setOrdersFetchError(null);
-      setHasMore(false);
-      setNetsisCursors({});
-      setNetsisTotalsByStore({});
-      setNetsisDateFilterActive(false);
-      setOrders([]);
+  /** Warms backend ItemSlips index cache (see GET …/orders/index). */
+  useQuery({
+    queryKey: ["netsis-order-index", effectiveStoreId],
+    queryFn: () =>
+      fetchNetsisOrderIndex({ store_id: effectiveStoreId as UUID }),
+    enabled: useNetsisList && Boolean(effectiveStoreId) && listEnabled,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      let nextStores: StoreType[] = [];
-      try {
-        const storeRes = await listStores({ limit: 200 });
-        if (!cancelled) nextStores = storeRes.data ?? [];
-      } catch (err) {
-        console.error("listStores failed:", err);
-        if (!cancelled) nextStores = [];
+  const netsisOrdersQuery = useInfiniteQuery({
+    queryKey: ["netsis-orders", effectiveStoreId ?? "none", debouncedFilterQ],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      if (!selectedStore) {
+        return {
+          orders: [] as Order[],
+          cursors: {} as Record<string, StoreFetchCursor>,
+          hasMore: false,
+          totalsByStore: {} as Record<string, number>,
+        };
       }
-      if (!cancelled) setStores(nextStores);
+      const offsets = { [selectedStore.id]: pageParam as number };
+      return fetchNetsisForStores([selectedStore], debouncedFilterQ, offsets);
+    },
+    getNextPageParam: (lastPage) => {
+      if (!selectedStore) return undefined;
+      const cursor = lastPage.cursors[selectedStore.id];
+      if (!cursor?.lastPageFull) return undefined;
+      return cursor.offset;
+    },
+    enabled: useNetsisList && Boolean(selectedStore) && listEnabled,
+    staleTime: 60_000,
+  });
 
-      const mgrStoreId = !isAdmin
-        ? inferManagerStoreId(nextStores, user?.email, user?.store_id)
-        : null;
-      if (!isAdmin && !mgrStoreId) {
-        if (!cancelled) {
-          setOrders([]);
-          setOrdersSource("installations");
-          setLoading(false);
-        }
-        return;
-      }
+  const installationsOrdersQuery = useQuery({
+    queryKey: ["orders", "installations", effectiveStoreId, debouncedFilterQ],
+    queryFn: () =>
+      listOrders({
+        limit: 300,
+        ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
+        ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
+      }),
+    enabled: !useNetsisList && listEnabled,
+    staleTime: 60_000,
+  });
 
-      const effectiveStoreId = isAdmin
-        ? store !== "all"
-          ? store
-          : null
-        : mgrStoreId;
-      const sel = effectiveStoreId
-        ? nextStores.find((s) => s.id === effectiveStoreId)
-        : null;
-      const netsisStores = nextStores.filter(storeUsesNetsisItemSlipsList);
-      const useNetsisSingle = Boolean(sel && storeUsesNetsisItemSlipsList(sel));
-      const useNetsisAll = isAdmin && store === "all" && netsisStores.length > 0;
+  const ordersSource: "installations" | "netsis" = useNetsisList ? "netsis" : "installations";
 
-      try {
-        if (useNetsisAll) {
-          const batch = await fetchNetsisForStores(netsisStores, debouncedFilterQ, {});
-          if (!cancelled) {
-            setOrders(batch.orders);
-            setNetsisCursors(batch.cursors);
-            setNetsisTotalsByStore(batch.totalsByStore);
-            setHasMore(batch.hasMore);
-            setOrdersSource("netsis");
-            setOrdersFetchError(null);
-          }
-        } else if (useNetsisSingle && sel) {
-          const batch = await fetchNetsisForStores([sel], debouncedFilterQ, {});
-          if (!cancelled) {
-            setOrders(batch.orders);
-            setNetsisCursors(batch.cursors);
-            setNetsisTotalsByStore(batch.totalsByStore);
-            setHasMore(batch.hasMore);
-            setOrdersSource("netsis");
-            setOrdersFetchError(null);
-          }
-        } else {
-          const orderRes = await listOrders({
-            limit: 300,
-            ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
-            ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
-          });
-          if (!cancelled) {
-            setOrders(orderRes.data ?? []);
-            setOrdersSource("installations");
-            setOrdersFetchError(null);
-            setHasMore(false);
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setOrders([]);
-          setOrdersSource("installations");
-          const statusCode = isAxiosError(err) ? err.response?.status : undefined;
-          const msg =
-            (isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
-            (err instanceof Error ? err.message : "Request failed");
-          if (statusCode === 404 && !useNetsisSingle && !useNetsisAll) {
-            setOrdersFetchError(
-              "Orders list is not available on this API (404). Deploy the latest installops-backend (GET /orders) and restart Node, or fix nginx so /api/v1 is proxied to the app."
-            );
-          } else {
-            setOrdersFetchError(msg);
-          }
-          console.error(
-            useNetsisSingle || useNetsisAll ? "searchNetsisOrders failed:" : "listOrders failed:",
-            err
-          );
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const orders = useMemo(() => {
+    if (useNetsisList && netsisOrdersQuery.data) {
+      const merged = netsisOrdersQuery.data.pages.flatMap((p) => p.orders);
+      return sortOrdersByIdDesc(dedupeOrders(merged));
     }
+    return installationsOrdersQuery.data?.data ?? [];
+  }, [useNetsisList, netsisOrdersQuery.data, installationsOrdersQuery.data]);
 
-    fetchData().catch((err) => {
-      console.error("OrdersPage fetchData:", err);
-      if (!cancelled) {
-        setLoading(false);
-        setOrdersFetchError(
-          err instanceof Error ? err.message : "Failed to load orders page data."
-        );
-      }
-    });
+  const netsisTotalsByStore = useMemo(() => {
+    const pages = netsisOrdersQuery.data?.pages;
+    if (!pages?.length) return {};
+    return pages[pages.length - 1].totalsByStore;
+  }, [netsisOrdersQuery.data]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [ordersFetchKey, isAdmin, user?.email, user?.store_id, fetchNetsisForStores, debouncedFilterQ]);
+  const needsStorePick = isAdmin && !store;
+  const loading =
+    storesQuery.isLoading ||
+    (needsStorePick
+      ? false
+      : useNetsisList
+        ? netsisOrdersQuery.isLoading
+        : installationsOrdersQuery.isLoading);
 
-  const loadMoreNetsis = useCallback(async () => {
-    if (!hasMore || loadingMore || loading) return;
+  const loadingMore = netsisOrdersQuery.isFetchingNextPage;
+  const hasMore = useNetsisList ? Boolean(netsisOrdersQuery.hasNextPage) : false;
 
-    const netsisStores = stores.filter(storeUsesNetsisItemSlipsList);
-    const effectiveStoreId =
-      !isAdmin && managerStoreId ? managerStoreId : store !== "all" ? store : null;
-    const targetStores =
-      isAdmin && store === "all"
-        ? netsisStores.filter((s) => netsisCursors[s.id]?.lastPageFull)
-        : effectiveStoreId
-          ? netsisStores.filter((s) => s.id === effectiveStoreId)
-          : [];
-
-    if (!targetStores.length) return;
-
-    const offsets: Record<string, number> = {};
-    for (const s of targetStores) {
-      offsets[s.id] = orders.filter((o) => orderMatchesStoreFilter(o, s.id)).length;
+  const ordersFetchError = useMemo(() => {
+    const err = useNetsisList ? netsisOrdersQuery.error : installationsOrdersQuery.error;
+    if (!err) return null;
+    const statusCode = isAxiosError(err) ? err.response?.status : undefined;
+    const msg =
+      (isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
+      (err instanceof Error ? err.message : "Request failed");
+    if (statusCode === 404 && !useNetsisList) {
+      return "Orders list is not available on this API (404). Deploy the latest installops-backend (GET /orders) and restart Node, or fix nginx so /api/v1 is proxied to the app.";
     }
-
-    setLoadingMore(true);
-    try {
-      const batch = await fetchNetsisForStores(targetStores, debouncedFilterQ, offsets);
-      setOrders((prev) => sortOrdersByIdDesc(dedupeOrders([...prev, ...batch.orders])));
-      setNetsisCursors((prev) => ({ ...prev, ...batch.cursors }));
-      setNetsisTotalsByStore((prev) => ({ ...prev, ...batch.totalsByStore }));
-      setHasMore(batch.hasMore);
-    } catch (err) {
-      console.error("loadMoreNetsis failed:", err);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [
-    hasMore,
-    loadingMore,
-    loading,
-    stores,
-    orders,
-    isAdmin,
-    managerStoreId,
-    store,
-    netsisCursors,
-    debouncedFilterQ,
-    fetchNetsisForStores,
-  ]);
+    return msg;
+  }, [useNetsisList, netsisOrdersQuery.error, installationsOrdersQuery.error]);
 
   // Derived store dropdown
   const storeOptions = useMemo(() => {
@@ -364,12 +299,8 @@ export default function OrdersPage() {
   }, [stores, isAdmin, managerStoreId]);
 
   const storeFilterOptions = useMemo(() => {
-    const opts = storeOptions.map((s) => ({ value: s.id, label: s.label }));
-    if (isAdmin) {
-      return [{ value: "all", label: t("ordersPage.filters.storeAll") }, ...opts];
-    }
-    return opts;
-  }, [storeOptions, isAdmin, t]);
+    return storeOptions.map((s) => ({ value: s.id, label: s.label }));
+  }, [storeOptions]);
 
   const netsisCatalogTotal = useMemo(() => {
     const vals = Object.values(netsisTotalsByStore);
@@ -400,7 +331,7 @@ export default function OrdersPage() {
     }
 
     // Store filter (match top-level id or nested store; UUID serialization can differ)
-    if (store !== "all") {
+    if (store) {
       list = list.filter((o) => orderMatchesStoreFilter(o, store));
     }
 
@@ -692,8 +623,8 @@ export default function OrdersPage() {
             {ordersSource === "netsis" && hasMore ? (
               <button
                 type="button"
-                onClick={() => void loadMoreNetsis()}
-                disabled={loadingMore}
+                onClick={() => void netsisOrdersQuery.fetchNextPage()}
+                disabled={loadingMore || !netsisOrdersQuery.hasNextPage}
                 className={cn(
                   "rounded-md border border-primary-300 bg-primary-50 px-3 py-1.5 text-primary-800",
                   loadingMore && "opacity-50"
@@ -802,6 +733,11 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function storeUsesNetsisItemSlipsList(s: StoreType): boolean {
+  if (s.netsis_configured === true) {
+    const src = String(s.netsis_orders_search_source || "http").trim().toLowerCase();
+    return src !== "sql";
+  }
+  if (s.netsis_configured === false) return false;
   const src = String(s.netsis_orders_search_source || "http").trim().toLowerCase();
   if (src === "sql") return false;
   return Boolean(s.netsis_base_url?.trim() && s.netsis_order_search_path?.trim());

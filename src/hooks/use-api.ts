@@ -1,3 +1,4 @@
+/** @deprecated Use `api/http.ts` + domain modules under `api/` with TanStack Query in pages. */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/api';
 import { queryKeys } from '../lib/query-client';

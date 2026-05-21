@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 import type { User, UserRole } from '../types';
 import { getCurrentUser, logout as logoutSession } from '../api/auth';
 import { isAxiosError } from '../api/http';
+import { queryClient } from '../lib/query-client';
 
 /** Backend may return "store_manager", "Store Manager", "manager" etc. Normalize to UserRole. */
 function normalizeBackendRole(role: string | null | undefined): UserRole {
@@ -15,13 +16,29 @@ function normalizeBackendRole(role: string | null | undefined): UserRole {
   return 'ADMIN';
 }
 
+function mapMeToUser(me: Awaited<ReturnType<typeof getCurrentUser>>, emailFallback = ''): User {
+  return {
+    id: me.id,
+    name: me.name || '',
+    email: me.email || emailFallback,
+    phone: me.phone ?? undefined,
+    role: normalizeBackendRole(me.role),
+    permissions: Array.isArray(me.permissions) ? me.permissions : [],
+    store_id: me.store_id ?? undefined,
+    status: 'active',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  /** False until persisted auth is re-read from storage (avoids bogus redirects before rehydrate). */
   hasHydrated: boolean;
+  /** True after `/auth/me` validation finishes (success or 401). */
+  sessionValidated: boolean;
 }
 
 interface AuthActions {
@@ -70,35 +87,25 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false,
       error: null,
       hasHydrated: false,
+      sessionValidated: false,
 
       login: async (email: string, _password: string) => {
         set({ isLoading: true, error: null });
 
         try {
           const me = await getCurrentUser();
-
-          const mappedUser: User = {
-            id: me.id,
-            name: me.name || '',
-            email: me.email || email,
-            phone: undefined,
-            role: normalizeBackendRole(me.role),
-            permissions: Array.isArray(me.permissions) ? me.permissions : [],
-            store_id: me.store_id ?? undefined,
-            status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
+          const mappedUser = mapMeToUser(me, email);
 
           set({
             user: mappedUser,
             isAuthenticated: true,
             isLoading: false,
             error: null,
+            sessionValidated: true,
           });
         } catch (err: unknown) {
-          const e = err as { response?: { status?: number; data?: { message?: string } }; message?: string };
           const is401 = isAxiosError(err) && err.response?.status === 401;
+          const e = err as { response?: { data?: { message?: string } }; message?: string };
           const message = is401
             ? 'Session could not be established. Please enable cookies and try again, or contact support if the problem persists.'
             : (e?.response?.data?.message || e?.message || 'Login failed');
@@ -107,6 +114,7 @@ export const useAuthStore = create<AuthStore>()(
             isAuthenticated: false,
             isLoading: false,
             error: message,
+            sessionValidated: true,
           });
           throw err;
         }
@@ -114,11 +122,14 @@ export const useAuthStore = create<AuthStore>()(
 
       logout: () => {
         void logoutSession().catch(() => {});
+        void useAuthStore.persist.clearStorage();
+        queryClient.clear();
         set({
           user: null,
           isAuthenticated: false,
           isLoading: false,
           error: null,
+          sessionValidated: true,
         });
       },
 
@@ -162,10 +173,9 @@ export const useAuthStore = create<AuthStore>()(
               permissions: state.user.permissions,
             }
           : null,
-        isAuthenticated: state.isAuthenticated,
       }),
       merge: (persisted, current) => {
-        const p = persisted as { user?: User | null; isAuthenticated?: boolean };
+        const p = persisted as { user?: User | null };
         const user = p.user
           ? {
               ...p.user,
@@ -173,30 +183,35 @@ export const useAuthStore = create<AuthStore>()(
               permissions: p.user.permissions,
             }
           : null;
-        return { ...current, user, isAuthenticated: p.isAuthenticated ?? current.isAuthenticated };
+        return {
+          ...current,
+          user,
+          isAuthenticated: false,
+          sessionValidated: false,
+        };
       },
     }
   )
 );
 
-/** Merge /auth/me with persisted user after rehydrate. */
+function isAuthFailure(err: unknown): boolean {
+  return isAxiosError(err) && (err.response?.status === 401 || err.response?.status === 403);
+}
+
+/** Validate session cookie with `/auth/me` after rehydrate. */
 export const initializeAuth = async () => {
-  const state = useAuthStore.getState();
+  useAuthStore.setState({ isLoading: true });
 
   try {
     const me = await getCurrentUser();
-    const prev = state.user;
+    const prev = useAuthStore.getState().user;
     const mappedUser: User = {
-      id: me.id,
-      name: me.name || prev?.name || '',
-      email: me.email || prev?.email || '',
+      ...mapMeToUser(me, prev?.email || ''),
       phone: me.phone ?? prev?.phone,
-      role: normalizeBackendRole(me.role),
       permissions: Array.isArray(me.permissions) ? me.permissions : prev?.permissions,
       store_id: me.store_id ?? prev?.store_id,
       status: prev?.status ?? 'active',
       created_at: prev?.created_at ?? new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
     useAuthStore.setState({
@@ -204,19 +219,34 @@ export const initializeAuth = async () => {
       isAuthenticated: true,
       isLoading: false,
       error: null,
+      sessionValidated: true,
     });
 
     return { user: mappedUser, isAuthenticated: true };
-  } catch {
-    return { user: state.user, isAuthenticated: state.isAuthenticated };
+  } catch (err) {
+    if (isAuthFailure(err)) {
+      void useAuthStore.persist.clearStorage();
+      useAuthStore.setState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: null,
+        sessionValidated: true,
+      });
+      return { user: null, isAuthenticated: false };
+    }
+
+    useAuthStore.setState({
+      isLoading: false,
+      sessionValidated: true,
+    });
+    return {
+      user: useAuthStore.getState().user,
+      isAuthenticated: useAuthStore.getState().isAuthenticated,
+    };
   }
 };
 
-/**
- * `persist` may finish hydrating inside `create()` (sync localStorage path). You must not call
- * `useAuthStore` from `onRehydrateStorage` — the `useAuthStore` binding is still in the TDZ.
- * Mark storage ready here, then validate the session cookie with `/auth/me`.
- */
 function onStorageHydrated() {
   useAuthStore.setState({ hasHydrated: true });
   void initializeAuth();
