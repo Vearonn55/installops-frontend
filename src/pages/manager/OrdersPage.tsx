@@ -733,14 +733,8 @@ function StatusPill({ status }: { status: string }) {
 }
 
 function storeUsesNetsisItemSlipsList(s: StoreType): boolean {
-  if (s.netsis_configured === true) {
-    const src = String(s.netsis_orders_search_source || "http").trim().toLowerCase();
-    return src !== "sql";
-  }
-  if (s.netsis_configured === false) return false;
-  const src = String(s.netsis_orders_search_source || "http").trim().toLowerCase();
-  if (src === "sql") return false;
-  return Boolean(s.netsis_base_url?.trim() && s.netsis_order_search_path?.trim());
+  if (s.netsis_configured !== true) return false;
+  return s.netsis_orders_search_source !== "sql";
 }
 
 function netsisHitsToOrders(hits: NetsisOrderHit[], store: StoreType): Order[] {

@@ -5,11 +5,12 @@ import toast from 'react-hot-toast';
 
 import {
   listStores,
-  getStore,
+  getStoreNetsis,
   createStore,
   patchStoreNetsis,
   testStoreNetsis,
   type Store,
+  type StoreNetsisConfig,
 } from '../../api/stores';
 import type { UUID } from '../../api/http';
 import { cn } from '../../lib/utils';
@@ -118,10 +119,10 @@ export default function StoresAdminPage() {
                 Store
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Netsis URL
+                Netsis
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                Auth
+                Orders source
               </th>
               <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                 Actions
@@ -173,47 +174,42 @@ function StoreRow({
   onSaved: () => void;
 }) {
   const qc = useQueryClient();
-  const detailQuery = useQuery({
-    queryKey: ['stores', store.id, 'admin-detail'],
-    queryFn: () => getStore(store.id),
+  const netsisQuery = useQuery({
+    queryKey: ['stores', store.id, 'netsis'],
+    queryFn: () => getStoreNetsis(store.id),
     enabled: expanded,
     staleTime: 30_000,
   });
-  const activeStore = detailQuery.data ?? store;
-  const [baseUrl, setBaseUrl] = useState(store.netsis_base_url || '');
-  const [pathTpl, setPathTpl] = useState(store.netsis_order_search_path || '');
-  const [searchQLikeCol, setSearchQLikeCol] = useState(store.netsis_search_q_like_column || '');
-  const [detailPathTpl, setDetailPathTpl] = useState(store.netsis_order_detail_path || '');
-  const [linesPathTpl, setLinesPathTpl] = useState(store.netsis_order_lines_path || '');
-  const [ordersSearchSource, setOrdersSearchSource] = useState<'http' | 'sql'>(
-    store.netsis_orders_search_source === 'sql' ? 'sql' : 'http'
-  );
-  const [sqlHost, setSqlHost] = useState(store.netsis_sql_host || '');
-  const [sqlPort, setSqlPort] = useState(String(store.netsis_sql_port ?? 1433));
-  const [sqlEncrypt, setSqlEncrypt] = useState(store.netsis_sql_encrypt !== false);
-  const [sqlTrustCert, setSqlTrustCert] = useState(Boolean(store.netsis_sql_trust_server_certificate));
-  const [sqlLineAciklama, setSqlLineAciklama] = useState(Boolean(store.netsis_sql_line_aciklama));
-  const [ekalanParse, setEkalanParse] = useState(Boolean(store.netsis_ekalan_parse));
-  const [orderSql, setOrderSql] = useState(store.netsis_order_sql || '');
-  const [username, setUsername] = useState(store.netsis_username || '');
+  const activeStore = netsisQuery.data;
+  const [baseUrl, setBaseUrl] = useState('');
+  const [pathTpl, setPathTpl] = useState('');
+  const [searchQLikeCol, setSearchQLikeCol] = useState('');
+  const [detailPathTpl, setDetailPathTpl] = useState('');
+  const [linesPathTpl, setLinesPathTpl] = useState('');
+  const [ordersSearchSource, setOrdersSearchSource] = useState<'http' | 'sql'>('http');
+  const [sqlHost, setSqlHost] = useState('');
+  const [sqlPort, setSqlPort] = useState('1433');
+  const [sqlEncrypt, setSqlEncrypt] = useState(true);
+  const [sqlTrustCert, setSqlTrustCert] = useState(false);
+  const [sqlLineAciklama, setSqlLineAciklama] = useState(false);
+  const [ekalanParse, setEkalanParse] = useState(false);
+  const [orderSql, setOrderSql] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [timeoutMs, setTimeoutMs] = useState(String(store.netsis_timeout_ms ?? 15000));
-  const [useHostHeader, setUseHostHeader] = useState(Boolean(store.netsis_request_host));
-  const [requestHost, setRequestHost] = useState(store.netsis_request_host || '');
-  const [pingPath, setPingPath] = useState(
-    store.netsis_ping_path || '/api/v2/public/Ping'
-  );
-  const [authMode, setAuthMode] = useState<'basic' | 'token_password'>(
-    store.netsis_auth_mode === 'token_password' ? 'token_password' : 'basic'
-  );
-  const [tokenPath, setTokenPath] = useState(store.netsis_token_path || '/api/v2/token');
-  const [branchCode, setBranchCode] = useState(store.netsis_branch_code || '0');
-  const [dbName, setDbName] = useState(store.netsis_db_name || '');
-  const [dbUser, setDbUser] = useState(store.netsis_db_user || '');
+  const [timeoutMs, setTimeoutMs] = useState('15000');
+  const [useHostHeader, setUseHostHeader] = useState(false);
+  const [requestHost, setRequestHost] = useState('');
+  const [pingPath, setPingPath] = useState('/api/v2/public/Ping');
+  const [authMode, setAuthMode] = useState<'basic' | 'token_password'>('basic');
+  const [tokenPath, setTokenPath] = useState('/api/v2/token');
+  const [branchCode, setBranchCode] = useState('0');
+  const [dbName, setDbName] = useState('');
+  const [dbUser, setDbUser] = useState('');
   const [dbPassword, setDbPassword] = useState('');
-  const [dbType, setDbType] = useState(store.netsis_db_type || '0');
+  const [dbType, setDbType] = useState('0');
 
   useEffect(() => {
+    if (!activeStore) return;
     setBaseUrl(activeStore.netsis_base_url || '');
     setPathTpl(activeStore.netsis_order_search_path || '');
     setSearchQLikeCol(activeStore.netsis_search_q_like_column || '');
@@ -242,8 +238,8 @@ function StoreRow({
     setDbType(activeStore.netsis_db_type || '0');
   }, [activeStore]);
 
-  const hadApiPwStored = Boolean(activeStore.netsis_password_configured);
-  const hadDbPwStored = Boolean(activeStore.netsis_db_password_configured);
+  const hadApiPwStored = Boolean(activeStore?.netsis_password_configured);
+  const hadDbPwStored = Boolean(activeStore?.netsis_db_password_configured);
 
   const applyStoreFromServer = () => {
     setPassword('');
@@ -292,9 +288,10 @@ function StoreRow({
         netsis_db_type: dbType.trim() || null,
       });
     },
-    onSuccess: (updated: Store) => {
+    onSuccess: () => {
       toast.success('Netsis settings saved');
       applyStoreFromServer();
+      void qc.invalidateQueries({ queryKey: ['stores', store.id, 'netsis'] });
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -304,9 +301,10 @@ function StoreRow({
 
   const clearApiPwMut = useMutation({
     mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_password: true }),
-    onSuccess: (updated: Store) => {
+    onSuccess: () => {
       toast.success('Saved Netsis API password removed');
       applyStoreFromServer();
+      void qc.invalidateQueries({ queryKey: ['stores', store.id, 'netsis'] });
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -316,9 +314,10 @@ function StoreRow({
 
   const clearDbPwMut = useMutation({
     mutationFn: () => patchStoreNetsis(store.id, { netsis_clear_db_password: true }),
-    onSuccess: (updated: Store) => {
+    onSuccess: () => {
       toast.success('Saved DB password removed');
       applyStoreFromServer();
+      void qc.invalidateQueries({ queryKey: ['stores', store.id, 'netsis'] });
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
     },
@@ -345,21 +344,19 @@ function StoreRow({
             {store.name}
           </div>
         </td>
-        <td className="max-w-xs truncate px-4 py-3 text-sm text-gray-600">
-          {store.netsis_base_url || '—'}
+        <td className="px-4 py-3 text-sm text-gray-600">
+          {store.netsis_configured ? (
+            <span className="text-green-700">Configured</span>
+          ) : (
+            <span className="text-gray-400">Not configured</span>
+          )}
         </td>
         <td className="px-4 py-3 text-sm text-gray-600">
-          <span className="font-mono text-xs text-gray-500">
-            {store.netsis_auth_mode === 'token_password' ? 'token' : 'basic'}
-          </span>
-          {store.netsis_username ? ` · ${store.netsis_username}` : ''}
-          {store.netsis_password_configured ? ' · pwd' : ''}
-          {store.netsis_auth_mode === 'token_password' && store.netsis_db_password_configured
-            ? ' · db-pwd'
-            : ''}
-          {store.netsis_orders_search_source === 'sql' ? ' · orders:sql' : ''}
-          {store.netsis_ekalan_parse ? ' · ekalan' : ''}
-          {store.netsis_sql_line_aciklama ? ' · line-sql' : ''}
+          {store.netsis_configured
+            ? store.netsis_orders_search_source === 'sql'
+              ? 'SQL'
+              : 'HTTP'
+            : '—'}
         </td>
         <td className="px-4 py-3 text-right text-sm">
           <button
@@ -374,6 +371,13 @@ function StoreRow({
       {expanded && (
         <tr>
           <td colSpan={4} className="bg-gray-50 px-4 py-4">
+            {netsisQuery.isLoading && (
+              <p className="text-sm text-gray-500">Loading Netsis configuration…</p>
+            )}
+            {netsisQuery.isError && (
+              <p className="text-sm text-red-600">Failed to load Netsis configuration.</p>
+            )}
+            {netsisQuery.data && (
             <div className="mx-auto grid max-w-3xl gap-3 md:grid-cols-2">
               <label className="block text-xs font-medium text-gray-600 md:col-span-2">
                 Netsis auth
@@ -761,6 +765,7 @@ function StoreRow({
                 </button>
               </div>
             </div>
+            )}
           </td>
         </tr>
       )}

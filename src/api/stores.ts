@@ -2,6 +2,7 @@
 import { apiGet, apiPost, apiPatch, UUID } from './http';
 import type { Address } from './addresses';
 
+/** Store list/detail — no Netsis credentials or infrastructure. */
 export type Store = {
   id: UUID;
   name: string;
@@ -9,6 +10,17 @@ export type Store = {
   address_id?: UUID | null;
   phone?: string | null;
   timezone?: string | null;
+  /** True when store has enough Netsis config to search orders. */
+  netsis_configured?: boolean;
+  /** Order combobox mode without exposing hosts or credentials. */
+  netsis_orders_search_source?: 'http' | 'sql';
+  created_at: string;
+  updated_at: string;
+  address?: Address;
+};
+
+/** Admin-only Netsis config (GET/PATCH /stores/:id/netsis). */
+export type StoreNetsisConfig = Store & {
   netsis_base_url?: string | null;
   netsis_order_search_path?: string | null;
   netsis_order_detail_path?: string | null;
@@ -29,8 +41,6 @@ export type Store = {
   netsis_db_user?: string | null;
   netsis_db_password_configured?: boolean;
   netsis_db_type?: string | null;
-  /** Order combobox: HTTP path on Netsis API vs direct SQL Server query. */
-  netsis_orders_search_source?: 'http' | 'sql' | null;
   netsis_sql_host?: string | null;
   netsis_sql_port?: number | null;
   netsis_sql_encrypt?: boolean | null;
@@ -40,14 +50,6 @@ export type Store = {
   netsis_sql_line_aciklama?: boolean | null;
   /** When true, parse kalem Ekalan (#name# #K:code#) on HTTP order detail. */
   netsis_ekalan_parse?: boolean | null;
-  /** True when store has enough Netsis config to search orders (role-safe list field). */
-  netsis_configured?: boolean;
-  /** Plaintext passwords are never returned on GET; use *_configured flags. */
-  netsis_password?: string | null;
-  netsis_db_password?: string | null;
-  created_at: string;
-  updated_at: string;
-  address?: Address;
 };
 
 export type StoreList = {
@@ -71,8 +73,6 @@ export type ListStoresParams = {
   external_store_id?: string;
   limit?: number;
   offset?: number;
-  /** @deprecated Passwords are not returned on GET; ignored by the API. */
-  reveal_netsis_secrets?: boolean;
 };
 
 export async function listStores(
@@ -87,6 +87,10 @@ export async function createStore(payload: StoreCreate): Promise<Store> {
 
 export async function getStore(id: UUID): Promise<Store> {
   return apiGet<Store>(`/stores/${id}`);
+}
+
+export async function getStoreNetsis(id: UUID): Promise<StoreNetsisConfig> {
+  return apiGet<StoreNetsisConfig>(`/stores/${id}/netsis`);
 }
 
 export async function updateStore(
@@ -133,8 +137,8 @@ export type StoreNetsisUpdate = {
 export async function patchStoreNetsis(
   id: UUID,
   payload: StoreNetsisUpdate
-): Promise<Store> {
-  return apiPatch<Store>(`/stores/${id}/netsis`, payload);
+): Promise<StoreNetsisConfig> {
+  return apiPatch<StoreNetsisConfig>(`/stores/${id}/netsis`, payload);
 }
 
 export type NetsisTestResponse = { ok: boolean; message: string };
