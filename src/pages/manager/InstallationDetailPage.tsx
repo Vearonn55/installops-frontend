@@ -39,6 +39,8 @@ import {
   pickStokKoduFromLine,
   stokAdiFromLine,
   lineItemDescriptionFromLine,
+  netsisLinesByStokKodu as mapNetsisLinesByStokKodu,
+  type NetsisLineParseOptions,
   lineRowId,
 } from '../../lib/netsis-native';
 import {
@@ -101,23 +103,6 @@ type InstallationWithRelations = Installation & {
   items?: InstallationItemDto[];
   crew?: CrewAssignmentDto[];
 };
-
-/** Map NetOpenX kalem lines by stok kodu for merging onto local installation items. */
-function netsisLinesByStokKodu(lines: NetsisOrderLine[] | undefined) {
-  const m = new Map<string, { sku: string; name: string; description: string }>();
-  if (!lines?.length) return m;
-  for (const line of lines) {
-    const sku = pickStokKoduFromLine(line);
-    if (!sku) continue;
-    const nameRaw = stokAdiFromLine(line);
-    const descRaw = lineItemDescriptionFromLine(line);
-    const nameOut = nameRaw && nameRaw !== sku ? nameRaw : sku;
-    const description =
-      descRaw && descRaw !== sku && descRaw !== nameOut ? descRaw : nameOut;
-    m.set(sku, { sku, name: nameOut, description });
-  }
-  return m;
-}
 
 const badge = (s: Installation['status']) =>
   s === 'completed'
@@ -184,20 +169,26 @@ export default function InstallationDetailPage() {
         store_id: String(inst!.store_id) as UUID,
         order_id: String(inst!.external_order_id || ''),
       });
-      return res.data?.lines ?? [];
+      return {
+        lines: res.data?.lines ?? [],
+        ekalanParse: Boolean(res.ekalan_parse),
+      };
     },
     retry: false,
   });
 
   const displayItems = useMemo<InstallationItemDto[]>(() => {
-    const netsisLines = netsisOrderItemsQuery.data ?? [];
-    const byPid = netsisLinesByStokKodu(netsisLines);
+    const netsisLines = netsisOrderItemsQuery.data?.lines ?? [];
+    const ekalanOpts: NetsisLineParseOptions = {
+      useEkalanParse: Boolean(netsisOrderItemsQuery.data?.ekalanParse),
+    };
+    const byPid = mapNetsisLinesByStokKodu(netsisLines, ekalanOpts);
 
     if (!items.length) {
       return netsisLines.map((line, idx) => {
         const sku = pickStokKoduFromLine(line);
-        const nm = stokAdiFromLine(line);
-        const desc = lineItemDescriptionFromLine(line);
+        const nm = stokAdiFromLine(line, ekalanOpts);
+        const desc = lineItemDescriptionFromLine(line, ekalanOpts);
         return {
           id: lineRowId(line, idx),
           external_product_id: sku,

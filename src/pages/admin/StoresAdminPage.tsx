@@ -185,6 +185,7 @@ function StoreRow({
   const [sqlEncrypt, setSqlEncrypt] = useState(store.netsis_sql_encrypt !== false);
   const [sqlTrustCert, setSqlTrustCert] = useState(Boolean(store.netsis_sql_trust_server_certificate));
   const [sqlLineAciklama, setSqlLineAciklama] = useState(Boolean(store.netsis_sql_line_aciklama));
+  const [ekalanParse, setEkalanParse] = useState(Boolean(store.netsis_ekalan_parse));
   const [orderSql, setOrderSql] = useState(store.netsis_order_sql || '');
   const [username, setUsername] = useState(store.netsis_username || '');
   const [password, setPassword] = useState('');
@@ -216,6 +217,7 @@ function StoreRow({
     setSqlEncrypt(store.netsis_sql_encrypt !== false);
     setSqlTrustCert(Boolean(store.netsis_sql_trust_server_certificate));
     setSqlLineAciklama(Boolean(store.netsis_sql_line_aciklama));
+    setEkalanParse(Boolean(store.netsis_ekalan_parse));
     setOrderSql(store.netsis_order_sql || '');
     setUsername(store.netsis_username || '');
     setTimeoutMs(String(store.netsis_timeout_ms ?? 15000));
@@ -263,6 +265,7 @@ function StoreRow({
         netsis_sql_encrypt: sqlEncrypt,
         netsis_sql_trust_server_certificate: sqlTrustCert,
         netsis_sql_line_aciklama: sqlLineAciklama,
+        netsis_ekalan_parse: ekalanParse,
         netsis_order_sql: orderSql.trim() ? orderSql : null,
         netsis_username: username || null,
         netsis_password:
@@ -350,6 +353,7 @@ function StoreRow({
             ? ' · db-pwd'
             : ''}
           {store.netsis_orders_search_source === 'sql' ? ' · orders:sql' : ''}
+          {store.netsis_ekalan_parse ? ' · ekalan' : ''}
           {store.netsis_sql_line_aciklama ? ' · line-sql' : ''}
         </td>
         <td className="px-4 py-3 text-right text-sm">
@@ -462,6 +466,23 @@ function StoreRow({
                   onChange={(e) => setLinesPathTpl(e.target.value)}
                 />
               </label>
+
+              <div className="flex flex-col gap-2 rounded-md border border-sky-200 bg-sky-50/50 p-3 md:col-span-2">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={ekalanParse}
+                    onChange={(e) => setEkalanParse(e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  Parse kalem <code className="rounded bg-white px-1 text-xs">Ekalan</code> on order detail
+                </label>
+                <p className="text-xs text-gray-600">
+                  Enable only when Netsis fills <code className="rounded bg-white px-1">Ekalan</code> like{' '}
+                  <code className="rounded bg-white px-1">KOLTUK BODRUM ÜÇLÜ #K:HM-320#</code> (name + codes in{' '}
+                  <code className="rounded bg-white px-1">#…#</code>). Independent of SQL line enrich below.
+                </p>
+              </div>
 
               <div className="flex flex-col gap-3 rounded-md border border-violet-200 bg-violet-50/40 p-3 md:col-span-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-violet-900">

@@ -2,6 +2,9 @@
 
 export type NetsisJson = Record<string, unknown>;
 
+/** When `useEkalanParse` is false/omitted, Ekalan on kalems is ignored (store flag off). */
+export type NetsisLineParseOptions = { useEkalanParse?: boolean };
+
 const EKALAN_KEYS = ['Ekalan', 'EKALAN', 'ekalan'] as const;
 
 /** Netsis `Ekalan`: `"KOLTUK BODRUM ÜÇLÜ #K:HM-320#"` → display name + tokens inside `#…#`. */
@@ -36,7 +39,8 @@ export function pickEkalanFromLine(line: NetsisJson | null | undefined): string 
   return '';
 }
 
-export function ekalanDisplayNameFromLine(line: NetsisJson): string {
+export function ekalanDisplayNameFromLine(line: NetsisJson, opts?: NetsisLineParseOptions): string {
+  if (!opts?.useEkalanParse) return '';
   const r = line as Record<string, unknown>;
   const fromApi = String(r.EkalanDisplayName ?? r.ekalanDisplayName ?? '').trim();
   if (fromApi) return fromApi;
@@ -85,7 +89,7 @@ function stokTemelBilgiFromStok(Stok: Record<string, unknown>): Record<string, u
   return {};
 }
 
-export function stokAdiFromLine(line: NetsisJson): string {
+export function stokAdiFromLine(line: NetsisJson, opts?: NetsisLineParseOptions): string {
   const r = line as Record<string, unknown>;
   const Stok =
     r.Stok != null && typeof r.Stok === 'object' && !Array.isArray(r.Stok)
@@ -106,7 +110,7 @@ export function stokAdiFromLine(line: NetsisJson): string {
       r.Stra_StkAdi ??
       ''
   ).trim();
-  const fromEkalan = ekalanDisplayNameFromLine(line);
+  const fromEkalan = ekalanDisplayNameFromLine(line, opts);
   return fromMaster || fromEkalan;
 }
 
@@ -208,7 +212,7 @@ function collectStringArrayNotes(raw: unknown): string[] {
  * NetOpenX REST: `SatirBaziAciks` (string[]) on Kalems — COM `FatKalem.SatirBaziAcik[n]`.
  * Schema: GET /api/v2/definitions/ItemSlips?expandLevel=full → Kalems.SatirBaziAciks.
  */
-export function satirBaziAciksFromLine(line: NetsisJson): string[] {
+export function satirBaziAciksFromLine(line: NetsisJson, opts?: NetsisLineParseOptions): string[] {
   const r = line as Record<string, unknown>;
   const out: string[] = [];
 
@@ -226,7 +230,7 @@ export function satirBaziAciksFromLine(line: NetsisJson): string[] {
     }
   }
 
-  if (!out.length) {
+  if (!out.length && opts?.useEkalanParse) {
     const ekalanRaw = pickEkalanFromLine(line);
     if (ekalanRaw) out.push(...parseEkalanField(ekalanRaw).satirBaziAciks);
   }
@@ -246,9 +250,9 @@ function looksLikeCariKodOnly(note: string, line: Record<string, unknown>): bool
 }
 
 /** NetOpenX satır açıklaması — önce `SatirBaziAciks`, sonra `STra_ACIK` (cari kodu değilse). */
-export function satirAciklamaFromLine(line: NetsisJson): string {
+export function satirAciklamaFromLine(line: NetsisJson, opts?: NetsisLineParseOptions): string {
   const r = line as Record<string, unknown>;
-  const bazi = satirBaziAciksFromLine(line);
+  const bazi = satirBaziAciksFromLine(line, opts);
   if (bazi.length) return bazi.join(' · ');
 
   const direct = String(
@@ -281,10 +285,10 @@ export function satirAciklamaFromLine(line: NetsisJson): string {
 }
 
 /** Description column: SatirBaziAciks → satır notu → `(…)` from Stok_Adi → stok kod alanları. */
-export function lineItemDescriptionFromLine(line: NetsisJson): string {
-  const bazi = satirBaziAciksFromLine(line);
+export function lineItemDescriptionFromLine(line: NetsisJson, opts?: NetsisLineParseOptions): string {
+  const bazi = satirBaziAciksFromLine(line, opts);
   if (bazi.length) return bazi.join(' · ');
-  const satir = satirAciklamaFromLine(line);
+  const satir = satirAciklamaFromLine(line, opts);
   if (satir) return satir;
   const parens = parentheticalNotesFromLine(line);
   if (parens) return parens;
@@ -414,14 +418,17 @@ export function documentCustomerSparse(doc: NetsisJson | null | undefined): bool
 }
 
 /** Map NetOpenX kalem lines by stok kodu for merging onto local installation items. */
-export function netsisLinesByStokKodu(lines: NetsisJson[] | undefined) {
+export function netsisLinesByStokKodu(
+  lines: NetsisJson[] | undefined,
+  opts?: NetsisLineParseOptions
+) {
   const m = new Map<string, { sku: string; name: string; description: string }>();
   if (!lines?.length) return m;
   for (const line of lines) {
     const sku = pickStokKoduFromLine(line);
     if (!sku) continue;
-    const nameRaw = stokAdiFromLine(line);
-    const descRaw = lineItemDescriptionFromLine(line);
+    const nameRaw = stokAdiFromLine(line, opts);
+    const descRaw = lineItemDescriptionFromLine(line, opts);
     const nameOut = nameRaw && nameRaw !== sku ? nameRaw : sku;
     const description =
       descRaw && descRaw !== sku && descRaw !== nameOut ? descRaw : nameOut;
@@ -431,12 +438,15 @@ export function netsisLinesByStokKodu(lines: NetsisJson[] | undefined) {
 }
 
 /** Map native lines to minimal rows for tables that still expect sku/name/qty. */
-export function netsisLinesToDisplayRows(lines: NetsisJson[] | undefined) {
+export function netsisLinesToDisplayRows(
+  lines: NetsisJson[] | undefined,
+  opts?: NetsisLineParseOptions
+) {
   if (!Array.isArray(lines) || !lines.length) return [];
   return lines.map((line, idx) => {
     const sku = pickStokKoduFromLine(line);
-    const nm = stokAdiFromLine(line);
-    const desc = lineItemDescriptionFromLine(line);
+    const nm = stokAdiFromLine(line, opts);
+    const desc = lineItemDescriptionFromLine(line, opts);
     return {
       id: lineRowId(line, idx),
       product_id: sku,

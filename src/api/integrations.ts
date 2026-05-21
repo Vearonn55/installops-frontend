@@ -67,7 +67,9 @@ export type NetsisOrderDetailData = {
 
 export type NetsisOrderDetailResponse = {
   data: NetsisOrderDetailData;
-  source: 'http';
+  source: 'http' | 'http+sql';
+  /** Mirrors store `netsis_ekalan_parse` — UI should parse Ekalan only when true. */
+  ekalan_parse?: boolean;
 };
 
 export async function getNetsisOrderDetail(params: {

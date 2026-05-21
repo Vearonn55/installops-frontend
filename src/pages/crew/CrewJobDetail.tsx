@@ -37,6 +37,7 @@ import {
 import {
   netsisLinesByStokKodu,
   netsisLinesToDisplayRows,
+  type NetsisLineParseOptions,
 } from '../../lib/netsis-native';
 
 type DisplayItem = {
@@ -47,13 +48,17 @@ type DisplayItem = {
   qty: number;
 };
 
-function buildDisplayItems(inst: Installation, netsisLines: unknown[] | undefined): DisplayItem[] {
+function buildDisplayItems(
+  inst: Installation,
+  netsisLines: unknown[] | undefined,
+  ekalanOpts?: NetsisLineParseOptions
+): DisplayItem[] {
   const lines = netsisLines ?? [];
-  const byPid = netsisLinesByStokKodu(lines as never);
+  const byPid = netsisLinesByStokKodu(lines as never, ekalanOpts);
   const local = inst.items ?? [];
 
   if (!local.length && lines.length) {
-    return netsisLinesToDisplayRows(lines as never).map((row) => ({
+    return netsisLinesToDisplayRows(lines as never, ekalanOpts).map((row) => ({
       id: row.id,
       sku: row.sku,
       name: row.name,
@@ -107,8 +112,13 @@ export default function CrewJobDetail() {
   }, [inst, netsis.order, netsis.customerFromArp]);
 
   const items = useMemo(
-    () => (inst ? buildDisplayItems(inst, netsis.order?.lines) : []),
-    [inst, netsis.order?.lines]
+    () =>
+      inst
+        ? buildDisplayItems(inst, netsis.order?.lines, {
+            useEkalanParse: netsis.ekalanParse,
+          })
+        : [],
+    [inst, netsis.order?.lines, netsis.ekalanParse]
   );
 
   const startMutation = useMutation({

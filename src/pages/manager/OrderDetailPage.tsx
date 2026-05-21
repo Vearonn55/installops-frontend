@@ -123,7 +123,8 @@ function mergeNetsisIntoOrder(
   netsis: NetsisOrderDetailData | undefined,
   externalOrderId: string,
   storeUuidForNetsis: string,
-  storeDisplayName?: string | null
+  storeDisplayName?: string | null,
+  useEkalanParse?: boolean
 ): ExtendedOrder | undefined {
   if (!netsis) return base ?? undefined;
   const doc =
@@ -132,7 +133,7 @@ function mergeNetsisIntoOrder(
       : {};
   const rawLines = netsis.lines;
   const linesArr = Array.isArray(rawLines) ? rawLines : [];
-  const ni = netsisLinesToDisplayRows(linesArr);
+  const ni = netsisLinesToDisplayRows(linesArr, { useEkalanParse });
   const nc = {
     full_name: cariNameFromDoc(doc) || '—',
     phone: cariPhoneFromDoc(doc) || '—',
@@ -208,7 +209,10 @@ export default function OrderDetailPage() {
         store_id: storeIdForNetsis as UUID,
         order_id: id as string,
       });
-      return res.data;
+      return {
+        detail: res.data,
+        ekalanParse: Boolean(res.ekalan_parse),
+      };
     },
     enabled: Boolean(id && storeIdForNetsis),
     retry: false,
@@ -228,12 +232,12 @@ export default function OrderDetailPage() {
     },
     enabled:
       Boolean(id && storeIdForNetsis) &&
-      Boolean(!netsisQuery.data || documentCustomerSparse(netsisQuery.data.document)),
+      Boolean(!netsisQuery.data?.detail || documentCustomerSparse(netsisQuery.data.detail.document)),
     retry: false,
   });
 
   const cariKodForCustomer = String(
-    cariKoduFromDoc(netsisQuery.data?.document) || searchHitQuery.data?.cari_kod || ''
+    cariKoduFromDoc(netsisQuery.data?.detail?.document) || searchHitQuery.data?.cari_kod || ''
   ).trim();
 
   const netsisCustomerQuery = useQuery({
@@ -247,7 +251,7 @@ export default function OrderDetailPage() {
     },
     enabled:
       Boolean(storeIdForNetsis && cariKodForCustomer) &&
-      Boolean(!netsisQuery.data || documentCustomerSparse(netsisQuery.data.document)),
+      Boolean(!netsisQuery.data?.detail || documentCustomerSparse(netsisQuery.data.detail.document)),
     retry: false,
   });
 
@@ -255,10 +259,11 @@ export default function OrderDetailPage() {
     const storeLabel = storeMetaQuery.data?.name?.trim() || '';
     const merged = mergeNetsisIntoOrder(
       orderQuery.data,
-      netsisQuery.data,
+      netsisQuery.data?.detail,
       id || '',
       storeIdForNetsis,
-      storeLabel || null
+      storeLabel || null,
+      netsisQuery.data?.ekalanParse
     );
     if (!merged) return merged;
     if (!netsisCustomerQuery.data) return merged;

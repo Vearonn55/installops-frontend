@@ -35,8 +35,11 @@ export default function CrewOrderDetail() {
   }, [inst, netsis.order, netsis.customerFromArp]);
 
   const lines = useMemo(
-    () => netsisLinesToDisplayRows(netsis.order?.lines),
-    [netsis.order?.lines]
+    () =>
+      netsisLinesToDisplayRows(netsis.order?.lines, {
+        useEkalanParse: netsis.ekalanParse,
+      }),
+    [netsis.order?.lines, netsis.ekalanParse]
   );
 
   const loading = instQuery.isLoading || netsis.isLoading;

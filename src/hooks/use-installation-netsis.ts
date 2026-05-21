@@ -15,6 +15,8 @@ import {
 
 export type InstallationNetsisBundle = {
   order: NetsisOrderDetailData | null;
+  /** From order detail API / store `netsis_ekalan_parse`. */
+  ekalanParse: boolean;
   customerFromArp: ReturnType<typeof arpRowToCustomerFields> | null;
   isLoading: boolean;
   isError: boolean;
@@ -34,7 +36,10 @@ export function useInstallationNetsis(
         store_id: storeId as UUID,
         order_id: orderId as string,
       });
-      return res.data ?? null;
+      return {
+        order: res.data ?? null,
+        ekalanParse: Boolean(res.ekalan_parse),
+      };
     },
     retry: false,
   });
@@ -43,7 +48,7 @@ export function useInstallationNetsis(
     queryKey: ['installation-netsis-search-hit', storeId, orderId],
     enabled:
       Boolean(storeId && orderId) &&
-      Boolean(!orderQuery.data || documentCustomerSparse(orderQuery.data.document)),
+      Boolean(!orderQuery.data?.order || documentCustomerSparse(orderQuery.data.order.document)),
     queryFn: async () => {
       const res = await searchNetsisOrders({
         store_id: storeId as UUID,
@@ -60,7 +65,7 @@ export function useInstallationNetsis(
   });
 
   const cariKod = String(
-    cariKoduFromDoc(orderQuery.data?.document) ||
+    cariKoduFromDoc(orderQuery.data?.order?.document) ||
       searchHitQuery.data?.cari_kod ||
       ''
   ).trim();
@@ -69,7 +74,7 @@ export function useInstallationNetsis(
     queryKey: ['installation-netsis-customer', storeId, cariKod],
     enabled:
       Boolean(storeId && cariKod) &&
-      Boolean(!orderQuery.data || documentCustomerSparse(orderQuery.data.document)),
+      Boolean(!orderQuery.data?.order || documentCustomerSparse(orderQuery.data.order.document)),
     queryFn: async () => {
       const res = await getNetsisCustomerDetail({
         store_id: storeId as UUID,
@@ -81,7 +86,8 @@ export function useInstallationNetsis(
   });
 
   return {
-    order: orderQuery.data ?? null,
+    order: orderQuery.data?.order ?? null,
+    ekalanParse: Boolean(orderQuery.data?.ekalanParse),
     customerFromArp: customerQuery.data ?? null,
     isLoading:
       orderQuery.isLoading ||

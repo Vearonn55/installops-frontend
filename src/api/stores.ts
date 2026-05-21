@@ -38,6 +38,8 @@ export type Store = {
   netsis_order_sql?: string | null;
   /** When true, order detail lines enriched from TBLSSATIRAC via SQL Server. */
   netsis_sql_line_aciklama?: boolean | null;
+  /** When true, parse kalem Ekalan (#name# #K:code#) on HTTP order detail. */
+  netsis_ekalan_parse?: boolean | null;
   /** Only when listing/GET with reveal_netsis_secrets (admins). */
   netsis_password?: string | null;
   netsis_db_password?: string | null;
@@ -122,6 +124,8 @@ export type StoreNetsisUpdate = {
   netsis_order_sql?: string | null;
   /** When true, order detail lines enriched from TBLSSATIRAC via SQL Server. */
   netsis_sql_line_aciklama?: boolean | null;
+  /** When true, parse kalem Ekalan (#name# #K:code#) on HTTP order detail. */
+  netsis_ekalan_parse?: boolean | null;
 };
 
 export async function patchStoreNetsis(
