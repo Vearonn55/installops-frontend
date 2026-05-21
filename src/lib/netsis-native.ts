@@ -2,6 +2,49 @@
 
 export type NetsisJson = Record<string, unknown>;
 
+const EKALAN_KEYS = ['Ekalan', 'EKALAN', 'ekalan'] as const;
+
+/** Netsis `Ekalan`: `"KOLTUK BODRUM ÜÇLÜ #K:HM-320#"` → display name + tokens inside `#…#`. */
+export function parseEkalanField(raw: string): { displayName: string; satirBaziAciks: string[] } {
+  const s = String(raw ?? '').trim();
+  if (!s) return { displayName: '', satirBaziAciks: [] };
+
+  const satirBaziAciks: string[] = [];
+  const seen = new Set<string>();
+  const re = /#([^#]+)#/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    const t = String(m[1] ?? '').trim();
+    if (!t) continue;
+    const k = t.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    satirBaziAciks.push(t);
+  }
+
+  const displayName = s.replace(/#[^#]+#/g, ' ').replace(/\s+/g, ' ').trim();
+  return { displayName, satirBaziAciks };
+}
+
+export function pickEkalanFromLine(line: NetsisJson | null | undefined): string {
+  if (!line || typeof line !== 'object') return '';
+  const r = line as Record<string, unknown>;
+  for (const key of EKALAN_KEYS) {
+    const v = r[key];
+    if (v != null && String(v).trim()) return String(v).trim();
+  }
+  return '';
+}
+
+export function ekalanDisplayNameFromLine(line: NetsisJson): string {
+  const r = line as Record<string, unknown>;
+  const fromApi = String(r.EkalanDisplayName ?? r.ekalanDisplayName ?? '').trim();
+  if (fromApi) return fromApi;
+  const raw = pickEkalanFromLine(line);
+  if (!raw) return '';
+  return parseEkalanField(raw).displayName;
+}
+
 export function pickStokKoduFromLine(line: NetsisJson | null | undefined): string {
   if (!line || typeof line !== 'object') return '';
   const r = line as Record<string, unknown>;
@@ -49,7 +92,7 @@ export function stokAdiFromLine(line: NetsisJson): string {
       ? (r.Stok as Record<string, unknown>)
       : {};
   const temel = stokTemelBilgiFromStok(Stok);
-  return String(
+  const fromMaster = String(
     temel.Stok_Adi ??
       temel.STOK_ADI ??
       temel.STK_ADI ??
@@ -63,6 +106,8 @@ export function stokAdiFromLine(line: NetsisJson): string {
       r.Stra_StkAdi ??
       ''
   ).trim();
+  const fromEkalan = ekalanDisplayNameFromLine(line);
+  return fromMaster || fromEkalan;
 }
 
 /**
@@ -166,6 +211,7 @@ function collectStringArrayNotes(raw: unknown): string[] {
 export function satirBaziAciksFromLine(line: NetsisJson): string[] {
   const r = line as Record<string, unknown>;
   const out: string[] = [];
+
   for (const key of ['SatirBaziAciks', 'satirBaziAciks', 'SatirBaziAcik', 'satirBaziAcik']) {
     const v = r[key];
     if (Array.isArray(v)) {
@@ -179,6 +225,12 @@ export function satirBaziAciksFromLine(line: NetsisJson): string[] {
       out.push(v.trim());
     }
   }
+
+  if (!out.length) {
+    const ekalanRaw = pickEkalanFromLine(line);
+    if (ekalanRaw) out.push(...parseEkalanField(ekalanRaw).satirBaziAciks);
+  }
+
   const seen = new Set<string>();
   return out.filter((t) => {
     const k = t.toLowerCase();
