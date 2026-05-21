@@ -430,7 +430,9 @@ export default function OrderDetailPage() {
                       <tr key={row.id} className="border-b border-gray-100">
                         <td className="py-2 pr-3 font-mono text-xs">{row.sku ?? row.product_id}</td>
                         <td className="py-2 pr-3">{row.name ?? row.product_id}</td>
-                        <td className="py-2 pr-3">{row.description ?? row.name ?? row.product_id}</td>
+                        <td className="py-2 pr-3 text-gray-600">
+                          {row.description?.trim() ? row.description : '—'}
+                        </td>
                         <td className="py-2">{row.quantity}</td>
                       </tr>
                     ))}

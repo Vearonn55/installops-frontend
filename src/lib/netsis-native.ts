@@ -295,6 +295,21 @@ export function lineItemDescriptionFromLine(line: NetsisJson, opts?: NetsisLineP
   return lineVariantOrColorNote(line);
 }
 
+/** UI description — omit when it would only repeat the line title or SKU. */
+export function distinctLineDescription(
+  line: NetsisJson,
+  opts?: NetsisLineParseOptions
+): string {
+  const desc = lineItemDescriptionFromLine(line, opts).trim();
+  if (!desc) return '';
+  const sku = pickStokKoduFromLine(line).trim();
+  const name = stokAdiFromLine(line, opts).trim();
+  const norm = (s: string) => s.toLowerCase();
+  if (name && norm(desc) === norm(name)) return '';
+  if (sku && norm(desc) === norm(sku)) return '';
+  return desc;
+}
+
 export function lineRowId(line: NetsisJson, index: number): string {
   const r = line as Record<string, unknown>;
   const k = r.INCKEYNO ?? r.inckeyno ?? r.STRA_INCKEY ?? r.STRA_SIRANO;
@@ -428,10 +443,8 @@ export function netsisLinesByStokKodu(
     const sku = pickStokKoduFromLine(line);
     if (!sku) continue;
     const nameRaw = stokAdiFromLine(line, opts);
-    const descRaw = lineItemDescriptionFromLine(line, opts);
     const nameOut = nameRaw && nameRaw !== sku ? nameRaw : sku;
-    const description =
-      descRaw && descRaw !== sku && descRaw !== nameOut ? descRaw : nameOut;
+    const description = distinctLineDescription(line, opts);
     m.set(sku, { sku, name: nameOut, description });
   }
   return m;
@@ -446,13 +459,13 @@ export function netsisLinesToDisplayRows(
   return lines.map((line, idx) => {
     const sku = pickStokKoduFromLine(line);
     const nm = stokAdiFromLine(line, opts);
-    const desc = lineItemDescriptionFromLine(line, opts);
+    const name = nm || sku;
     return {
       id: lineRowId(line, idx),
       product_id: sku,
       quantity: pickLineQuantity(line),
-      name: nm || sku,
-      description: (desc && desc !== nm ? desc : nm) || sku,
+      name,
+      description: distinctLineDescription(line, opts),
       sku,
     };
   });

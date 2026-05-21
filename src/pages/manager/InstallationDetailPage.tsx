@@ -38,7 +38,7 @@ import {
   pickLineQuantity,
   pickStokKoduFromLine,
   stokAdiFromLine,
-  lineItemDescriptionFromLine,
+  distinctLineDescription,
   netsisLinesByStokKodu as mapNetsisLinesByStokKodu,
   type NetsisLineParseOptions,
   lineRowId,
@@ -188,14 +188,13 @@ export default function InstallationDetailPage() {
       return netsisLines.map((line, idx) => {
         const sku = pickStokKoduFromLine(line);
         const nm = stokAdiFromLine(line, ekalanOpts);
-        const desc = lineItemDescriptionFromLine(line, ekalanOpts);
+        const desc = distinctLineDescription(line, ekalanOpts);
         return {
           id: lineRowId(line, idx),
           external_product_id: sku,
           sku,
           name: nm?.trim() ? nm : sku,
-          description:
-            (desc?.trim() && desc.trim() !== (nm || '').trim() ? desc : null) ?? nm ?? sku,
+          description: desc || null,
           quantity: pickLineQuantity(line),
           room_tag: null,
           special_instructions: null,
