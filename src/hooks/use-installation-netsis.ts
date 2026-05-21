@@ -5,19 +5,13 @@ import {
   getNetsisCustomerDetail,
   getNetsisOrderDetail,
   searchNetsisOrders,
+  type NetsisCustomerFields,
   type NetsisOrderDetailData,
 } from '../api/integrations';
-import {
-  arpRowToCustomerFields,
-  cariKoduFromDoc,
-  documentCustomerSparse,
-} from '../lib/netsis-native';
 
 export type InstallationNetsisBundle = {
   order: NetsisOrderDetailData | null;
-  /** From order detail API / store `netsis_ekalan_parse`. */
-  ekalanParse: boolean;
-  customerFromArp: ReturnType<typeof arpRowToCustomerFields> | null;
+  customerFromArp: NetsisCustomerFields | null;
   isLoading: boolean;
   isError: boolean;
 };
@@ -31,24 +25,16 @@ export function useInstallationNetsis(
   const orderQuery = useQuery({
     queryKey: ['installation-netsis-order', storeId, orderId],
     enabled: Boolean(storeId && orderId),
-    queryFn: async () => {
-      const res = await getNetsisOrderDetail({
-        store_id: storeId as UUID,
-        order_id: orderId as string,
-      });
-      return {
-        order: res.data ?? null,
-        ekalanParse: Boolean(res.ekalan_parse),
-      };
-    },
+    queryFn: async () => getNetsisOrderDetail({
+      store_id: storeId as UUID,
+      order_id: orderId as string,
+    }).then((res) => res.data ?? null),
     retry: false,
   });
 
   const searchHitQuery = useQuery({
     queryKey: ['installation-netsis-search-hit', storeId, orderId],
-    enabled:
-      Boolean(storeId && orderId) &&
-      Boolean(!orderQuery.data?.order || documentCustomerSparse(orderQuery.data.order.document)),
+    enabled: Boolean(storeId && orderId) && Boolean(orderQuery.data?.customer_sparse),
     queryFn: async () => {
       const res = await searchNetsisOrders({
         store_id: storeId as UUID,
@@ -65,29 +51,24 @@ export function useInstallationNetsis(
   });
 
   const cariKod = String(
-    cariKoduFromDoc(orderQuery.data?.order?.document) ||
-      searchHitQuery.data?.cari_kod ||
-      ''
+    orderQuery.data?.customer?.cari_kod || searchHitQuery.data?.cari_kod || ''
   ).trim();
 
   const customerQuery = useQuery({
     queryKey: ['installation-netsis-customer', storeId, cariKod],
-    enabled:
-      Boolean(storeId && cariKod) &&
-      Boolean(!orderQuery.data?.order || documentCustomerSparse(orderQuery.data.order.document)),
+    enabled: Boolean(storeId && cariKod) && Boolean(orderQuery.data?.customer_sparse),
     queryFn: async () => {
       const res = await getNetsisCustomerDetail({
         store_id: storeId as UUID,
         cari_kod: cariKod,
       });
-      return arpRowToCustomerFields(res.data);
+      return res.data;
     },
     retry: false,
   });
 
   return {
-    order: orderQuery.data?.order ?? null,
-    ekalanParse: Boolean(orderQuery.data?.ekalanParse),
+    order: orderQuery.data ?? null,
     customerFromArp: customerQuery.data ?? null,
     isLoading:
       orderQuery.isLoading ||

@@ -34,11 +34,7 @@ import {
   isCrewChecklistAllowedStatus,
   isCrewStartableStatus,
 } from '../../lib/crew-job';
-import {
-  netsisLinesByStokKodu,
-  netsisLinesToDisplayRows,
-  type NetsisLineParseOptions,
-} from '../../lib/netsis-native';
+import type { NetsisOrderLineView } from '../../api/integrations';
 
 type DisplayItem = {
   id: string;
@@ -50,15 +46,14 @@ type DisplayItem = {
 
 function buildDisplayItems(
   inst: Installation,
-  netsisLines: unknown[] | undefined,
-  ekalanOpts?: NetsisLineParseOptions
+  netsisLines: NetsisOrderLineView[] | undefined
 ): DisplayItem[] {
   const lines = netsisLines ?? [];
-  const byPid = netsisLinesByStokKodu(lines as never, ekalanOpts);
+  const byPid = new Map(lines.map((line) => [line.sku, line]));
   const local = inst.items ?? [];
 
   if (!local.length && lines.length) {
-    return netsisLinesToDisplayRows(lines as never, ekalanOpts).map((row) => ({
+    return lines.map((row) => ({
       id: row.id,
       sku: row.sku,
       name: row.name,
@@ -112,13 +107,8 @@ export default function CrewJobDetail() {
   }, [inst, netsis.order, netsis.customerFromArp]);
 
   const items = useMemo(
-    () =>
-      inst
-        ? buildDisplayItems(inst, netsis.order?.lines, {
-            useEkalanParse: netsis.ekalanParse,
-          })
-        : [],
-    [inst, netsis.order?.lines, netsis.ekalanParse]
+    () => (inst ? buildDisplayItems(inst, netsis.order?.lines) : []),
+    [inst, netsis.order?.lines]
   );
 
   const startMutation = useMutation({

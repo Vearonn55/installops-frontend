@@ -12,7 +12,6 @@ import {
   buildCrewJobView,
   mergeArpIntoCrewJobView,
 } from '../../lib/crew-job';
-import { netsisLinesToDisplayRows } from '../../lib/netsis-native';
 
 export default function CrewOrderDetail() {
   const { id: jobId } = useParams<{ id: string }>();
@@ -36,10 +35,15 @@ export default function CrewOrderDetail() {
 
   const lines = useMemo(
     () =>
-      netsisLinesToDisplayRows(netsis.order?.lines, {
-        useEkalanParse: netsis.ekalanParse,
-      }),
-    [netsis.order?.lines, netsis.ekalanParse]
+      (netsis.order?.lines ?? []).map((row) => ({
+        id: row.id,
+        product_id: row.sku,
+        quantity: row.quantity,
+        name: row.name,
+        description: row.description,
+        sku: row.sku,
+      })),
+    [netsis.order?.lines]
   );
 
   const loading = instQuery.isLoading || netsis.isLoading;

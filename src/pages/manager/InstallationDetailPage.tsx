@@ -33,16 +33,7 @@ import {
   type MediaAsset,
 } from '../../api/media';
 import { resolveMediaUrl } from '../../lib/media-url';
-import { getNetsisOrderDetail, type NetsisOrderLine } from '../../api/integrations';
-import {
-  pickLineQuantity,
-  pickStokKoduFromLine,
-  stokAdiFromLine,
-  distinctLineDescription,
-  netsisLinesByStokKodu as mapNetsisLinesByStokKodu,
-  type NetsisLineParseOptions,
-  lineRowId,
-} from '../../lib/netsis-native';
+import { getNetsisOrderDetail } from '../../api/integrations';
 import {
   crewChecklistLabelKey,
   CREW_CHECKLIST_FIELD_KEYS,
@@ -169,37 +160,31 @@ export default function InstallationDetailPage() {
         store_id: String(inst!.store_id) as UUID,
         order_id: String(inst!.external_order_id || ''),
       });
-      return {
-        lines: res.data?.lines ?? [],
-        ekalanParse: Boolean(res.ekalan_parse),
-      };
+      return res.data?.lines ?? [];
     },
     retry: false,
   });
 
   const displayItems = useMemo<InstallationItemDto[]>(() => {
-    const netsisLines = netsisOrderItemsQuery.data?.lines ?? [];
-    const ekalanOpts: NetsisLineParseOptions = {
-      useEkalanParse: Boolean(netsisOrderItemsQuery.data?.ekalanParse),
-    };
-    const byPid = mapNetsisLinesByStokKodu(netsisLines, ekalanOpts);
+    const netsisLines = netsisOrderItemsQuery.data ?? [];
+    const byPid = new Map(
+      netsisLines.map((line) => [
+        line.sku,
+        { sku: line.sku, name: line.name, description: line.description || null },
+      ])
+    );
 
     if (!items.length) {
-      return netsisLines.map((line, idx) => {
-        const sku = pickStokKoduFromLine(line);
-        const nm = stokAdiFromLine(line, ekalanOpts);
-        const desc = distinctLineDescription(line, ekalanOpts);
-        return {
-          id: lineRowId(line, idx),
-          external_product_id: sku,
-          sku,
-          name: nm?.trim() ? nm : sku,
-          description: desc || null,
-          quantity: pickLineQuantity(line),
-          room_tag: null,
-          special_instructions: null,
-        };
-      }) as InstallationItemDto[];
+      return netsisLines.map((line) => ({
+        id: line.id,
+        external_product_id: line.sku,
+        sku: line.sku,
+        name: line.name?.trim() ? line.name : line.sku,
+        description: line.description || null,
+        quantity: line.quantity,
+        room_tag: null,
+        special_instructions: null,
+      })) as InstallationItemDto[];
     }
 
     return items.map((row) => {

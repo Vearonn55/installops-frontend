@@ -23,7 +23,6 @@ import {
   type InstallationCreate,
 } from '../../api/installations';
 import { getNetsisOrderDetail } from '../../api/integrations';
-import { pickLineQuantity, pickStokKoduFromLine, cariNameFromDoc, cariPhoneFromDoc } from '../../lib/netsis-native';
 import { listUsers, type User } from '../../api/users';
 import { listStores, type Store } from '../../api/stores';
 import { useTranslation } from 'react-i18next';
@@ -213,13 +212,13 @@ export default function CreateInstallationPage() {
           store_id: storeId as UUID,
           order_id: externalOrderId,
         });
-        const doc = orderRes.data?.document;
-        customerName = cariNameFromDoc(doc) || null;
-        customerPhone = cariPhoneFromDoc(doc) || null;
+        const cust = orderRes.data?.customer;
+        customerName = cust?.full_name && cust.full_name !== '—' ? cust.full_name : null;
+        customerPhone = cust?.phone && cust.phone !== '—' ? cust.phone : null;
         orderLines = (orderRes.data?.lines ?? [])
           .map((line) => ({
-            external_product_id: pickStokKoduFromLine(line),
-            quantity: pickLineQuantity(line),
+            external_product_id: line.sku,
+            quantity: line.quantity,
           }))
           .filter((it) => !!it.external_product_id);
       } catch (e) {

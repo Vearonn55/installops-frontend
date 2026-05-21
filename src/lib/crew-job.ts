@@ -1,12 +1,6 @@
 import type { Installation, CrewAssignment } from '../api/installations';
 import type { Store } from '../api/stores';
 import type { NetsisOrderDetailData } from '../api/integrations';
-import {
-  cariAddressFromDoc,
-  cariNameFromDoc,
-  cariPhoneFromDoc,
-  cariRegionFromDoc,
-} from './netsis-native';
 import { isoToLocalYmd } from './local-date';
 import {
   mapBackendInstallationToCrewUiStatus,
@@ -117,26 +111,26 @@ export function buildCrewJobView(
   inst: Installation,
   netsis?: NetsisOrderDetailData | null
 ): CrewJobView {
-  const doc = netsis?.document;
+  const nc = netsis?.customer;
   const store = inst.store;
   const rawStatus = pickInstallationRecordStatus(inst as unknown as Record<string, unknown>);
   const status = mapBackendInstallationToCrewUiStatus(rawStatus);
 
   const customerName =
     inst.customer_name?.trim() ||
-    cariNameFromDoc(doc) ||
+    (nc?.full_name && nc.full_name !== '—' ? nc.full_name : '') ||
     '—';
 
   const phone =
     inst.customer_phone?.trim() ||
-    cariPhoneFromDoc(doc) ||
+    (nc?.phone && nc.phone !== '—' ? nc.phone : '') ||
     '';
 
   const address =
     inst.location?.trim() ||
-    cariAddressFromDoc(doc) ||
+    (nc?.address && nc.address !== '—' ? nc.address : '') ||
     storeAddressLine(store) ||
-    cariRegionFromDoc(doc) ||
+    (nc?.region && nc.region !== '—' ? nc.region : '') ||
     '—';
 
   const start = inst.scheduled_start ?? inst.created_at;

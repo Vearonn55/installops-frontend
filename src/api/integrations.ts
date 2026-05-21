@@ -48,27 +48,38 @@ export async function searchNetsisOrders(params: {
   });
 }
 
-/** NetOpenX slip header + merged Cari/FatUst; optional `ARP` after server-side cari lookup. */
-export type NetsisOrderDocument = Record<string, unknown>;
+export type NetsisCustomerFields = {
+  full_name: string;
+  phone: string;
+  email: string;
+  address: string;
+  region: string;
+  cari_kod: string | null;
+};
 
-/** One kalem row (Kalems / ItemSlipLines / …), with optional nested `Stok` from Items merge. */
-export type NetsisOrderLine = Record<string, unknown>;
+export type NetsisOrderLineView = {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  quantity: number;
+};
 
-/**
- * Live Netsis order detail: native NetOpenX field names (no InstallOps `product_id` / `full_name` remap).
- * Use `src/lib/netsis-native.ts` to read common fields for UI.
- */
+/** Sanitized live Netsis order detail (no raw ERP document). */
 export type NetsisOrderDetailData = {
-  document: NetsisOrderDocument;
-  lines: NetsisOrderLine[];
-  /** Resolved document id (FATIRS_NO / INCKEYNO / …) for display and links. */
   order_id: string;
+  customer: NetsisCustomerFields;
+  /** True when the slip header had no usable customer fields (client may call customers/detail). */
+  customer_sparse?: boolean;
+  placed_at?: string | null;
+  status?: string | null;
+  lines: NetsisOrderLineView[];
 };
 
 export type NetsisOrderDetailResponse = {
   data: NetsisOrderDetailData;
   source: 'http' | 'http+sql';
-  /** Mirrors store `netsis_ekalan_parse` — UI should parse Ekalan only when true. */
+  /** Mirrors store `netsis_ekalan_parse` — informational only (lines are already parsed server-side). */
   ekalan_parse?: boolean;
 };
 
@@ -84,11 +95,8 @@ export async function getNetsisOrderDetail(params: {
   });
 }
 
-/** Raw ARPs / Cari row from NetOpenX (field names as returned by the API). */
-export type NetsisCustomerDetailData = Record<string, unknown>;
-
 export type NetsisCustomerDetailResponse = {
-  data: NetsisCustomerDetailData;
+  data: NetsisCustomerFields;
   source: 'http';
 };
 
