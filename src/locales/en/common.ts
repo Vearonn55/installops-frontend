@@ -424,6 +424,7 @@ installationsPage: {
     stageInstallation: 'Stage installation',
     cancelInstallation: 'Cancel',
     deleteInstallation: 'Delete',
+    moreActions: 'More actions',
   },
 
   confirmCancel: 'Cancel this installation?',

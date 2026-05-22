@@ -131,7 +131,10 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
   };
 
   return (
-    <div ref={containerRef} className={`relative flex min-w-0 flex-1 max-w-xl ${className}`}>
+    <div
+      ref={containerRef}
+      className={`relative flex min-w-0 flex-1 max-w-none md:max-w-xl ${className}`}
+    >
       <div className="relative flex w-full min-w-0 items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-primary-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary-500 transition-colors">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
@@ -141,7 +144,7 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full min-w-0 bg-transparent py-2.5 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-500 border-0 focus:outline-none focus:ring-0"
+          className="w-full min-w-0 bg-transparent py-3 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-500 border-0 focus:outline-none focus:ring-0 max-sm:placeholder:text-transparent"
           autoComplete="off"
           aria-autocomplete="list"
           aria-controls="command-palette-list"
@@ -158,7 +161,7 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
         <div
           id="command-palette-list"
           ref={listRef}
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[min(70dvh,20rem)] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg sm:max-h-80"
           role="listbox"
         >
           {filtered.length === 0 ? (

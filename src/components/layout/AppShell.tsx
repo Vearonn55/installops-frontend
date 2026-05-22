@@ -97,6 +97,7 @@ export default function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const searchRef = useRef<CommandPaletteRef>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { user, hasAnyRole, logout } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -187,6 +188,22 @@ export default function AppShell() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  useEffect(() => {
+    setUserMenuOpen(false);
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [userMenuOpen]);
+
   const handlePaletteSelect = (item: CommandPaletteItem) => {
     if (item.action) {
       if (item.id === 'cmd-signout') {
@@ -266,7 +283,7 @@ export default function AppShell() {
                     to={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'group flex items-center rounded-md px-2 py-2 text-base font-medium',
+                      'group flex min-h-11 items-center rounded-md px-3 py-2.5 text-base font-medium',
                       isActive
                         ? 'bg-primary-100 text-primary-900'
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
@@ -350,41 +367,39 @@ export default function AppShell() {
       {/* Main content */}
       <div className="flex w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <div className="relative z-10 flex h-16 flex-shrink-0 bg-white shadow">
-          <button
-            type="button"
-            className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 md:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
+        <div className="relative z-10 flex flex-shrink-0 flex-col gap-2 border-b border-gray-200 bg-white px-3 py-2 shadow md:h-16 md:flex-row md:items-center md:gap-0 md:px-0 md:py-0">
+          <div className="flex min-h-11 items-center gap-2 md:flex-1 md:border-r md:border-gray-200 md:px-4">
+            <button
+              type="button"
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 md:hidden"
+              onClick={() => setSidebarOpen(true)}
+              aria-label={t('header.openMenu', { defaultValue: 'Open menu' })}
+            >
+              <Menu className="h-6 w-6" />
+            </button>
 
-          <div className="flex min-w-0 flex-1 justify-between px-4">
-            {/* Inline search with dropdown */}
-            <div className="flex min-w-0 flex-1 md:ml-0">
-              <CommandPalette
-                ref={searchRef}
-                items={paletteItems}
-                onSelect={handlePaletteSelect}
-                placeholder={t('commandPalette.placeholder')}
-                noResultsText={t('commandPalette.noResults')}
-              />
-            </div>
+            <CommandPalette
+              ref={searchRef}
+              items={paletteItems}
+              onSelect={handlePaletteSelect}
+              placeholder={t('commandPalette.placeholder')}
+              noResultsText={t('commandPalette.noResults')}
+              className="w-full"
+            />
+          </div>
 
-            {/* Right side: notifications + user menu */}
-            <div className="ml-4 flex items-center md:ml-6">
+          <div className="flex min-h-11 items-center justify-end gap-1 md:px-4">
               <button
                 type="button"
-                className="rounded-full bg-white p-1 text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
                 <Bell className="h-6 w-6" />
               </button>
 
-              {/* Profile dropdown */}
-              <div className="relative ml-3">
+              <div ref={userMenuRef} className="relative">
                 <button
                   type="button"
-                  className="flex max-w-xs items-center rounded-full bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  className="flex min-h-11 items-center rounded-full bg-white px-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                   onClick={() => setUserMenuOpen((v) => !v)}
                 >
                   <span className="sr-only">
@@ -409,19 +424,21 @@ export default function AppShell() {
                     </div>
                     <Link
                       to="/app/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       {t('header.yourProfile')}
                     </Link>
                     <Link
                       to="/app/settings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       {t('header.settings')}
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100"
                       type="button"
                     >
                       {t('header.signOut')}
@@ -429,7 +446,6 @@ export default function AppShell() {
                   </div>
                 )}
               </div>
-            </div>
           </div>
         </div>
 

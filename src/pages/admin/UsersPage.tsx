@@ -10,6 +10,12 @@ import * as usersApi from '../../api/users';
 import * as rolesApi from '../../api/roles';
 import { listStores } from '../../api/stores';
 import { cn } from '../../lib/utils';
+import ResponsiveDataView, {
+  MobileCardActions,
+  MobileCardField,
+} from '../../components/ui/ResponsiveDataView';
+import RowActionsMenu, { type RowActionItem } from '../../components/ui/RowActionsMenu';
+import { pageHeaderClass, pageHeaderActionsClass, primaryButtonClass } from '../../lib/responsive-layout';
 import { roleNeedsStore } from '../../lib/user-roles';
 import { useAuthStore } from '../../stores/auth';
 
@@ -255,18 +261,53 @@ export default function UsersPage() {
     );
   }
 
+  const userRowMenuActions = (u: UserRow): RowActionItem[] => {
+    const items: RowActionItem[] = [
+      {
+        id: 'edit',
+        label: t('usersPage.actions.edit'),
+        onClick: () => setEditUser(u),
+      },
+    ];
+    if (u.id !== me?.id) {
+      items.push({
+        id: 'status',
+        label:
+          u.status === 'active'
+            ? t('usersPage.actions.disable')
+            : t('usersPage.actions.activate'),
+        onClick: () => toggleStatus(u),
+        disabled: updateMutation.isPending,
+      });
+      items.push({
+        id: 'delete',
+        label: t('usersPage.actions.delete'),
+        variant: 'danger',
+        onClick: () => {
+          if (!window.confirm(t('usersPage.confirmDelete', { name: u.name }))) return;
+          deleteMutation.mutate(u.id);
+        },
+        disabled: deleteMutation.isPending,
+      });
+    }
+    return items;
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={pageHeaderClass}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('usersPage.title')}</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">{t('usersPage.title')}</h1>
           <p className="mt-1 text-sm text-gray-500">{t('usersPage.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className={pageHeaderActionsClass}>
           <button
             type="button"
             onClick={() => usersQuery.refetch()}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
+            className={cn(
+              primaryButtonClass,
+              'border border-gray-200 bg-white text-gray-800 hover:bg-gray-50'
+            )}
             disabled={usersQuery.isFetching}
           >
             <RefreshCw className={cn('h-4 w-4', usersQuery.isFetching && 'animate-spin')} />
@@ -278,7 +319,10 @@ export default function UsersPage() {
               setCreateForm(emptyForm());
               setShowCreate(true);
             }}
-            className="inline-flex items-center gap-2 rounded-md bg-primary-600 px-3 py-2 text-sm text-white hover:bg-primary-700"
+            className={cn(
+              primaryButtonClass,
+              'gap-2 bg-primary-600 text-white hover:bg-primary-700'
+            )}
           >
             <Plus className="h-4 w-4" />
             {t('usersPage.newUserButton')}
@@ -342,7 +386,68 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-white">
+      <ResponsiveDataView
+        rows={list}
+        keyExtractor={(u) => u.id}
+        loading={usersQuery.isLoading}
+        loadingContent={
+          <p className="px-4 py-8 text-center text-sm text-gray-500">{t('usersPage.loading')}</p>
+        }
+        error={usersQuery.isError}
+        errorContent={
+          <p className="px-4 py-8 text-center text-sm text-red-600">{t('usersPage.loadError')}</p>
+        }
+        empty={!usersQuery.isLoading && !usersQuery.isError && list.length === 0}
+        emptyContent={
+          <p className="px-4 py-8 text-center text-sm text-gray-500">{t('usersPage.noUsers')}</p>
+        }
+        className="rounded-lg"
+        renderMobileCard={(u) => (
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900">{u.name}</p>
+                <p className="truncate text-xs text-gray-500">{u.email}</p>
+              </div>
+              <span
+                className={cn(
+                  'inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
+                  u.status === 'active'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-gray-100 text-gray-800'
+                )}
+              >
+                {t(`usersPage.status.${u.status}`)}
+              </span>
+            </div>
+            <dl className="grid grid-cols-1 gap-2">
+              <MobileCardField label={t('usersPage.table.role')}>
+                {findRoleName(u)}
+              </MobileCardField>
+              <MobileCardField label={t('usersPage.table.store')}>
+                {u.store_id ? findStoreName(u) : '—'}
+              </MobileCardField>
+            </dl>
+            <MobileCardActions>
+              <button
+                type="button"
+                onClick={() => setEditUser(u)}
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md border border-primary-200 bg-primary-50 px-3 text-sm font-medium text-primary-800"
+              >
+                {t('usersPage.actions.edit')}
+              </button>
+              {u.id !== me?.id ? (
+                <RowActionsMenu
+                  actions={userRowMenuActions(u).filter((a) => a.id !== 'edit')}
+                  triggerLabel={t('installationsPage.actions.moreActions', {
+                    defaultValue: 'More actions',
+                  })}
+                />
+              ) : null}
+            </MobileCardActions>
+          </div>
+        )}
+        desktop={
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -442,22 +547,10 @@ export default function UsersPage() {
                 </td>
               </tr>
             ))}
-            {!usersQuery.isLoading && list.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-sm text-gray-500">
-                  {t('usersPage.noUsers')}
-                </td>
-              </tr>
-            ) : null}
           </tbody>
         </table>
-        {usersQuery.isLoading ? (
-          <div className="px-4 py-6 text-sm text-gray-500">{t('usersPage.loading')}</div>
-        ) : null}
-        {usersQuery.isError ? (
-          <div className="px-4 py-6 text-sm text-red-600">{t('usersPage.loadError')}</div>
-        ) : null}
-      </div>
+        }
+      />
 
       {showCreate ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:p-4">

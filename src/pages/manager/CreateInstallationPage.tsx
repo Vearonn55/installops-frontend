@@ -692,7 +692,7 @@ export default function CreateInstallationPage() {
           </section>
 
           {/* Actions */}
-          <section className="card">
+          <section className="card max-lg:sticky max-lg:bottom-0 max-lg:z-10 max-lg:border-t max-lg:shadow-lg">
             <div className="card-header">
               <h3 className="card-title">
                 {t('createInstallationPage.actions.title')}

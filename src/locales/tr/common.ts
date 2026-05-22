@@ -424,6 +424,7 @@ installationsPage: {
     stageInstallation: 'Kurulumu hazırla',
     cancelInstallation: 'İptal et',
     deleteInstallation: 'Sil',
+    moreActions: 'Diğer işlemler',
   },
 
   confirmCancel: 'Bu kurulum iptal edilsin mi?',

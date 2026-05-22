@@ -447,9 +447,9 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header + Store Filter */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
             {t('pages.adminDashboard')}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -472,7 +472,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Store dropdown */}
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <label htmlFor="storeFilter" className="text-sm text-gray-600">
             {t('adminDashboard.storeLabel')}
           </label>
@@ -480,7 +480,7 @@ export default function AdminDashboard() {
             id="storeFilter"
             value={selectedStoreId}
             onChange={(e) => setSelectedStoreId(e.target.value as StoreId)}
-            className="input-select-chevron-only min-w-[12rem] max-w-full text-sm shadow-sm"
+            className="input-select-chevron-only w-full min-w-0 text-sm shadow-sm sm:min-w-[12rem] sm:max-w-full"
           >
             {storeOptions.map((s) => (
               <option key={s.id} value={s.id}>

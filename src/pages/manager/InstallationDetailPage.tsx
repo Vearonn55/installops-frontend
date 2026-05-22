@@ -44,7 +44,7 @@ import {
 
 function headerActionBtnClass(...parts: (string | false | undefined)[]) {
   return cn(
-    'inline-flex h-10 w-[11.5rem] shrink-0 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium',
+    'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium sm:w-auto sm:min-w-[9rem]',
     ...parts
   );
 }
@@ -360,16 +360,17 @@ export default function InstallationDetailPage() {
   return (
     <div className="min-w-0 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="rounded-md border px-2 py-1.5 text-sm hover:bg-gray-50"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border text-sm hover:bg-gray-50"
+            aria-label={t('installationDetailPage.header.back', { defaultValue: 'Back' })}
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
               {t('installationDetailPage.header.title')} #{id}
             </h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -377,7 +378,7 @@ export default function InstallationDetailPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
           <Link
             to="/app/calendar"
             className={headerActionBtnClass(

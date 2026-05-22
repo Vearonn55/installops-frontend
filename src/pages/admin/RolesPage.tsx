@@ -96,9 +96,9 @@ export default function RolesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Roles & permissions</h1>
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Roles & permissions</h1>
           <p className="mt-1 text-sm text-gray-500">
             Assign users to database roles, or define custom roles (requires{' '}
             <code className="rounded bg-gray-100 px-1">roles:write</code> — admin).
@@ -197,7 +197,7 @@ export default function RolesPage() {
                 </select>
               </div>
 
-              <div className="overflow-hidden rounded-lg border bg-white">
+              <div className="overflow-x-auto rounded-lg border bg-white">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -374,7 +374,7 @@ function RoleDefinitionsPanel({
           </button>
         </form>
 
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-x-auto rounded-lg border">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

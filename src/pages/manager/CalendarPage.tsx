@@ -190,7 +190,11 @@ export default function CalendarPage() {
   const { t, i18n } = useTranslation('common');
   const isAdmin = hasRole('ADMIN');
 
-  const [mode, setMode] = useState<ViewMode>('month');
+  const [mode, setMode] = useState<ViewMode>(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+      ? 'week'
+      : 'month'
+  );
   const [cursor, setCursor] = useState<Date>(() => new Date());
 
   // Visible ranges
@@ -363,8 +367,8 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-md border bg-white p-0.5">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="inline-flex w-full rounded-md border bg-white p-0.5 sm:w-auto">
             <button
               className={cn(
                 'inline-flex items-center gap-1 rounded px-3 py-1.5 text-sm',
@@ -459,7 +463,8 @@ export default function CalendarPage() {
 
       {/* ===== Month View ===== */}
       {mode === 'month' ? (
-        <div className="overflow-hidden rounded-lg border bg-white">
+        <div className="overflow-x-auto rounded-lg border bg-white">
+          <div className="min-w-[640px]">
           <div className="grid grid-cols-7 border-b bg-gray-50 text-xs font-medium uppercase text-gray-500">
             {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((dKey) => (
               <div key={dKey} className="px-3 py-2">
@@ -544,11 +549,13 @@ export default function CalendarPage() {
               {t('calendarPage.noInstallationsThisMonth')}
             </div>
           )}
+          </div>
         </div>
       ) : (
         /* ===== Week View ===== */
-        <div className="overflow-hidden rounded-lg border bg-white">
+        <div className="overflow-x-auto rounded-lg border bg-white">
           {/* Week header */}
+          <div className="min-w-[720px]">
           <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] border-b bg-gray-50">
             <div className="px-2 py-2 text-xs font-medium uppercase text-gray-500">
               {t('calendarPage.timeColumn')}
@@ -688,6 +695,7 @@ export default function CalendarPage() {
               {t('calendarPage.noInstallationsThisWeek')}
             </div>
           )}
+          </div>
         </div>
       )}
     </div>

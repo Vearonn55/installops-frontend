@@ -30,6 +30,11 @@ import { useAuthStore } from "../../stores/auth";
 import { queryKeys } from "../../lib/query-client";
 import { useManagerStoreId } from "../../hooks/use-manager-store-id";
 import { textMatchesSearch } from "../../lib/search-text";
+import ResponsiveDataView, {
+  MobileCardActions,
+  MobileCardField,
+} from "../../components/ui/ResponsiveDataView";
+import { pageHeaderClass } from "../../lib/responsive-layout";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -394,13 +399,15 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">
-          {t("ordersPage.title")}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          {t("ordersPage.subtitle")}
-        </p>
+      <div className={pageHeaderClass}>
+        <div>
+          <h1 className="text-xl font-bold sm:text-2xl">
+            {t("ordersPage.title")}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {t("ordersPage.subtitle")}
+          </p>
+        </div>
       </div>
 
       {ordersFetchError ? (
@@ -487,8 +494,116 @@ export default function OrdersPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+      <ResponsiveDataView
+        rows={paged}
+        keyExtractor={(o) => `${o.store_id ?? ""}:${o.id}`}
+        loading={loading}
+        loadingContent={
+          <p className="px-4 py-8 text-center text-sm text-gray-500">
+            {t("ordersPage.loading")}
+          </p>
+        }
+        empty={!loading && paged.length === 0}
+        emptyContent={
+          <p className="px-4 py-8 text-center text-sm text-gray-500">
+            {netsisFilteredEmpty
+              ? t("ordersPage.noResultsInDateRange", { loaded: orders.length })
+              : t("ordersPage.noResults")}
+          </p>
+        }
+        renderMobileCard={(o) => (
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900">{o.id}</p>
+                <p className="text-xs tabular-nums text-gray-500">
+                  {formatUiDateTime(o.placed_at ?? o.created_at ?? undefined)}
+                </p>
+              </div>
+              <StatusPill status={String(o.status)} />
+            </div>
+            <dl className="grid grid-cols-1 gap-2">
+              <MobileCardField label={t("ordersPage.table.customer")}>
+                {o.customer_name ?? "—"}
+              </MobileCardField>
+              <MobileCardField label={t("ordersPage.table.store")}>
+                {o.store?.name ?? "—"}
+              </MobileCardField>
+              <MobileCardField label={t("ordersPage.table.items")}>
+                {o.items_count ?? 0}
+              </MobileCardField>
+            </dl>
+            <MobileCardActions>
+              <button
+                type="button"
+                onClick={() => openDetail(o.id, o.store_id)}
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                {t("ordersPage.actions.view")}
+              </button>
+            </MobileCardActions>
+          </div>
+        )}
+        footer={
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
+          <div className="text-gray-600">
+            {t("ordersPage.pagination.showing")} <b>{paged.length}</b>{" "}
+            {t("ordersPage.pagination.of")}{" "}
+            <b>{ordersSource === "netsis" ? orders.length : filtered.length}</b>
+            {ordersSource === "netsis" && netsisCatalogTotal != null ? (
+              <span className="text-gray-500"> / {netsisCatalogTotal}</span>
+            ) : null}
+            {ordersSource === "netsis" && netsisDateFilterActive && filtered.length !== orders.length ? (
+              <span className="text-gray-500">
+                {" "}
+                · {t("ordersPage.pagination.filtered", { count: filtered.length })}
+              </span>
+            ) : null}
+            {ordersSource === "netsis" && hasMore ? (
+              <span className="text-gray-500"> · {t("ordersPage.pagination.moreAvailable")}</span>
+            ) : null}
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+            {ordersSource === "netsis" && hasMore ? (
+              <button
+                type="button"
+                onClick={() => void netsisOrdersQuery.fetchNextPage()}
+                disabled={loadingMore || !netsisOrdersQuery.hasNextPage}
+                className={cn(
+                  "min-h-11 rounded-md border border-primary-300 bg-primary-50 px-3 py-2 text-primary-800",
+                  loadingMore && "opacity-50"
+                )}
+              >
+                {loadingMore ? t("ordersPage.pagination.loadingMore") : t("ordersPage.pagination.loadMore")}
+              </button>
+            ) : null}
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className={cn(
+                "min-h-11 rounded-md border px-3 py-2",
+                page === 1 && "opacity-50"
+              )}
+            >
+              {t("ordersPage.pagination.prev")}
+            </button>
+            <div className="flex min-h-11 items-center justify-center">
+              {t("ordersPage.pagination.page")} <b>{page}</b> / {totalPages}
+            </div>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className={cn(
+                "min-h-11 rounded-md border px-3 py-2",
+                page === totalPages && "opacity-50"
+              )}
+            >
+              {t("ordersPage.pagination.next")}
+            </button>
+          </div>
+        </div>
+        }
+        desktop={
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-600">
             <tr>
@@ -599,66 +714,8 @@ export default function OrdersPage() {
             )}
           </tbody>
         </table>
-
-        {/* Pagination */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
-          <div className="text-gray-600">
-            {t("ordersPage.pagination.showing")} <b>{paged.length}</b>{" "}
-            {t("ordersPage.pagination.of")}{" "}
-            <b>{ordersSource === "netsis" ? orders.length : filtered.length}</b>
-            {ordersSource === "netsis" && netsisCatalogTotal != null ? (
-              <span className="text-gray-500"> / {netsisCatalogTotal}</span>
-            ) : null}
-            {ordersSource === "netsis" && netsisDateFilterActive && filtered.length !== orders.length ? (
-              <span className="text-gray-500">
-                {" "}
-                · {t("ordersPage.pagination.filtered", { count: filtered.length })}
-              </span>
-            ) : null}
-            {ordersSource === "netsis" && hasMore ? (
-              <span className="text-gray-500"> · {t("ordersPage.pagination.moreAvailable")}</span>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {ordersSource === "netsis" && hasMore ? (
-              <button
-                type="button"
-                onClick={() => void netsisOrdersQuery.fetchNextPage()}
-                disabled={loadingMore || !netsisOrdersQuery.hasNextPage}
-                className={cn(
-                  "rounded-md border border-primary-300 bg-primary-50 px-3 py-1.5 text-primary-800",
-                  loadingMore && "opacity-50"
-                )}
-              >
-                {loadingMore ? t("ordersPage.pagination.loadingMore") : t("ordersPage.pagination.loadMore")}
-              </button>
-            ) : null}
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className={cn(
-                "rounded-md border px-3 py-1.5",
-                page === 1 && "opacity-50"
-              )}
-            >
-              {t("ordersPage.pagination.prev")}
-            </button>
-            <div>
-              {t("ordersPage.pagination.page")} <b>{page}</b> / {totalPages}
-            </div>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className={cn(
-                "rounded-md border px-3 py-1.5",
-                page === totalPages && "opacity-50"
-              )}
-            >
-              {t("ordersPage.pagination.next")}
-            </button>
-          </div>
-        </div>
-      </div>
+        }
+      />
     </div>
   );
 }

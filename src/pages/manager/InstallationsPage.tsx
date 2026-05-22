@@ -40,6 +40,12 @@ import {
 import { listStores, type Store } from '../../api/stores';
 import type { UUID } from '../../api/http';
 import EditInstallationModal from '../../components/manager/EditInstallationModal';
+import ResponsiveDataView, {
+  MobileCardActions,
+  MobileCardField,
+} from '../../components/ui/ResponsiveDataView';
+import RowActionsMenu, { type RowActionItem } from '../../components/ui/RowActionsMenu';
+import { pageHeaderClass, primaryButtonClass } from '../../lib/responsive-layout';
 import { textMatchesSearch } from '../../lib/search-text';
 
 /* -------------------------------- Types -------------------------------- */
@@ -427,12 +433,110 @@ export default function InstallationsPage() {
     }
   };
 
+  const secondaryRowActions = (r: Row): RowActionItem[] => {
+    const items: RowActionItem[] = [
+      {
+        id: 'edit',
+        label: t('installationsPage.actions.edit'),
+        onClick: () => openEdit(r.id),
+      },
+      {
+        id: 'stage',
+        label: t('installationsPage.actions.stageInstallation'),
+        onClick: () => handleStageInstallation(r.id),
+        disabled:
+          (r.status !== 'pending' && r.status !== 'scheduled') || stagingId === r.id,
+      },
+    ];
+    if (isAdmin) {
+      items.push({
+        id: 'delete',
+        label: t('installationsPage.actions.deleteInstallation'),
+        onClick: () => void handleDeleteInstallation(r.id),
+        disabled: deletingId === r.id,
+        variant: 'danger' as const,
+      });
+    } else if (canCancelInstallation(r.status)) {
+      items.push({
+        id: 'cancel',
+        label: t('installationsPage.actions.cancelInstallation'),
+        onClick: () => void handleCancelInstallation(r.id),
+        disabled: cancelingId === r.id,
+      });
+    }
+    return items;
+  };
+
+  const paginationFooter = (
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
+      <div className="text-gray-600">
+        {t('installationsPage.pagination.showing')}{' '}
+        <span className="font-medium text-gray-900">{paged.length}</span>{' '}
+        {t('installationsPage.pagination.of')}{' '}
+        <span className="font-medium text-gray-900">{filtered.length}</span>
+        {filtered.length !== allRows.length ? (
+          <span className="text-gray-500">
+            {' '}
+            · {t('installationsPage.pagination.loaded', { count: allRows.length })}
+          </span>
+        ) : null}
+        {installationsQuery.hasNextPage ? (
+          <span className="text-gray-500">
+            {' '}
+            · {t('installationsPage.pagination.moreAvailable')}
+          </span>
+        ) : null}
+      </div>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+        {installationsQuery.hasNextPage ? (
+          <button
+            type="button"
+            onClick={() => void installationsQuery.fetchNextPage()}
+            disabled={installationsQuery.isFetchingNextPage}
+            className={cn(
+              'min-h-11 rounded-md border border-primary-300 bg-primary-50 px-3 py-2 text-primary-800',
+              installationsQuery.isFetchingNextPage && 'opacity-50'
+            )}
+          >
+            {installationsQuery.isFetchingNextPage
+              ? t('installationsPage.pagination.loadingMore')
+              : t('installationsPage.pagination.loadMore')}
+          </button>
+        ) : null}
+        <button
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className={cn(
+            'min-h-11 rounded-md border px-3 py-2',
+            page === 1 ? 'opacity-50' : 'hover:bg-gray-50'
+          )}
+        >
+          {t('installationsPage.pagination.prev')}
+        </button>
+        <div className="flex min-h-11 items-center justify-center">
+          {t('installationsPage.pagination.page')}{' '}
+          <span className="font-medium">{page}</span> / {totalPages}
+        </div>
+        <button
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+          className={cn(
+            'min-h-11 rounded-md border px-3 py-2',
+            page === totalPages ? 'opacity-50' : 'hover:bg-gray-50'
+          )}
+        >
+          {t('installationsPage.pagination.next')}
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={pageHeaderClass}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
             {t('installationsPage.title')}
           </h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -441,7 +545,7 @@ export default function InstallationsPage() {
         </div>
         <button
           onClick={goCreate}
-          className="inline-flex items-center rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          className={cn(primaryButtonClass, 'bg-primary-600 text-white hover:bg-primary-700')}
         >
           <Plus className="mr-2 h-4 w-4" />
           {t('installationsPage.createButton')}
@@ -672,8 +776,80 @@ export default function InstallationsPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+      <ResponsiveDataView
+        rows={paged}
+        keyExtractor={(r) => r.id}
+        loading={isLoadingList}
+        loadingContent={
+          <p className="px-4 py-8 text-center text-sm text-gray-500">
+            {t('installationsPage.loading')}
+          </p>
+        }
+        error={installationsQuery.isError}
+        errorContent={
+          <p className="px-4 py-8 text-center text-sm text-red-600">
+            {t('installationsPage.loadError')}
+          </p>
+        }
+        empty={!isLoadingList && !installationsQuery.isError && paged.length === 0}
+        emptyContent={
+          <p className="px-4 py-8 text-center text-sm text-gray-500">
+            {filteredEmptyWithData
+              ? t('installationsPage.noResultsInRange', { loaded: allRows.length })
+              : t('installationsPage.noResults')}
+          </p>
+        }
+        footer={paginationFooter}
+        renderMobileCard={(r) => (
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900">{r.installCode}</p>
+                <p className="text-xs text-gray-500">{r.externalOrderId || '—'}</p>
+              </div>
+              <StatusPill
+                status={r.status}
+                labelOverride={t(`installationsPage.statusLabels.${r.status}`)}
+              />
+            </div>
+            <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <MobileCardField label={t('installationsPage.table.start')}>
+                <span className="inline-flex items-center gap-1 tabular-nums">
+                  <CalendarIcon className="h-3.5 w-3.5 text-gray-400" />
+                  {formatUiDateTime(r.start)}
+                </span>
+              </MobileCardField>
+              <MobileCardField label={t('installationsPage.table.store')}>
+                {r.storeName}
+              </MobileCardField>
+              <MobileCardField label={t('installationsPage.table.customer')}>
+                <span>
+                  {r.customerName || '—'}
+                  {r.customerPhone ? (
+                    <span className="block text-xs text-gray-500">{r.customerPhone}</span>
+                  ) : null}
+                </span>
+              </MobileCardField>
+              <MobileCardField label={t('installationsPage.table.zone')}>
+                {r.location || r.city || '—'}
+              </MobileCardField>
+            </dl>
+            <MobileCardActions>
+              <button
+                type="button"
+                onClick={() => goDetail(r.id)}
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700"
+              >
+                {t('installationsPage.actions.view')}
+              </button>
+              <RowActionsMenu
+                actions={secondaryRowActions(r)}
+                triggerLabel={t('installationsPage.actions.moreActions')}
+              />
+            </MobileCardActions>
+          </div>
+        )}
+        desktop={
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 text-xs text-gray-600">
             <tr>
@@ -846,70 +1022,8 @@ export default function InstallationsPage() {
             )}
           </tbody>
         </table>
-
-        {/* Pagination */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
-          <div className="text-gray-600">
-            {t('installationsPage.pagination.showing')}{' '}
-            <span className="font-medium text-gray-900">{paged.length}</span>{' '}
-            {t('installationsPage.pagination.of')}{' '}
-            <span className="font-medium text-gray-900">{filtered.length}</span>
-            {filtered.length !== allRows.length ? (
-              <span className="text-gray-500">
-                {' '}
-                · {t('installationsPage.pagination.loaded', { count: allRows.length })}
-              </span>
-            ) : null}
-            {installationsQuery.hasNextPage ? (
-              <span className="text-gray-500">
-                {' '}
-                · {t('installationsPage.pagination.moreAvailable')}
-              </span>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {installationsQuery.hasNextPage ? (
-              <button
-                type="button"
-                onClick={() => void installationsQuery.fetchNextPage()}
-                disabled={installationsQuery.isFetchingNextPage}
-                className={cn(
-                  'rounded-md border border-primary-300 bg-primary-50 px-3 py-1.5 text-primary-800',
-                  installationsQuery.isFetchingNextPage && 'opacity-50'
-                )}
-              >
-                {installationsQuery.isFetchingNextPage
-                  ? t('installationsPage.pagination.loadingMore')
-                  : t('installationsPage.pagination.loadMore')}
-              </button>
-            ) : null}
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className={cn(
-                'rounded-md border px-3 py-1.5',
-                page === 1 ? 'opacity-50' : 'hover:bg-gray-50'
-              )}
-            >
-              {t('installationsPage.pagination.prev')}
-            </button>
-            <div>
-              {t('installationsPage.pagination.page')}{' '}
-              <span className="font-medium">{page}</span> / {totalPages}
-            </div>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className={cn(
-                'rounded-md border px-3 py-1.5',
-                page === totalPages ? 'opacity-50' : 'hover:bg-gray-50'
-              )}
-            >
-              {t('installationsPage.pagination.next')}
-            </button>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
 
       <EditInstallationModal

@@ -16,6 +16,11 @@ import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
+import ResponsiveDataView, {
+  MobileCardActions,
+  MobileCardField,
+} from '../../components/ui/ResponsiveDataView';
+import { pageHeaderClass } from '../../lib/responsive-layout';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { formatUiDate, formatUiDateTime } from '../../lib/date-display';
 import { useDateDisplayStore } from '../../stores/date-display';
@@ -121,16 +126,16 @@ export default function AuditPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className={pageHeaderClass}>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
             {t('audit.title')}
           </h1>
         </div>
 
         <button
           onClick={() => query.refetch()}
-          className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-gray-50 sm:w-auto"
         >
           {query.isFetching ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
@@ -240,8 +245,42 @@ export default function AuditPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-lg border bg-white">
+      <ResponsiveDataView
+        rows={sortedLogs}
+        keyExtractor={(row) => row.id}
+        empty={sortedLogs.length === 0}
+        emptyContent={
+          <p className="px-4 py-8 text-center text-sm text-gray-500">
+            {t('audit.table.noLogs')}
+          </p>
+        }
+        className="rounded-lg"
+        renderMobileCard={(row) => (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-900">{row.action}</p>
+            <dl className="grid grid-cols-1 gap-2 text-sm">
+              <MobileCardField label={t('audit.table.timestamp')}>
+                {formatUiDateTime(row.created_at)}
+              </MobileCardField>
+              <MobileCardField label={t('audit.table.entity')}>
+                {row.entity || '—'} {row.entity_id ? `· ${row.entity_id}` : ''}
+              </MobileCardField>
+              <MobileCardField label={t('audit.table.actor')}>
+                {row.actor_id || '—'}
+              </MobileCardField>
+            </dl>
+            <MobileCardActions>
+              <button
+                type="button"
+                onClick={() => setSelected(row)}
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-md border px-3 text-sm font-medium hover:bg-gray-50"
+              >
+                {t('audit.buttons.viewJson')}
+              </button>
+            </MobileCardActions>
+          </div>
+        )}
+        desktop={
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
@@ -315,30 +354,25 @@ export default function AuditPage() {
               </tr>
             ))}
 
-            {sortedLogs.length === 0 && (
-              <tr>
-                <td className="px-4 py-6 text-center text-gray-500" colSpan={7}>
-                  {t('audit.table.noLogs')}
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
-      </div>
+        }
+      />
 
       {/* Pagination */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm text-gray-500">
           {t('audit.pagination.page')}{' '}
           <span className="font-medium">{page}</span>
           {t('audit.pagination.of')}
           {totalPages}
         </div>
-        <div className="inline-flex gap-2">
+        <div className="flex gap-2">
           <button
-            className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border text-sm hover:bg-gray-50 disabled:opacity-50"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
+            aria-label={t('audit.pagination.prev', { defaultValue: 'Previous page' })}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>

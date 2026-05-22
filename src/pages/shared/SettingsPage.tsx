@@ -27,7 +27,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">{t('settings.title')}</h1>
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">{t('settings.title')}</h1>
         <p className="mt-2 text-gray-600">{t('settings.subtitle')}</p>
       </div>
 

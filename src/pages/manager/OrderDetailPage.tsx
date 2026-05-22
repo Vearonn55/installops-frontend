@@ -279,16 +279,17 @@ export default function OrderDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="rounded-md border px-2 py-1.5 text-sm hover:bg-gray-50"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border text-sm hover:bg-gray-50"
+            aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Order #{id}</h1>
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Order #{id}</h1>
             <p className="mt-1 text-sm text-gray-500">Installations & order summary</p>
           </div>
         </div>
@@ -296,7 +297,7 @@ export default function OrderDetailPage() {
           to={`/app/installations/new?external_order_id=${encodeURIComponent(
             id || ''
           )}&store_id=${encodeURIComponent(storeIdForNetsis || storeIdFromUrl || '')}`}
-          className="rounded-md bg-primary-600 px-3 py-2 text-sm text-white hover:bg-primary-700"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm text-white hover:bg-primary-700 sm:w-auto"
         >
           Create Installation
         </Link>

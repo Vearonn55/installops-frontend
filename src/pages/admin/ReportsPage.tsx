@@ -230,7 +230,7 @@ export default function ReportsPage() {
     <div className="p-4 md:p-6">
         {/* Page header */}
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">
           {t('reportsPage.title')}
         </h1>
       </div>
@@ -413,7 +413,7 @@ export default function ReportsPage() {
           </div>
 
           {/* Difficulty bar with percentage indicator */}
-          <div className="relative mt-5 h-5 w-full overflow-hidden rounded-full">
+          <div className="relative mt-5 h-5 w-full overflow-x-auto overflow-y-hidden rounded-full">
             {/* Segments */}
             <div className="absolute inset-0 flex">
               <div className="flex-1 bg-green-500" title="Easy" />
