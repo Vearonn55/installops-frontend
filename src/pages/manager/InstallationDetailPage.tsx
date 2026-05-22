@@ -305,9 +305,7 @@ export default function InstallationDetailPage() {
     rawStatus !== 'completed';
 
   const canStage =
-    !isAdmin &&
-    inst &&
-    (rawStatus === 'pending' || rawStatus === 'scheduled');
+    !!inst && (rawStatus === 'pending' || rawStatus === 'scheduled');
 
   const handleStage = async () => {
     if (!id) return;
@@ -412,7 +410,7 @@ export default function InstallationDetailPage() {
               <span className="truncate">{t('installationsPage.actions.edit')}</span>
             </button>
           ) : null}
-          {!isAdmin && inst ? (
+          {inst ? (
             <button
               type="button"
               onClick={() => void handleStage()}

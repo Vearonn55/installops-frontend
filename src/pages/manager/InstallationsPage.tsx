@@ -797,6 +797,23 @@ export default function InstallationsPage() {
                         <Edit3 className="h-3.5 w-3.5" />
                         {t('installationsPage.actions.edit')}
                       </button>
+                      <button
+                        onClick={() => handleStageInstallation(r.id)}
+                        disabled={
+                          (r.status !== 'pending' && r.status !== 'scheduled') ||
+                          stagingId === r.id
+                        }
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium',
+                          (r.status === 'pending' || r.status === 'scheduled') &&
+                            stagingId !== r.id
+                            ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
+                            : 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400'
+                        )}
+                      >
+                        <Package className="h-3.5 w-3.5" />
+                        {t('installationsPage.actions.stageInstallation')}
+                      </button>
                       {isAdmin ? (
                         <button
                           onClick={() => void handleDeleteInstallation(r.id)}
@@ -809,40 +826,19 @@ export default function InstallationsPage() {
                           <Trash2 className="h-3.5 w-3.5" />
                           {t('installationsPage.actions.deleteInstallation')}
                         </button>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => handleStageInstallation(r.id)}
-                            disabled={
-                              (r.status !== 'pending' && r.status !== 'scheduled') ||
-                              stagingId === r.id
-                            }
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium',
-                              (r.status === 'pending' || r.status === 'scheduled') &&
-                                stagingId !== r.id
-                                ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100'
-                                : 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-400'
-                            )}
-                          >
-                            <Package className="h-3.5 w-3.5" />
-                            {t('installationsPage.actions.stageInstallation')}
-                          </button>
-                          {canCancelInstallation(r.status) ? (
-                            <button
-                              onClick={() => void handleCancelInstallation(r.id)}
-                              disabled={cancelingId === r.id}
-                              className={cn(
-                                'inline-flex items-center gap-1 rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100',
-                                cancelingId === r.id && 'opacity-50'
-                              )}
-                            >
-                              <XCircle className="h-3.5 w-3.5" />
-                              {t('installationsPage.actions.cancelInstallation')}
-                            </button>
-                          ) : null}
-                        </>
-                      )}
+                      ) : canCancelInstallation(r.status) ? (
+                        <button
+                          onClick={() => void handleCancelInstallation(r.id)}
+                          disabled={cancelingId === r.id}
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100',
+                            cancelingId === r.id && 'opacity-50'
+                          )}
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          {t('installationsPage.actions.cancelInstallation')}
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
