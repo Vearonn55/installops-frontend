@@ -15,7 +15,8 @@ import {
   type InstallStatus,
   type Installation,
 } from '../../api/installations';
-import { listUsers, type User } from '../../api/users';
+import { listUsers } from '../../api/users';
+import { listRoles } from '../../api/roles';
 import {
   finalizeScheduleDateTimeInput,
   formatScheduleDateTimeInput,
@@ -23,9 +24,14 @@ import {
   parseScheduleDateTimeInput,
 } from '../../lib/schedule-input';
 import {
-  INSTALLATION_ZONES,
-  zoneLabelFromValue,
-  zoneValueFromLocation,
+  crewDisplayName,
+  filterCrewUsersForPicker,
+} from '../../lib/crew-users';
+import {
+  INSTALLATION_MAIN_ZONES,
+  INSTALLATION_SUB_ZONES,
+  installationLocationLabel,
+  parseInstallationLocation,
 } from '../../lib/installation-zones';
 
 type DifficultyValue = 'easy' | 'intermediate' | 'hard';
@@ -34,7 +40,8 @@ type FormState = {
   status: InstallStatus;
   scheduled_start: string;
   scheduled_end: string;
-  zone: string;
+  mainZone: string;
+  subZone: string;
   difficulty: DifficultyValue | '';
   customer_name: string;
   customer_phone: string;
@@ -54,11 +61,13 @@ type Props = {
 };
 
 function formFromInstallation(inst: Installation): FormState {
+  const { mainValue, subValue } = parseInstallationLocation(inst.location);
   return {
     status: inst.status,
     scheduled_start: formatScheduleDateTimeInput(inst.scheduled_start ?? null),
     scheduled_end: formatScheduleDateTimeInput(inst.scheduled_end ?? null),
-    zone: zoneValueFromLocation(inst.location),
+    mainZone: mainValue,
+    subZone: subValue,
     difficulty: (inst.difficulty as DifficultyValue | null) ?? '',
     customer_name: inst.customer_name?.trim() ?? '',
     customer_phone: inst.customer_phone?.trim() ?? '',
@@ -87,11 +96,25 @@ export default function EditInstallationModal({
     enabled: open && !!installationId,
   });
 
+  const inst = instQuery.data;
+  const crewStoreId = inst?.store_id ?? '';
+
   const crewQuery = useQuery({
-    queryKey: ['users', 'crew-edit'],
+    queryKey: ['users', 'crew-edit', crewStoreId],
     queryFn: async () => {
-      const res = await listUsers({ limit: 200, offset: 0 });
-      return res.data as User[];
+      const rolesRes = await listRoles({ limit: 100, offset: 0 });
+      const crewRole = rolesRes.data.find(
+        (r) => (r.name ?? '').toLowerCase() === 'crew'
+      );
+      if (!crewRole) return [];
+      const res = await listUsers({
+        role_id: crewRole.id,
+        status: 'active',
+        ...(crewStoreId ? { store_id: crewStoreId } : {}),
+        limit: 200,
+        offset: 0,
+      });
+      return filterCrewUsersForPicker(res.data);
     },
     enabled: open,
     staleTime: 60_000,
@@ -109,7 +132,6 @@ export default function EditInstallationModal({
     }
   }, [open, instQuery.data]);
 
-  const inst = instQuery.data;
   const loading = instQuery.isLoading;
   const loadError = instQuery.isError;
 
@@ -139,10 +161,17 @@ export default function EditInstallationModal({
       toast.error(t('installationsPage.editModal.validation.difficultyRequired'));
       return;
     }
+    if (!form.mainZone) {
+      toast.error(t('createInstallationPage.validation.mainZoneRequired'));
+      return;
+    }
 
     setSaving(true);
     try {
-      const zoneLabel = zoneLabelFromValue(form.zone);
+      const zoneLabel = installationLocationLabel(
+        form.mainZone,
+        form.subZone || undefined
+      );
       const scheduledStartIso = parseScheduleDateTimeInput(form.scheduled_start);
       if (!scheduledStartIso) {
         toast.error(t('installationsPage.editModal.validation.startInvalid'));
@@ -338,24 +367,57 @@ export default function EditInstallationModal({
                 )}
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
-                  {t('createInstallationPage.zone.title')}
-                </label>
-                <select
-                  className="input-select-chevron-only w-full"
-                  value={form.zone}
-                  onChange={(e) =>
-                    setForm((p) => (p ? { ...p, zone: e.target.value } : p))
-                  }
-                >
-                  <option value="">{t('createInstallationPage.zone.selectPlaceholder')}</option>
-                  {INSTALLATION_ZONES.map((z) => (
-                    <option key={z.value} value={z.value}>
-                      {z.label}
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500">
+                  {t('createInstallationPage.zone.subtitle')}
+                </p>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">
+                    {t('createInstallationPage.zone.mainTitle')}
+                  </label>
+                  <select
+                    className="input-select-chevron-only w-full"
+                    value={form.mainZone}
+                    onChange={(e) =>
+                      setForm((p) =>
+                        p
+                          ? { ...p, mainZone: e.target.value, subZone: '' }
+                          : p
+                      )
+                    }
+                  >
+                    <option value="">
+                      {t('createInstallationPage.zone.mainPlaceholder')}
                     </option>
-                  ))}
-                </select>
+                    {INSTALLATION_MAIN_ZONES.map((z) => (
+                      <option key={z.value} value={z.value}>
+                        {z.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">
+                    {t('createInstallationPage.zone.subTitle')}
+                  </label>
+                  <select
+                    className="input-select-chevron-only w-full"
+                    value={form.subZone}
+                    onChange={(e) =>
+                      setForm((p) => (p ? { ...p, subZone: e.target.value } : p))
+                    }
+                    disabled={!form.mainZone}
+                  >
+                    <option value="">
+                      {t('createInstallationPage.zone.subPlaceholder')}
+                    </option>
+                    {(INSTALLATION_SUB_ZONES[form.mainZone] ?? []).map((z) => (
+                      <option key={z.value} value={z.value}>
+                        {z.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -462,6 +524,7 @@ export default function EditInstallationModal({
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {(crewQuery.data ?? []).map((c) => {
+                      const name = crewDisplayName(c)!;
                       const selected = form.crewIds.includes(c.id);
                       const atLimit = form.crewIds.length >= 3 && !selected;
                       return (
@@ -478,7 +541,7 @@ export default function EditInstallationModal({
                             atLimit && 'cursor-not-allowed opacity-50'
                           )}
                         >
-                          {c.name ?? c.email ?? c.id}
+                          {name}
                         </button>
                       );
                     })}

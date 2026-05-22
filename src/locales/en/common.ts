@@ -693,8 +693,12 @@ profilePage: {
 
     zone: {
       title: 'Zone',
-      subtitle: 'Select the TRNC zone',
+      subtitle: 'Select the Cyprus region',
       selectPlaceholder: 'Select zone',
+      mainTitle: 'Main district',
+      mainPlaceholder: 'Select main district',
+      subTitle: 'Settlement',
+      subPlaceholder: 'Select settlement (optional)',
     },
 
     difficulty: {
@@ -739,7 +743,7 @@ profilePage: {
       scheduling: 'Scheduling…',
       submit: 'Create Installation',
       hint:
-        'Select store, enter external order ID, date, time and difficulty to enable.',
+        'Select store, enter external order ID, date, time, main district, and difficulty to enable.',
     },
 
     validation: {
@@ -748,6 +752,7 @@ profilePage: {
       dateRequired: 'Date is required',
       startTimeRequired: 'Start time is required',
       difficultyRequired: 'Installation difficulty is required',
+      mainZoneRequired: 'Main district is required',
     },
 
     toasts: {

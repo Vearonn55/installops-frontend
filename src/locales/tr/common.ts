@@ -693,8 +693,12 @@ profilePage: {
 
     zone: {
       title: 'Bölge',
-      subtitle: 'KKTC bölgesini seçin',
+      subtitle: 'Kıbrıs bölgesini seçin',
       selectPlaceholder: 'Bölge seçin',
+      mainTitle: 'Ana bölge',
+      mainPlaceholder: 'Ana bölge seçin',
+      subTitle: 'Yerleşim yeri',
+      subPlaceholder: 'Yerleşim yeri seçin (isteğe bağlı)',
     },
 
     difficulty: {
@@ -739,7 +743,7 @@ profilePage: {
       scheduling: 'Planlanıyor…',
       submit: 'Kurulum Oluştur',
       hint:
-        'Aktifleştirmek için mağaza seçin, dış sipariş numarası, tarih, saat ve zorluk bilgilerini girin.',
+        'Aktifleştirmek için mağaza seçin, dış sipariş numarası, tarih, saat, ana bölge ve zorluk bilgilerini girin.',
     },
 
     validation: {
@@ -748,6 +752,7 @@ profilePage: {
       dateRequired: 'Tarih zorunludur',
       startTimeRequired: 'Başlangıç saati zorunludur',
       difficultyRequired: 'Kurulum zorluğu seçimi zorunludur',
+      mainZoneRequired: 'Ana bölge seçimi zorunludur',
     },
 
     toasts: {

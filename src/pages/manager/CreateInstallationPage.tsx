@@ -23,8 +23,18 @@ import {
   type InstallationCreate,
 } from '../../api/installations';
 import { getNetsisOrderDetail } from '../../api/integrations';
-import { listUsers, type User } from '../../api/users';
+import { listUsers } from '../../api/users';
+import { listRoles } from '../../api/roles';
 import { listStores, type Store } from '../../api/stores';
+import {
+  crewDisplayName,
+  filterCrewUsersForPicker,
+} from '../../lib/crew-users';
+import {
+  INSTALLATION_MAIN_ZONES,
+  INSTALLATION_SUB_ZONES,
+  installationLocationLabel,
+} from '../../lib/installation-zones';
 import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import {
@@ -66,15 +76,6 @@ const addMinutesToIso = (iso: string, minutes: number) => {
   return dt.toISOString();
 };
 
-const ZONES = [
-  { value: 'lefkosa', label: 'Lefkoşa' },
-  { value: 'gazimagusa', label: 'Gazimağusa' },
-  { value: 'girne', label: 'Girne (Kyrenia)' },
-  { value: 'guzelyurt', label: 'Güzelyurt' },
-  { value: 'iskele', label: 'İskele (Famagusta District)' },
-  { value: 'lefke', label: 'Lefke' },
-];
-
 const DIFFICULTIES = ['easy', 'intermediate', 'hard'] as const;
 type DifficultyValue = (typeof DIFFICULTIES)[number];
 
@@ -96,7 +97,8 @@ export default function CreateInstallationPage() {
   const [timeStart, setTimeStart] = useState<string>('09:00');
   const [dateInput, setDateInput] = useState(() => formatScheduleDateInput(initialDate));
   const [timeInput, setTimeInput] = useState('09:00');
-  const [zone, setZone] = useState<string>('');
+  const [mainZone, setMainZone] = useState<string>('');
+  const [subZone, setSubZone] = useState<string>('');
   const [crewIds, setCrewIds] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>('');
   const [customerPaymentNote, setCustomerPaymentNote] = useState<string>('');
@@ -152,12 +154,25 @@ export default function CreateInstallationPage() {
     }
   }, [myStoreId, selectedStoreId, storesQuery.isLoading, storesQuery.isError, storesQuery.data]);
 
-  // ----- data: crew list -----
+  const crewStoreId = selectedStoreId || myStoreId || '';
+
+  // ----- data: crew list (crew role only) -----
   const crewQuery = useQuery({
-    queryKey: ['users', 'crew-picker'],
+    queryKey: ['users', 'crew-picker', crewStoreId],
     queryFn: async () => {
-      const res = await listUsers({ limit: 200, offset: 0 });
-      return res.data as User[];
+      const rolesRes = await listRoles({ limit: 100, offset: 0 });
+      const crewRole = rolesRes.data.find(
+        (r) => (r.name ?? '').toLowerCase() === 'crew'
+      );
+      if (!crewRole) return [];
+      const res = await listUsers({
+        role_id: crewRole.id,
+        status: 'active',
+        ...(crewStoreId ? { store_id: crewStoreId } : {}),
+        limit: 200,
+        offset: 0,
+      });
+      return filterCrewUsersForPicker(res.data);
     },
     staleTime: 60_000,
   });
@@ -199,9 +214,11 @@ export default function CreateInstallationPage() {
       if (!difficulty) {
         throw new Error(t('createInstallationPage.validation.difficultyRequired'));
       }
+      if (!mainZone) {
+        throw new Error(t('createInstallationPage.validation.mainZoneRequired'));
+      }
 
-      const zoneLabel =
-        ZONES.find((z) => z.value === zone)?.label || (zone ? zone : null);
+      const zoneLabel = installationLocationLabel(mainZone, subZone || undefined);
 
       let customerName: string | null = null;
       let customerPhone: string | null = null;
@@ -298,7 +315,10 @@ export default function CreateInstallationPage() {
     !!timeStart &&
     (!!selectedStoreId || !!myStoreId) &&
     !!difficulty &&
+    !!mainZone &&
     !createMutation.isPending;
+
+  const crewPickerUsers = crewQuery.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -433,21 +453,49 @@ export default function CreateInstallationPage() {
                 {t('createInstallationPage.zone.subtitle')}
               </p>
             </div>
-            <div className="card-content">
-              <select
-                className="input-select-chevron-only w-full"
-                value={zone}
-                onChange={(e) => setZone(e.target.value)}
-              >
-                <option value="">
-                  {t('createInstallationPage.zone.selectPlaceholder')}
-                </option>
-                {ZONES.map((z) => (
-                  <option key={z.value} value={z.value}>
-                    {z.label}
+            <div className="card-content space-y-4">
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-gray-700">
+                  {t('createInstallationPage.zone.mainTitle')}
+                </span>
+                <select
+                  className="input-select-chevron-only w-full"
+                  value={mainZone}
+                  onChange={(e) => {
+                    setMainZone(e.target.value);
+                    setSubZone('');
+                  }}
+                >
+                  <option value="">
+                    {t('createInstallationPage.zone.mainPlaceholder')}
                   </option>
-                ))}
-              </select>
+                  {INSTALLATION_MAIN_ZONES.map((z) => (
+                    <option key={z.value} value={z.value}>
+                      {z.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-gray-700">
+                  {t('createInstallationPage.zone.subTitle')}
+                </span>
+                <select
+                  className="input-select-chevron-only w-full"
+                  value={subZone}
+                  onChange={(e) => setSubZone(e.target.value)}
+                  disabled={!mainZone}
+                >
+                  <option value="">
+                    {t('createInstallationPage.zone.subPlaceholder')}
+                  </option>
+                  {(INSTALLATION_SUB_ZONES[mainZone] ?? []).map((z) => (
+                    <option key={z.value} value={z.value}>
+                      {z.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </section>
 
@@ -579,7 +627,8 @@ export default function CreateInstallationPage() {
               )}
 
               <div className="flex flex-wrap gap-2">
-                {(crewQuery.data ?? []).map((c) => {
+                {crewPickerUsers.map((c) => {
+                  const name = crewDisplayName(c)!;
                   const selected = crewIds.includes(c.id);
                   const atLimit = crewIds.length >= 3 && !selected;
                   return (
@@ -599,7 +648,7 @@ export default function CreateInstallationPage() {
                         atLimit ? t('createInstallationPage.crew.maxTooltip') : undefined
                       }
                     >
-                      {c.name ?? c.email ?? c.id}
+                      {name}
                     </button>
                   );
                 })}
@@ -612,27 +661,30 @@ export default function CreateInstallationPage() {
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {(crewQuery.data ?? [])
+                    {crewPickerUsers
                       .filter((c) => crewIds.includes(c.id))
-                      .map((c) => (
-                        <span
-                          key={c.id}
-                          className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm"
-                        >
-                          {c.name ?? c.email ?? c.id}
-                          <button
-                            type="button"
-                            onClick={() => toggleCrew(c.id)}
-                            className="text-gray-500 hover:text-gray-700"
-                            aria-label={t('createInstallationPage.crew.removeAria', {
-                              name: c.name ?? c.email ?? c.id,
-                            })}
-                            title={t('createInstallationPage.crew.removeTitle')}
+                      .map((c) => {
+                        const name = crewDisplayName(c)!;
+                        return (
+                          <span
+                            key={c.id}
+                            className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm"
                           >
-                            ✕
-                          </button>
-                        </span>
-                      ))}
+                            {name}
+                            <button
+                              type="button"
+                              onClick={() => toggleCrew(c.id)}
+                              className="text-gray-500 hover:text-gray-700"
+                              aria-label={t('createInstallationPage.crew.removeAria', {
+                                name,
+                              })}
+                              title={t('createInstallationPage.crew.removeTitle')}
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        );
+                      })}
                   </div>
                 )}
               </div>
