@@ -22,7 +22,7 @@ const enCommon = {
 
   settings: {
     title: 'Settings',
-    subtitle: 'Configure language, appearance, and date display.',
+    subtitle: 'Configure your preferences.',
     languageSectionTitle: 'Language',
     languageSectionDescription: 'Choose the interface language.',
     languageLabel: 'Interface language',

@@ -22,7 +22,7 @@ const trCommon = {
 
   settings: {
     title: 'Ayarlar',
-    subtitle: 'Dil, görünüm ve tarih gösterimini yapılandırın.',
+    subtitle: 'Tercihlerinizi yapılandırın.',
     languageSectionTitle: 'Dil',
     languageSectionDescription: 'Arayüz dilini seçin.',
     languageLabel: 'Arayüz dili',

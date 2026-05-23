@@ -36,7 +36,12 @@ export default function ResponsiveDataView<T>({
   const showMobileList = !loading && !error && !empty;
 
   return (
-    <div className={cn('overflow-hidden rounded-xl border bg-white shadow-sm', className)}>
+    <div
+      className={cn(
+        'overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800',
+        className,
+      )}
+    >
       <div className={cn('hidden md:block', tableScrollWrapClass)}>{desktop}</div>
 
       <div className={cn('md:hidden', mobileListClassName)}>
@@ -56,7 +61,7 @@ export default function ResponsiveDataView<T>({
           )
         ) : null}
         {showMobileList ? (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-gray-100 dark:divide-gray-700">
             {rows.map((row) => (
               <li key={keyExtractor(row)} className="p-4">
                 {renderMobileCard(row)}

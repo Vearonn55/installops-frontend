@@ -135,7 +135,7 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
       ref={containerRef}
       className={`relative flex min-w-0 flex-1 max-w-none md:max-w-xl ${className}`}
     >
-      <div className="relative flex w-full min-w-0 items-center rounded-lg border border-gray-200 bg-gray-50 focus-within:border-primary-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary-500 transition-colors">
+      <div className="relative flex w-full min-w-0 items-center rounded-lg border border-gray-200 bg-gray-50 transition-colors focus-within:border-primary-500 focus-within:bg-white focus-within:ring-1 focus-within:ring-primary-500 dark:border-gray-600 dark:bg-gray-900 dark:focus-within:border-primary-500 dark:focus-within:bg-gray-800">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         <input
           ref={inputRef}
@@ -144,7 +144,7 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full min-w-0 bg-transparent py-3 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-500 border-0 focus:outline-none focus:ring-0 max-sm:placeholder:text-transparent"
+          className="w-full min-w-0 border-0 bg-transparent py-3 pl-10 pr-3 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-0 max-sm:placeholder:text-transparent dark:text-gray-100 dark:placeholder-gray-400"
           autoComplete="off"
           aria-autocomplete="list"
           aria-controls="command-palette-list"
@@ -161,11 +161,11 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
         <div
           id="command-palette-list"
           ref={listRef}
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[min(70dvh,20rem)] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg sm:max-h-80"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-[min(70dvh,20rem)] overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800 sm:max-h-80"
           role="listbox"
         >
           {filtered.length === 0 ? (
-            <div className="py-4 px-4 text-center text-sm text-gray-500">
+            <div className="py-4 px-4 text-center text-sm text-gray-500 dark:text-gray-400">
               {noResultsText}
             </div>
           ) : (
@@ -181,8 +181,8 @@ const CommandPalette = forwardRef<CommandPaletteRef, CommandPaletteProps>(functi
                   aria-selected={isSelected}
                   className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition-colors ${
                     isSelected
-                      ? 'bg-primary-50 text-primary-900'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? 'bg-primary-50 text-primary-900 dark:bg-primary-900/40 dark:text-primary-100'
+                      : 'text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700'
                   }`}
                   onMouseEnter={() => setSelectedIndex(index)}
                   onClick={() => handleSelect(item)}

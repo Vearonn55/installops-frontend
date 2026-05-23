@@ -611,7 +611,7 @@ export default function AdminDashboard() {
                   <div className="relative pb-8">
                     {idx !== filteredActivities.length - 1 ? (
                       <span
-                        className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                        className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200 dark:bg-gray-600"
                         aria-hidden="true"
                       />
                     ) : null}
