@@ -59,6 +59,15 @@ const enCommon = {
   auth: {
     checkingSession: 'Checking session…',
     sessionExpired: 'Your session has ended. Please sign in again.',
+    invalidCredentials: 'Incorrect email or password.',
+    signInFailed: 'Sign in failed. Please try again.',
+    signInFailedTitle: 'Sign in failed',
+    signingIn: 'Signing in…',
+    sessionNotEstablished:
+      'Session could not be established. Enable cookies and try again, or contact support.',
+    badRequest: 'Please check your email and password.',
+    tooManyAttempts: 'Too many sign-in attempts. Please wait and try again.',
+    serviceUnavailable: 'Service temporarily unavailable. Please try again shortly.',
   },
 
   commandPalette: {

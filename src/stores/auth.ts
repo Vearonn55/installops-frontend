@@ -2,8 +2,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, UserRole } from '../types';
-import { getCurrentUser, logout as logoutSession } from '../api/auth';
+import {
+  getCurrentUser,
+  login as apiLogin,
+  logout as logoutSession,
+} from '../api/auth';
 import { isAxiosError } from '../api/http';
+import { getLoginErrorMessage } from '../lib/auth-errors';
 import { queryClient } from '../lib/query-client';
 
 /** Backend may return "store_manager", "Store Manager", "manager" etc. Normalize to UserRole. */
@@ -89,10 +94,12 @@ export const useAuthStore = create<AuthStore>()(
       hasHydrated: false,
       sessionValidated: false,
 
-      login: async (email: string, _password: string) => {
+      login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
 
         try {
+          await apiLogin({ email, password });
+          await new Promise((r) => setTimeout(r, 100));
           const me = await getCurrentUser();
           const mappedUser = mapMeToUser(me, email);
 
@@ -104,11 +111,7 @@ export const useAuthStore = create<AuthStore>()(
             sessionValidated: true,
           });
         } catch (err: unknown) {
-          const is401 = isAxiosError(err) && err.response?.status === 401;
-          const e = err as { response?: { data?: { message?: string } }; message?: string };
-          const message = is401
-            ? 'Session could not be established. Please enable cookies and try again, or contact support if the problem persists.'
-            : (e?.response?.data?.message || e?.message || 'Login failed');
+          const message = getLoginErrorMessage(err);
           set({
             user: null,
             isAuthenticated: false,

@@ -4,9 +4,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { useAuthStore } from '../../stores/auth';
-import { login as apiLogin } from '../../api/auth';
 import OzermanLogoAnimated from '../../components/auth/OzermanLogoAnimated';
 
 const loginSchema = z.object({
@@ -18,6 +18,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const { t } = useTranslation('common');
   const { isAuthenticated, user, login, isLoading, error, clearError } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
@@ -37,7 +38,6 @@ export default function LoginPage() {
     }
   };
 
-  // Preserve deep link when session exists (state comes from ProtectedRoute).
   const postLoginTarget = useMemo(() => {
     const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
     const path = from?.pathname;
@@ -60,20 +60,11 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginForm) => {
+    clearError();
     try {
-      clearError();
-      // 1) POST /auth/login — backend sets session cookie (Set-Cookie) in response
-      await apiLogin({
-        email: data.email,
-        password: data.password,
-      });
-      // 2) Brief delay so the browser can persist the cookie before the next request
-      await new Promise((r) => setTimeout(r, 100));
-      // 3) GET /auth/me — must send cookie; then we update auth store
       await login(data.email, data.password);
-      // Redirect will be handled by the useEffect above when isAuthenticated flips to true
-    } catch (error) {
-      // Error is handled by the store
+    } catch {
+      /* Error message is stored in auth store */
     }
   };
 
@@ -92,7 +83,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)} noValidate>
           <div className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -101,10 +92,13 @@ export default function LoginPage() {
               <div className="mt-1">
                 <input
                   {...register('email')}
+                  id="email"
                   type="email"
                   autoComplete="email"
                   className="input"
                   placeholder="Enter your email"
+                  disabled={isLoading}
+                  aria-invalid={Boolean(errors.email)}
                 />
                 {errors.email && (
                   <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
@@ -119,15 +113,20 @@ export default function LoginPage() {
               <div className="mt-1 relative">
                 <input
                   {...register('password')}
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   className="input pr-10"
                   placeholder="Enter your password"
+                  disabled={isLoading}
+                  aria-invalid={Boolean(errors.password || error)}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400" />
@@ -153,31 +152,19 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn btn-primary btn-lg w-full"
+          {error ? (
+            <div
+              className="rounded-md bg-red-50 p-4"
+              role="alert"
+              aria-live="polite"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </div>
-
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
                   <svg
                     className="h-5 w-5 text-red-400"
                     viewBox="0 0 20 20"
                     fill="currentColor"
+                    aria-hidden="true"
                   >
                     <path
                       fillRule="evenodd"
@@ -188,15 +175,30 @@ export default function LoginPage() {
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-red-800">
-                    Sign in failed
+                    {t('auth.signInFailedTitle', { defaultValue: 'Sign in failed' })}
                   </h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    {error || 'Please check your credentials and try again.'}
-                  </div>
+                  <p className="mt-2 text-sm text-red-700">{error}</p>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
+
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn btn-primary btn-lg w-full"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t('auth.signingIn', { defaultValue: 'Signing in…' })}
+                </>
+              ) : (
+                'Sign in'
+              )}
+            </button>
+          </div>
         </form>
 
         <div className="mt-6">

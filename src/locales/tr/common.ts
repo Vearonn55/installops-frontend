@@ -59,6 +59,15 @@ const trCommon = {
   auth: {
     checkingSession: 'Oturum kontrol ediliyor…',
     sessionExpired: 'Oturumunuz sona erdi. Lütfen tekrar giriş yapın.',
+    invalidCredentials: 'E-posta veya şifre hatalı.',
+    signInFailed: 'Giriş başarısız. Lütfen tekrar deneyin.',
+    signInFailedTitle: 'Giriş başarısız',
+    signingIn: 'Giriş yapılıyor…',
+    sessionNotEstablished:
+      'Oturum oluşturulamadı. Çerezleri etkinleştirip tekrar deneyin veya destek ile iletişime geçin.',
+    badRequest: 'E-posta ve şifrenizi kontrol edin.',
+    tooManyAttempts: 'Çok fazla deneme. Lütfen bekleyip tekrar deneyin.',
+    serviceUnavailable: 'Hizmet geçici olarak kullanılamıyor. Lütfen kısa süre sonra tekrar deneyin.',
   },
 
   commandPalette: {
