@@ -241,30 +241,40 @@ export default function AppShell() {
 
   return (
     <div className="h-screen flex overflow-hidden bg-gray-100 dark:bg-gray-950">
-      {/* Mobile sidebar */}
+      {/* Mobile sidebar — slides in from the left */}
       <div
         className={cn(
           'fixed inset-0 z-40 md:hidden',
-          sidebarOpen ? 'block' : 'hidden',
+          !sidebarOpen && 'pointer-events-none',
         )}
         aria-hidden={!sidebarOpen}
       >
         <div
-          className="fixed inset-0 bg-gray-600/75"
+          className={cn(
+            'fixed inset-0 bg-gray-600/75 transition-opacity duration-300 ease-out',
+            sidebarOpen ? 'opacity-100' : 'opacity-0',
+          )}
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
-        <div className="relative ml-auto flex h-full w-72 flex-col bg-white shadow-xl dark:bg-gray-800">
-          <div className="absolute right-0 top-0 -mr-12 pt-2">
+        <div
+          className={cn(
+            'fixed inset-y-0 left-0 flex h-full w-72 max-w-[85vw] flex-col bg-white shadow-xl transition-transform duration-300 ease-out dark:bg-gray-800',
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+          )}
+        >
+          <div className="flex shrink-0 items-center justify-end border-b border-gray-200 px-3 py-2 dark:border-gray-700">
             <button
               type="button"
-              className="ml-1 flex h-10 w-10 items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
               onClick={() => setSidebarOpen(false)}
+              aria-label={t('header.closeMenu', { defaultValue: 'Close menu' })}
             >
-              <X className="h-6 w-6 text-white" />
+              <X className="h-6 w-6" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto pt-5 pb-4">
+          <div className="flex-1 overflow-y-auto pb-4 pt-3">
             <div className="flex items-center gap-2 px-4">
               <img
                 src="/ozerman-mark.png"
