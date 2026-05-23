@@ -14,6 +14,7 @@ import CrewShell from './components/layout/CrewShell';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import RoleGuard from './components/auth/RoleGuard';
 import ErrorBoundary from './components/ErrorBoundary';
+import ThemeSync from './components/ThemeSync';
 
 // Auth pages
 import LoginPage from './pages/auth/LoginPage';
@@ -111,7 +112,8 @@ const getDefaultRoute = () => {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <Router>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <ThemeSync />
             <Routes>
               {/* Public routes */}
               <Route path="/auth/login" element={<LoginPage />} />

@@ -35,6 +35,7 @@ import ResponsiveDataView, {
   MobileCardField,
 } from "../../components/ui/ResponsiveDataView";
 import { pageHeaderClass } from "../../lib/responsive-layout";
+import { DateRangeFilter } from "../../components/filters/DateRangeFilter";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -429,7 +430,8 @@ export default function OrdersPage() {
       ) : null}
 
       {/* Filters */}
-      <div className="grid grid-cols-1 gap-3 rounded-xl border bg-white p-3 shadow-sm md:grid-cols-6 md:items-end">
+      <div className="filter-panel space-y-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-4 md:items-end">
         {/* Search */}
         <div className="min-w-0 md:col-span-2">
           <label className="text-xs text-gray-600 mb-1 block">
@@ -478,19 +480,15 @@ export default function OrdersPage() {
           options={storeFilterOptions}
           disabled={!isAdmin && Boolean(managerStoreId)}
         />
+        </div>
 
-        {/* Dates */}
-        <DateFilter
-          label={t("ordersPage.filters.from")}
-          value={from}
-          max={to}
-          onChange={setFromClamped}
-        />
-        <DateFilter
-          label={t("ordersPage.filters.to")}
-          value={to}
-          min={from}
-          onChange={setToClamped}
+        <DateRangeFilter
+          from={from}
+          to={to}
+          fromLabel={t("ordersPage.filters.from")}
+          toLabel={t("ordersPage.filters.to")}
+          onFromChange={setFromClamped}
+          onToChange={setToClamped}
         />
       </div>
 
@@ -826,37 +824,6 @@ function FilterSelect({ label, icon: Icon, value, onChange, options, disabled }:
             </option>
           ))}
         </select>
-      </div>
-    </div>
-  );
-}
-
-function DateFilter({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  min?: string;
-  max?: string;
-}) {
-  return (
-    <div>
-      <label className="text-xs text-gray-600 mb-1 block">{label}</label>
-      <div className="relative">
-        <CalendarIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          type="date"
-          className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
-          value={value}
-          min={min || undefined}
-          max={max || undefined}
-          onChange={(e) => onChange(e.target.value)}
-        />
       </div>
     </div>
   );

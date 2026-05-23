@@ -3,7 +3,6 @@ import { useState, useMemo } from 'react';
 import {
   RefreshCw,
   Search,
-  Calendar,
   User,
   Shield,
   ChevronLeft,
@@ -22,7 +21,8 @@ import ResponsiveDataView, {
 } from '../../components/ui/ResponsiveDataView';
 import { pageHeaderClass } from '../../lib/responsive-layout';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
-import { formatUiDate, formatUiDateTime } from '../../lib/date-display';
+import { formatUiDateTime } from '../../lib/date-display';
+import { DateRangeFilter } from '../../components/filters/DateRangeFilter';
 import { useDateDisplayStore } from '../../stores/date-display';
 import { listAuditLogs, type AuditLog } from '../../api/auditLogs';
 
@@ -193,55 +193,22 @@ export default function AuditPage() {
             </div>
           </div>
 
-          {/* Date range — own row so inputs never squeeze with text fields */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="min-w-0">
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                {t('audit.filters.dateFrom')}
-              </label>
-              <div className="relative">
-                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="date"
-                  className="input-date-native w-full pl-9"
-                  value={from}
-                  max={to || undefined}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setFrom(val);
-                    if (to && val > to) setTo(val);
-                    setPage(1);
-                  }}
-                />
-              </div>
-              <p className="mt-1 truncate text-xs text-gray-500">
-                {formatUiDate(from)}
-              </p>
-            </div>
-            <div className="min-w-0">
-              <label className="mb-1 block text-xs font-medium text-gray-600">
-                {t('audit.filters.dateTo')}
-              </label>
-              <div className="relative">
-                <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="date"
-                  className="input-date-native w-full pl-9"
-                  value={to}
-                  min={from || undefined}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setTo(val);
-                    if (from && val < from) setFrom(val);
-                    setPage(1);
-                  }}
-                />
-              </div>
-              <p className="mt-1 truncate text-xs text-gray-500">
-                {formatUiDate(to)}
-              </p>
-            </div>
-          </div>
+          <DateRangeFilter
+            from={from}
+            to={to}
+            fromLabel={t('audit.filters.dateFrom')}
+            toLabel={t('audit.filters.dateTo')}
+            onFromChange={(val) => {
+              setFrom(val);
+              if (to && val > to) setTo(val);
+              setPage(1);
+            }}
+            onToChange={(val) => {
+              setTo(val);
+              if (from && val < from) setFrom(val);
+              setPage(1);
+            }}
+          />
         </div>
       </div>
 

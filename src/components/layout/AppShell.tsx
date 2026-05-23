@@ -253,7 +253,7 @@ export default function AppShell() {
           className="fixed inset-0 bg-gray-600/75"
           onClick={() => setSidebarOpen(false)}
         />
-        <div className="relative ml-auto flex h-full w-72 flex-col bg-white shadow-xl">
+        <div className="relative ml-auto flex h-full w-72 flex-col bg-white shadow-xl dark:bg-gray-800">
           <div className="absolute right-0 top-0 -mr-12 pt-2">
             <button
               type="button"
@@ -271,7 +271,7 @@ export default function AppShell() {
                 alt=""
                 className="h-10 w-auto shrink-0 object-contain object-left"
               />
-              <span className="text-xl font-bold text-gray-900">{t('appName')}</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('appName')}</span>
             </div>
 
             <nav className="mt-5 space-y-1 px-2">
@@ -285,8 +285,8 @@ export default function AppShell() {
                     className={cn(
                       'group flex min-h-11 items-center rounded-md px-3 py-2.5 text-base font-medium',
                       isActive
-                        ? 'bg-primary-100 text-primary-900'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                        ? 'bg-primary-100 text-primary-900 dark:bg-primary-900/50 dark:text-primary-100'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100',
                     )}
                   >
                     <item.icon
@@ -294,12 +294,12 @@ export default function AppShell() {
                         'mr-4 h-6 w-6',
                         isActive
                           ? 'text-primary-500'
-                          : 'text-gray-400 group-hover:text-gray-500',
+                          : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300',
                       )}
                     />
                     {t(item.labelKey)}
                     {item.badge && (
-                      <span className="ml-auto rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-600">
+                      <span className="ml-auto rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-600 dark:bg-primary-900/50 dark:text-primary-300">
                         {item.badge}
                       </span>
                     )}
@@ -314,7 +314,7 @@ export default function AppShell() {
       {/* Desktop sidebar */}
       <div className="hidden md:flex md:flex-shrink-0">
         <div className="flex w-64 flex-col">
-          <div className="flex h-0 flex-1 flex-col border-r border-gray-200 bg-white">
+          <div className="flex h-0 flex-1 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
             <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
               <div className="flex items-center gap-2 px-4">
                 <img
@@ -322,7 +322,7 @@ export default function AppShell() {
                   alt=""
                   className="h-10 w-auto shrink-0 object-contain object-left"
                 />
-                <span className="text-xl font-bold text-gray-900">
+                <span className="text-xl font-bold text-gray-900 dark:text-gray-100">
                   {t('appName')}
                 </span>
               </div>
@@ -338,7 +338,7 @@ export default function AppShell() {
                         'group flex items-center rounded-md px-2 py-2 text-sm font-medium',
                         isActive
                           ? 'bg-primary-100 text-primary-900'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-gray-100',
                       )}
                     >
                       <item.icon
@@ -346,12 +346,12 @@ export default function AppShell() {
                           'mr-3 h-5 w-5',
                           isActive
                             ? 'text-primary-500'
-                            : 'text-gray-400 group-hover:text-gray-500',
+                            : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300',
                         )}
                       />
                       {t(item.labelKey)}
                       {item.badge && (
-                        <span className="ml-auto rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-600">
+                        <span className="ml-auto rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-600 dark:bg-primary-900/50 dark:text-primary-300">
                           {item.badge}
                         </span>
                       )}
@@ -367,8 +367,8 @@ export default function AppShell() {
       {/* Main content */}
       <div className="flex w-0 flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <div className="relative z-10 flex flex-shrink-0 flex-col gap-2 border-b border-gray-200 bg-white px-3 py-2 shadow md:h-16 md:flex-row md:items-center md:gap-0 md:px-0 md:py-0">
-          <div className="flex min-h-11 items-center gap-2 md:flex-1 md:border-r md:border-gray-200 md:px-4">
+        <div className="relative z-10 flex flex-shrink-0 flex-col gap-2 border-b border-gray-200 bg-white px-3 py-2 shadow dark:border-gray-700 dark:bg-gray-800 md:h-16 md:flex-row md:items-center md:gap-0 md:px-0 md:py-0">
+          <div className="flex min-h-11 items-center gap-2 md:flex-1 md:border-r md:border-gray-200 md:px-4 dark:md:border-gray-700">
             <button
               type="button"
               className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500 md:hidden"
@@ -399,7 +399,7 @@ export default function AppShell() {
               <div ref={userMenuRef} className="relative">
                 <button
                   type="button"
-                  className="flex min-h-11 items-center rounded-full bg-white px-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  className="flex min-h-11 items-center rounded-full bg-white px-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:bg-gray-800 dark:ring-offset-gray-800"
                   onClick={() => setUserMenuOpen((v) => !v)}
                 >
                   <span className="sr-only">
@@ -408,37 +408,37 @@ export default function AppShell() {
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100">
                     <UserIcon className="h-5 w-5 text-primary-600" />
                   </div>
-                  <span className="ml-2 hidden text-sm font-medium text-gray-700 md:block">
+                  <span className="ml-2 hidden text-sm font-medium text-gray-700 dark:text-gray-200 md:block">
                     {user?.name}
                   </span>
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
-                    <div className="border-b border-gray-200 px-4 py-2 text-sm text-gray-700">
+                  <div className="absolute right-0 z-10 mt-2 w-48 origin-top-right rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-gray-600">
+                    <div className="border-b border-gray-200 px-4 py-2 text-sm text-gray-700 dark:border-gray-700 dark:text-gray-200">
                       <div className="font-medium">{user?.name}</div>
-                      <div className="text-gray-500">{user?.email}</div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-gray-500 dark:text-gray-400">{user?.email}</div>
+                      <div className="text-xs text-gray-400 dark:text-gray-500">
                         {roleLabel(user?.role)}
                       </div>
                     </div>
                     <Link
                       to="/app/profile"
                       onClick={() => setUserMenuOpen(false)}
-                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
                       {t('header.yourProfile')}
                     </Link>
                     <Link
                       to="/app/settings"
                       onClick={() => setUserMenuOpen(false)}
-                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                     >
                       {t('header.settings')}
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
                       type="button"
                     >
                       {t('header.signOut')}

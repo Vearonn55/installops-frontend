@@ -60,7 +60,7 @@ export default function CrewShell() {
   }, []);
 
   return (
-    <div className="crew-shell flex flex-col bg-gray-50">
+    <div className="crew-shell flex flex-col">
       {!isOnline && (
         <div className="shrink-0 border-b border-yellow-200 bg-yellow-100 px-4 py-2">
           <div className="flex items-center justify-between gap-2">
@@ -144,14 +144,14 @@ export default function CrewShell() {
                 className={cn(
                   'relative flex min-h-[44px] min-w-0 max-w-[25%] flex-1 touch-manipulation flex-col items-center justify-center rounded-lg px-1 py-1 text-[10px] font-medium leading-tight transition-colors active:opacity-80 sm:px-2 sm:text-xs',
                   isActive
-                    ? 'bg-primary-50 text-primary-600'
-                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                    ? 'bg-primary-50 text-primary-600 dark:bg-primary-900/40 dark:text-primary-300'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'
                 )}
               >
                 <item.icon
                   className={cn(
                     'mb-0.5 h-5 w-5 shrink-0',
-                    isActive ? 'text-primary-600' : 'text-gray-400'
+                    isActive ? 'text-primary-600 dark:text-primary-400' : 'text-gray-400 dark:text-gray-500'
                   )}
                 />
                 <span className="line-clamp-2 text-center">{t(item.labelKey)}</span>

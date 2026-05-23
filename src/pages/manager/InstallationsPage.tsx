@@ -47,6 +47,7 @@ import ResponsiveDataView, {
 import RowActionsMenu, { type RowActionItem } from '../../components/ui/RowActionsMenu';
 import { pageHeaderClass, primaryButtonClass } from '../../lib/responsive-layout';
 import { textMatchesSearch } from '../../lib/search-text';
+import { DateRangeFilter } from '../../components/filters/DateRangeFilter';
 
 /* -------------------------------- Types -------------------------------- */
 // UI status (we map backend → UI)
@@ -187,14 +188,6 @@ export default function InstallationsPage() {
   const { t } = useTranslation('common');
   const { hasRole, user } = useAuthStore();
   const isAdmin = hasRole('ADMIN');
-
-  // Force-open date picker (Chrome / Edge / Safari)
-  const handleDateClick = (e: React.MouseEvent<HTMLInputElement>) => {
-    const input = e.currentTarget as HTMLInputElement;
-    if (typeof (input as any).showPicker === 'function') {
-      (input as any).showPicker();
-    }
-  };
 
   const installationsRangeDefault = useMemo(
     () => defaultDateRangeInstallationsList(),
@@ -553,8 +546,9 @@ export default function InstallationsPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 gap-3 rounded-xl border bg-white p-3 shadow-sm md:grid-cols-5 md:items-end">
-        <div className="min-w-0 md:col-span-2">
+      <div className="filter-panel space-y-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-end">
+        <div className="min-w-0">
           <label className="mb-1 block text-xs text-gray-600">
             {t('installationsPage.filters.searchLabel')}
           </label>
@@ -639,51 +633,24 @@ export default function InstallationsPage() {
             </select>
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="mb-1 block text-xs text-gray-600">
-              {t('installationsPage.filters.from')}
-            </label>
-            <div className="relative">
-              <CalendarIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="date"
-                className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
-                value={from}
-                max={to}
-                onClick={handleDateClick}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setFrom(val);
-                  if (to && val > to) setTo(val);
-                  setPage(1);
-                }}
-              />
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-gray-600">
-              {t('installationsPage.filters.to')}
-            </label>
-            <div className="relative">
-              <CalendarIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="date"
-                className="input w-full min-w-0 pl-9 pr-10 [color-scheme:light]"
-                value={to}
-                min={from}
-                onClick={handleDateClick}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setTo(val);
-                  if (from && val < from) setFrom(val);
-                  setPage(1);
-                }}
-              />
-            </div>
-          </div>
         </div>
+
+        <DateRangeFilter
+          from={from}
+          to={to}
+          fromLabel={t('installationsPage.filters.from')}
+          toLabel={t('installationsPage.filters.to')}
+          onFromChange={(val) => {
+            setFrom(val);
+            if (to && val > to) setTo(val);
+            setPage(1);
+          }}
+          onToChange={(val) => {
+            setTo(val);
+            if (from && val < from) setFrom(val);
+            setPage(1);
+          }}
+        />
       </div>
 
       {/* Status quick filters */}
