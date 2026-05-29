@@ -13,7 +13,9 @@ describe('orderMatchesSearch', () => {
 
   it('matches partial external order id suffix', () => {
     expect(orderMatchesSearch(base, '304')).toBe(true);
-    expect(orderMatchesSearch({ ...base, id: 'X0000000304', external_order_id: 'X0000000304' }, '304')).toBe(true);
+    expect(orderMatchesSearch({ ...base, id: 'S00000000000304', external_order_id: 'S00000000000304' }, '304')).toBe(true);
+    expect(orderMatchesSearch({ ...base, id: 'X00000000000304', external_order_id: 'X00000000000304' }, '304')).toBe(true);
+    expect(orderMatchesSearch({ ...base, id: 'S000000123456', external_order_id: 'S000000123456' }, '304')).toBe(false);
   });
 
   it('matches customer name', () => {

@@ -22,7 +22,21 @@ export function textMatchesSearch(
 }
 
 /** Orders list search: partial external id suffix or customer name. */
+export function orderIdMatchesNumericSuffix(orderId: string | null | undefined, needle: string): boolean {
+  const id = String(orderId ?? '').trim();
+  const n = String(needle ?? '').trim();
+  if (!n || !/^\d+$/.test(n)) return false;
+  return id.replace(/\D/g, '').endsWith(n);
+}
+
 export function orderMatchesSearch(o: Order, needle: string): boolean {
+  const raw = String(needle ?? '').trim();
+  if (/^\d+$/.test(raw)) {
+    return (
+      orderIdMatchesNumericSuffix(o.id, raw) ||
+      orderIdMatchesNumericSuffix(o.external_order_id, raw)
+    );
+  }
   return (
     textMatchesSearch(o.id, needle) ||
     textMatchesSearch(o.external_order_id, needle) ||
