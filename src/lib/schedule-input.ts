@@ -86,6 +86,26 @@ export function parseScheduleDateInput(text: string): string | null {
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
+/** Replace date part of schedule text with YYYY-MM-DD from picker; preserve time when present. */
+export function applyYmdToScheduleDateTime(text: string, ymd: string): string {
+  const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return text;
+  const datePart = `${m[3]}/${m[2]}/${m[1]}`;
+  const trimmed = text.trim();
+  const timeMatch = trimmed.match(/(\d{1,2}:\d{2})\s*$/);
+  if (timeMatch) {
+    return `${datePart} ${timeMatch[1]}`;
+  }
+  const parsed = parseScheduleDateTimeInput(trimmed);
+  if (parsed) {
+    const d = coerceDate(parsed);
+    if (d) {
+      return `${datePart} ${format(d, 'HH:mm')}`;
+    }
+  }
+  return datePart;
+}
+
 /** Parse `HH:mm` (24h) or null. */
 export function parseScheduleTimeInput(text: string): string | null {
   const m = text.trim().match(/^(\d{1,2}):(\d{2})$/);

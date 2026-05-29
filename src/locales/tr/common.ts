@@ -705,6 +705,7 @@ profilePage: {
       datePlaceholder: 'GG/AA/YYYY',
       timePlaceholder: 'SS:DD',
       dateTimePlaceholder: 'GG/AA/YYYY SS:DD',
+      openCalendarAria: 'Takvimi aç',
     },
 
     zone: {

@@ -35,16 +35,16 @@ export function DateRangeFilter({
   showPreview = false,
 }: DateRangeFilterProps) {
   return (
-    <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-3 md:grid-cols-2">
       <div className="min-w-0">
         <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
           {fromLabel}
         </label>
         <div className="relative min-w-0">
-          <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 hidden h-4 w-4 -translate-y-1/2 text-gray-400 md:block" />
           <input
             type="date"
-            className="input-date-native input-date-native-with-icon w-full"
+            className="input-date-native input-date-native-with-icon w-full max-w-full"
             value={from}
             max={to || undefined}
             onClick={openDatePicker}
@@ -63,10 +63,10 @@ export function DateRangeFilter({
           {toLabel}
         </label>
         <div className="relative min-w-0">
-          <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Calendar className="pointer-events-none absolute left-2.5 top-1/2 z-10 hidden h-4 w-4 -translate-y-1/2 text-gray-400 md:block" />
           <input
             type="date"
-            className="input-date-native input-date-native-with-icon w-full"
+            className="input-date-native input-date-native-with-icon w-full max-w-full"
             value={to}
             min={from || undefined}
             onClick={openDatePicker}

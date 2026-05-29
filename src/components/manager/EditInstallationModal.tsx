@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -15,16 +15,16 @@ import {
   type InstallStatus,
   type Installation,
 } from '../../api/installations';
-import { listUsers } from '../../api/users';
+import { listUsers, type User } from '../../api/users';
 import { listRoles } from '../../api/roles';
+import { ScheduleDateTimeInput } from '../../components/schedule/ScheduleDateTimeInput';
 import {
   finalizeScheduleDateTimeInput,
   formatScheduleDateTimeInput,
-  normalizeScheduleDateTimeInput,
   parseScheduleDateTimeInput,
 } from '../../lib/schedule-input';
 import {
-  crewDisplayName,
+  crewPickerLabel,
   filterCrewUsersForPicker,
 } from '../../lib/crew-users';
 import {
@@ -97,10 +97,9 @@ export default function EditInstallationModal({
   });
 
   const inst = instQuery.data;
-  const crewStoreId = inst?.store_id ?? '';
 
   const crewQuery = useQuery({
-    queryKey: ['users', 'crew-edit', crewStoreId],
+    queryKey: ['users', 'crew-edit', 'all'],
     queryFn: async () => {
       const rolesRes = await listRoles({ limit: 100, offset: 0 });
       const crewRole = rolesRes.data.find(
@@ -110,7 +109,6 @@ export default function EditInstallationModal({
       const res = await listUsers({
         role_id: crewRole.id,
         status: 'active',
-        ...(crewStoreId ? { store_id: crewStoreId } : {}),
         limit: 200,
         offset: 0,
       });
@@ -119,6 +117,29 @@ export default function EditInstallationModal({
     enabled: open,
     staleTime: 60_000,
   });
+
+  const crewPickerUsers = useMemo(() => {
+    const fromQuery = crewQuery.data ?? [];
+    const seen = new Set(fromQuery.map((u) => u.id));
+    const extras: User[] = [];
+    for (const assignment of inst?.crew ?? []) {
+      if (seen.has(assignment.crew_user_id)) continue;
+      const name = (assignment.crew?.name ?? '').trim();
+      if (!name) continue;
+      extras.push({
+        id: assignment.crew_user_id,
+        name,
+        email: '',
+        role_id: '' as UUID,
+        status: 'active',
+        created_at: '',
+        updated_at: '',
+        role: { id: '' as UUID, name: 'crew', permissions: [] },
+      });
+      seen.add(assignment.crew_user_id);
+    }
+    return [...fromQuery, ...extras];
+  }, [crewQuery.data, inst?.crew]);
 
   useEffect(() => {
     if (!open) {
@@ -284,48 +305,38 @@ export default function EditInstallationModal({
                   <label className="mb-1 block text-xs font-medium text-gray-600">
                     {t('installationsPage.editModal.scheduledStart')}
                   </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    className="input w-full tabular-nums"
+                  <ScheduleDateTimeInput
                     placeholder={t('createInstallationPage.schedule.dateTimePlaceholder')}
                     value={form.scheduled_start}
-                    onChange={(e) =>
-                      setForm((p) =>
-                        p ? { ...p, scheduled_start: normalizeScheduleDateTimeInput(e.target.value) } : p
-                      )
+                    onChange={(next) =>
+                      setForm((p) => (p ? { ...p, scheduled_start: next } : p))
                     }
-                    onBlur={(e) =>
+                    onBlur={() =>
                       setForm((p) =>
                         p
-                          ? { ...p, scheduled_start: finalizeScheduleDateTimeInput(e.target.value) }
+                          ? { ...p, scheduled_start: finalizeScheduleDateTimeInput(p.scheduled_start) }
                           : p
                       )
                     }
+                    calendarAriaLabel={t('createInstallationPage.schedule.openCalendarAria')}
                   />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">
                     {t('installationsPage.editModal.scheduledEnd')}
                   </label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="off"
-                    className="input w-full tabular-nums"
+                  <ScheduleDateTimeInput
                     placeholder={t('createInstallationPage.schedule.dateTimePlaceholder')}
                     value={form.scheduled_end}
-                    onChange={(e) =>
+                    onChange={(next) =>
+                      setForm((p) => (p ? { ...p, scheduled_end: next } : p))
+                    }
+                    onBlur={() =>
                       setForm((p) =>
-                        p ? { ...p, scheduled_end: normalizeScheduleDateTimeInput(e.target.value) } : p
+                        p ? { ...p, scheduled_end: finalizeScheduleDateTimeInput(p.scheduled_end) } : p
                       )
                     }
-                    onBlur={(e) =>
-                      setForm((p) =>
-                        p ? { ...p, scheduled_end: finalizeScheduleDateTimeInput(e.target.value) } : p
-                      )
-                    }
+                    calendarAriaLabel={t('createInstallationPage.schedule.openCalendarAria')}
                   />
                 </div>
               </div>
@@ -523,8 +534,8 @@ export default function EditInstallationModal({
                   <p className="text-sm text-gray-500">{t('createInstallationPage.crew.loading')}</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {(crewQuery.data ?? []).map((c) => {
-                      const name = crewDisplayName(c)!;
+                    {crewPickerUsers.map((c) => {
+                      const name = crewPickerLabel(c)!;
                       const selected = form.crewIds.includes(c.id);
                       const atLimit = form.crewIds.length >= 3 && !selected;
                       return (

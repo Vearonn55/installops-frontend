@@ -11,6 +11,14 @@ export function crewDisplayName(u: User): string | null {
   return name || null;
 }
 
+/** Label for picker chip: name with optional store suffix. */
+export function crewPickerLabel(u: User): string | null {
+  const name = crewDisplayName(u);
+  if (!name) return null;
+  const storeName = (u.store?.name ?? '').trim();
+  return storeName ? `${name} (${storeName})` : name;
+}
+
 export function filterCrewUsersForPicker(users: User[]): User[] {
   return users.filter((u) => isCrewUser(u) && crewDisplayName(u));
 }

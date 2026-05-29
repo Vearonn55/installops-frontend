@@ -705,6 +705,7 @@ profilePage: {
       datePlaceholder: 'DD/MM/YYYY',
       timePlaceholder: 'HH:mm',
       dateTimePlaceholder: 'DD/MM/YYYY HH:mm',
+      openCalendarAria: 'Open calendar',
     },
 
     zone: {

@@ -27,7 +27,7 @@ import { listUsers } from '../../api/users';
 import { listRoles } from '../../api/roles';
 import { listStores, type Store } from '../../api/stores';
 import {
-  crewDisplayName,
+  crewPickerLabel,
   filterCrewUsersForPicker,
 } from '../../lib/crew-users';
 import {
@@ -41,12 +41,12 @@ import {
   finalizeScheduleDateInput,
   finalizeScheduleTimeInput,
   formatScheduleDateInput,
-  normalizeScheduleDateInput,
   normalizeScheduleTimeInput,
   parseScheduleDateInput,
   parseScheduleTimeInput,
 } from '../../lib/schedule-input';
 import { OrderIdSearchCombobox } from '../../components/OrderIdSearchCombobox';
+import { ScheduleDateInput } from '../../components/schedule/ScheduleDateInput';
 import type { UUID } from '../../api/http';
 
 // ---------- helpers ----------
@@ -154,11 +154,8 @@ export default function CreateInstallationPage() {
     }
   }, [myStoreId, selectedStoreId, storesQuery.isLoading, storesQuery.isError, storesQuery.data]);
 
-  const crewStoreId = selectedStoreId || myStoreId || '';
-
-  // ----- data: crew list (crew role only) -----
   const crewQuery = useQuery({
-    queryKey: ['users', 'crew-picker', crewStoreId],
+    queryKey: ['users', 'crew-picker', 'all'],
     queryFn: async () => {
       const rolesRes = await listRoles({ limit: 100, offset: 0 });
       const crewRole = rolesRes.data.find(
@@ -168,7 +165,6 @@ export default function CreateInstallationPage() {
       const res = await listUsers({
         role_id: crewRole.id,
         status: 'active',
-        ...(crewStoreId ? { store_id: crewStoreId } : {}),
         limit: 200,
         offset: 0,
       });
@@ -412,15 +408,13 @@ export default function CreateInstallationPage() {
                   <CalendarIcon className="h-4 w-4 text-gray-500" />
                   {t('createInstallationPage.schedule.dateLabel')}
                 </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  className="input w-full tabular-nums"
+                <ScheduleDateInput
                   placeholder={t('createInstallationPage.schedule.datePlaceholder')}
                   value={dateInput}
-                  onChange={(e) => setDateInput(normalizeScheduleDateInput(e.target.value))}
+                  onChange={setDateInput}
                   onBlur={handleDateBlur}
+                  onValidDate={setDate}
+                  calendarAriaLabel={t('createInstallationPage.schedule.openCalendarAria')}
                 />
               </label>
 
@@ -628,7 +622,7 @@ export default function CreateInstallationPage() {
 
               <div className="flex flex-wrap gap-2">
                 {crewPickerUsers.map((c) => {
-                  const name = crewDisplayName(c)!;
+                  const name = crewPickerLabel(c)!;
                   const selected = crewIds.includes(c.id);
                   const atLimit = crewIds.length >= 3 && !selected;
                   return (
@@ -664,7 +658,7 @@ export default function CreateInstallationPage() {
                     {crewPickerUsers
                       .filter((c) => crewIds.includes(c.id))
                       .map((c) => {
-                        const name = crewDisplayName(c)!;
+                        const name = crewPickerLabel(c)!;
                         return (
                           <span
                             key={c.id}

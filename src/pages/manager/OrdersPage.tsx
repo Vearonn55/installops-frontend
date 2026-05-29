@@ -29,7 +29,6 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "../../stores/auth";
 import { queryKeys } from "../../lib/query-client";
 import { useManagerStoreId } from "../../hooks/use-manager-store-id";
-import { textMatchesSearch } from "../../lib/search-text";
 import ResponsiveDataView, {
   MobileCardActions,
   MobileCardField,
@@ -266,13 +265,16 @@ export default function OrdersPage() {
   }, [netsisOrdersQuery.data]);
 
   const needsStorePick = isAdmin && !store;
+  const searchPending = q.trim() !== debouncedFilterQ;
+
   const loading =
     storesQuery.isLoading ||
+    searchPending ||
     (needsStorePick
       ? false
       : useNetsisList
-        ? netsisOrdersQuery.isLoading
-        : installationsOrdersQuery.isLoading);
+        ? netsisOrdersQuery.isLoading || netsisOrdersQuery.isFetching
+        : installationsOrdersQuery.isLoading || installationsOrdersQuery.isFetching);
 
   const loadingMore = netsisOrdersQuery.isFetchingNextPage;
   const hasMore = useNetsisList ? Boolean(netsisOrdersQuery.hasNextPage) : false;
@@ -341,14 +343,7 @@ export default function OrdersPage() {
       list = list.filter((o) => orderMatchesStoreFilter(o, store));
     }
 
-    if (q.trim()) {
-      list = list.filter(
-        (o) =>
-          textMatchesSearch(o.id, q) ||
-          textMatchesSearch(o.customer_name, q) ||
-          textMatchesSearch(o.store?.name, q)
-      );
-    }
+    // Text search is handled server-side via debouncedFilterQ (Netsis search + GET /orders).
 
     // Sorting
     list.sort((a, b) => {
@@ -373,7 +368,7 @@ export default function OrdersPage() {
     });
 
     return list;
-  }, [orders, q, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
+  }, [orders, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
 
   const netsisFilteredEmpty =
     ordersSource === "netsis" &&
@@ -808,7 +803,7 @@ function netsisHitsToOrders(hits: NetsisOrderHit[], store: StoreType): Order[] {
 
 function FilterSelect({ label, icon: Icon, value, onChange, options, disabled }: any) {
   return (
-    <div>
+    <div className="min-w-0">
       <label className="text-xs text-gray-600 mb-1 block">{label}</label>
       <div className="relative">
         <Icon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />

@@ -242,7 +242,7 @@ export default function ReportsPage() {
           </h2>
         </div>
         <div className="px-4 py-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {/* Start date */}
             <div className="min-w-0">
               <label
