@@ -75,7 +75,10 @@ export default function OrdersPage() {
   const [netsisDateFilterActive, setNetsisDateFilterActive] = useState(false);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setDebouncedFilterQ(q.trim()), 400);
+    const trimmed = q.trim();
+    const t = window.setTimeout(() => {
+      setDebouncedFilterQ((prev) => (prev === trimmed ? prev : trimmed));
+    }, 400);
     return () => window.clearTimeout(t);
   }, [q]);
 
@@ -90,9 +93,18 @@ export default function OrdersPage() {
   });
 
   const stores = storesQuery.data?.data ?? [];
+  const sessionValidated = useAuthStore((s) => s.sessionValidated);
   const managerStoreId = useManagerStoreId(stores);
 
-  const effectiveStoreId = isAdmin ? store || null : managerStoreId ?? null;
+  /** Resolved without waiting for useEffect — avoids enabled/queryKey flip on first paint. */
+  const effectiveStoreId = useMemo((): string | null => {
+    if (isAdmin) {
+      const id = store || stores[0]?.id;
+      return id || null;
+    }
+    return managerStoreId;
+  }, [isAdmin, store, stores, managerStoreId]);
+
   const selectedStore = useMemo(
     () => (effectiveStoreId ? stores.find((s) => s.id === effectiveStoreId) : undefined),
     [stores, effectiveStoreId]
@@ -100,7 +112,7 @@ export default function OrdersPage() {
   const useNetsisList = Boolean(selectedStore && storeUsesNetsisItemSlipsList(selectedStore));
 
   useEffect(() => {
-    if (!isAdmin && managerStoreId && !store) {
+    if (!isAdmin && managerStoreId && store !== managerStoreId) {
       setStore(managerStoreId);
     }
   }, [isAdmin, managerStoreId, store]);
@@ -194,12 +206,17 @@ export default function OrdersPage() {
     []
   );
 
+  const storesReady = !storesQuery.isPending;
   const listEnabled =
-    !storesQuery.isLoading &&
-    (isAdmin ? Boolean(store) : Boolean(managerStoreId));
+    sessionValidated &&
+    storesReady &&
+    Boolean(effectiveStoreId);
 
   const netsisOrdersQuery = useInfiniteQuery({
-    queryKey: ["netsis-orders", effectiveStoreId ?? "none", debouncedFilterQ],
+    queryKey: queryKeys.netsisOrdersList(
+      effectiveStoreId ?? "_pending",
+      debouncedFilterQ
+    ),
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       if (!selectedStore) {
@@ -219,8 +236,12 @@ export default function OrdersPage() {
       if (!cursor?.lastPageFull) return undefined;
       return cursor.offset;
     },
-    enabled: useNetsisList && Boolean(selectedStore) && listEnabled,
+    enabled:
+      listEnabled && useNetsisList && Boolean(selectedStore) && Boolean(effectiveStoreId),
     staleTime: 60_000,
+    retry: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
 
   const installationsOrdersQuery = useQuery({

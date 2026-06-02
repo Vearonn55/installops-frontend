@@ -14,6 +14,11 @@ export const queryClient = new QueryClient({
       gcTime: 10 * 60 * 1000,
       retry: (failureCount, error: unknown) => {
         if (isAuthHttpError(error)) return false;
+        if (isAxiosError(error)) {
+          const status = error.response?.status;
+          // Netsis/upstream failures: retries multiply ERP load and show as duplicate searches.
+          if (status === 429 || status === 502 || status === 504) return false;
+        }
         return failureCount < 3;
       },
       refetchOnWindowFocus: false,
@@ -73,4 +78,7 @@ export const queryKeys = {
   webhookEventsByStatus: (status: string) => ['webhook-events', 'status', status] as const,
   netsisOrders: (storeId: string, q: string, offset: number) =>
     ['netsis-orders', storeId, q, offset] as const,
+  /** Infinite-query list on Orders page (offset lives in pageParam, not the key). */
+  netsisOrdersList: (storeId: string, q: string) =>
+    ['netsis-orders', 'list', storeId, q] as const,
 };

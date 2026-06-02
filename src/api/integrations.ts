@@ -31,6 +31,22 @@ export async function fetchNetsisOrderIndex(params: {
   });
 }
 
+function netsisSearchRequestKey(params: {
+  store_id: UUID;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}): string {
+  return JSON.stringify({
+    store_id: params.store_id,
+    q: params.q ?? '',
+    limit: params.limit ?? null,
+    offset: params.offset ?? 0,
+  });
+}
+
+const inflightNetsisSearch = new Map<string, Promise<NetsisOrderSearchResponse>>();
+
 export async function searchNetsisOrders(params: {
   store_id: UUID;
   /** Optional for HTTP search when the store path lists slips without a `q` filter (e.g. ItemSlips?docType=7). */
@@ -38,14 +54,25 @@ export async function searchNetsisOrders(params: {
   limit?: number;
   offset?: number;
 }): Promise<NetsisOrderSearchResponse> {
-  return apiGet<NetsisOrderSearchResponse>('/integrations/netsis/orders/search', {
+  const key = netsisSearchRequestKey(params);
+  const existing = inflightNetsisSearch.get(key);
+  if (existing) return existing;
+
+  const request = apiGet<NetsisOrderSearchResponse>('/integrations/netsis/orders/search', {
     params: {
       store_id: params.store_id,
       ...(params.q !== undefined && params.q !== '' ? { q: params.q } : {}),
       limit: params.limit,
       offset: params.offset,
     },
+  }).finally(() => {
+    if (inflightNetsisSearch.get(key) === request) {
+      inflightNetsisSearch.delete(key);
+    }
   });
+
+  inflightNetsisSearch.set(key, request);
+  return request;
 }
 
 export type NetsisCustomerFields = {
