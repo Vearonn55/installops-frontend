@@ -18,11 +18,7 @@ import { defaultDateRangeOrdersList, parseOrderDate } from "../../lib/date-range
 // real API
 import { listOrders, type Order } from "../../api/orders";
 import { listStores, type Store as StoreType } from "../../api/stores";
-import {
-  fetchNetsisOrderIndex,
-  searchNetsisOrders,
-  type NetsisOrderHit,
-} from "../../api/integrations";
+import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations";
 import type { UUID } from "../../api/http";
 import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
@@ -201,15 +197,6 @@ export default function OrdersPage() {
   const listEnabled =
     !storesQuery.isLoading &&
     (isAdmin ? Boolean(store) : Boolean(managerStoreId));
-
-  /** Warms backend ItemSlips index cache (see GET …/orders/index). */
-  useQuery({
-    queryKey: ["netsis-order-index", effectiveStoreId],
-    queryFn: () =>
-      fetchNetsisOrderIndex({ store_id: effectiveStoreId as UUID }),
-    enabled: useNetsisList && Boolean(effectiveStoreId) && listEnabled,
-    staleTime: 5 * 60 * 1000,
-  });
 
   const netsisOrdersQuery = useInfiniteQuery({
     queryKey: ["netsis-orders", effectiveStoreId ?? "none", debouncedFilterQ],
