@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, RefreshCw, Search } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
 
 import { listSoftwareIssues } from '../../api/software-issues';
 import { listStores } from '../../api/stores';
@@ -12,6 +12,11 @@ import type { UUID } from '../../api/http';
 import { cn } from '../../lib/utils';
 
 const PAGE_SIZE = 20;
+
+function shortIssueId(id: string) {
+  const s = id.replace(/-/g, '');
+  return s.length > 8 ? s.slice(0, 8) : s;
+}
 
 export default function AdminIssuesPage() {
   const { t } = useTranslation('common');
@@ -31,7 +36,7 @@ export default function AdminIssuesPage() {
   });
 
   const issuesQuery = useQuery({
-    queryKey: ['software-issues', { search, storeId, offset }],
+    queryKey: ['software-issues', { search, storeId, page, offset }],
     queryFn: () =>
       listSoftwareIssues({
         limit: PAGE_SIZE,
@@ -45,6 +50,8 @@ export default function AdminIssuesPage() {
   const issues = issuesQuery.data?.data ?? [];
   const total = issuesQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const rangeFrom = total === 0 ? 0 : offset + 1;
+  const rangeTo = total === 0 ? 0 : Math.min(offset + issues.length, total);
 
   const storeOptions = useMemo(() => storesQuery.data ?? [], [storesQuery.data]);
 
@@ -83,7 +90,7 @@ export default function AdminIssuesPage() {
           />
         </div>
         <select
-          className="rounded-md border px-3 py-2 text-sm"
+          className="max-w-full rounded-md border px-3 py-2 text-sm"
           value={storeId}
           onChange={(e) => {
             setStoreId(e.target.value);
@@ -99,89 +106,133 @@ export default function AdminIssuesPage() {
         </select>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                {t('issuesPage.admin.colDate')}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                {t('issuesPage.admin.colSubject')}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                {t('issuesPage.admin.colReporter')}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                {t('issuesPage.admin.colStore')}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                {t('issuesPage.admin.colBody')}
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {issues.map((row) => (
-              <tr key={row.id} className="align-top hover:bg-gray-50">
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                  {formatUiDateTime(row.created_at)}
-                </td>
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{row.subject}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">
-                  <div>{row.creator?.name ?? '—'}</div>
-                  <div className="text-xs text-gray-500">
-                    {row.creator?.role
-                      ? t(`issuesPage.admin.role.${row.creator.role}`, {
-                          defaultValue: row.creator.role,
-                        })
-                      : '—'}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">{row.store?.name ?? '—'}</td>
-                <td className="max-w-md px-4 py-3 text-sm text-gray-700">
-                  <p className="whitespace-pre-wrap break-words">{row.body}</p>
-                </td>
-              </tr>
-            ))}
-            {!issuesQuery.isLoading && issues.length === 0 ? (
+      <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed border-collapse text-left">
+            <colgroup>
+              <col className="w-[112px]" />
+              <col className="w-[148px]" />
+              <col className="w-[140px]" />
+              <col className="w-[120px]" />
+              <col />
+            </colgroup>
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500">
-                  {t('issuesPage.admin.empty')}
-                </td>
+                <th className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {t('issuesPage.admin.colId')}
+                </th>
+                <th className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {t('issuesPage.admin.colDate')}
+                </th>
+                <th className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {t('issuesPage.admin.colActor')}
+                </th>
+                <th className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {t('issuesPage.admin.colStore')}
+                </th>
+                <th className="px-3 py-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  {t('issuesPage.admin.colContent')}
+                </th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
-        {issuesQuery.isLoading ? (
-          <div className="px-4 py-6 text-sm text-gray-500">{t('issuesPage.admin.loading')}</div>
-        ) : null}
-      </div>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {issuesQuery.isLoading && issues.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500">
+                    {t('issuesPage.admin.loading')}
+                  </td>
+                </tr>
+              ) : null}
+              {!issuesQuery.isLoading && issues.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-500">
+                    {t('issuesPage.admin.empty')}
+                  </td>
+                </tr>
+              ) : null}
+              {issues.map((row) => {
+                const actorName = row.creator?.name?.trim() || '—';
+                const storeName = row.store?.name?.trim() || '—';
+                const contentTitle = `${row.subject}\n\n${row.body}`;
 
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-between text-sm text-gray-600">
-          <span>
-            {t('issuesPage.admin.pageInfo', { page, totalPages, total })}
-          </span>
-          <div className="flex gap-2">
+                return (
+                  <tr key={row.id} className="align-top hover:bg-gray-50">
+                    <td className="px-3 py-3">
+                      <span
+                        className="inline-block max-w-full truncate font-mono text-xs text-gray-700"
+                        title={row.id}
+                      >
+                        {shortIssueId(row.id)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600">
+                      <span
+                        className="block truncate"
+                        title={formatUiDateTime(row.created_at)}
+                      >
+                        {formatUiDateTime(row.created_at)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-900">
+                      <span className="block truncate" title={actorName}>
+                        {actorName}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600">
+                      <span className="block truncate" title={storeName}>
+                        {storeName}
+                      </span>
+                    </td>
+                    <td className="min-w-0 px-3 py-3">
+                      <div className="min-w-0 overflow-hidden" title={contentTitle}>
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {row.subject}
+                        </p>
+                        <p className="mt-1 line-clamp-3 break-words text-xs leading-relaxed text-gray-600">
+                          {row.body}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-gray-500">
+            {t('issuesPage.admin.showingRange', {
+              from: rangeFrom,
+              to: rangeTo,
+              total,
+            })}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-600">
+              {t('issuesPage.admin.pageInfo', { page, totalPages, total })}
+            </span>
             <button
               type="button"
-              className="rounded-md border px-3 py-1 disabled:opacity-40"
-              disabled={page <= 1}
+              className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md border text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={page <= 1 || issuesQuery.isFetching}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
+              aria-label={t('issuesPage.admin.prev')}
             >
-              {t('issuesPage.admin.prev')}
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               type="button"
-              className="rounded-md border px-3 py-1 disabled:opacity-40"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
+              className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md border text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={page >= totalPages || issuesQuery.isFetching}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              aria-label={t('issuesPage.admin.next')}
             >
-              {t('issuesPage.admin.next')}
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
