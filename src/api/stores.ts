@@ -17,6 +17,8 @@ export type Store = {
   created_at: string;
   updated_at: string;
   address?: Address;
+  /** Public Google review link for crew QR on checklist (when configured). */
+  google_review_url?: string | null;
 };
 
 /** Admin-only Netsis config (GET/PATCH /stores/:id/netsis). */
@@ -145,4 +147,21 @@ export type NetsisTestResponse = { ok: boolean; message: string };
 
 export async function testStoreNetsis(id: UUID): Promise<NetsisTestResponse> {
   return apiPost<NetsisTestResponse>(`/stores/${id}/netsis/test`);
+}
+
+export type StoreGoogleReviewConfig = {
+  id: UUID;
+  name: string;
+  google_review_url: string | null;
+};
+
+export async function getStoreGoogleReview(id: UUID): Promise<StoreGoogleReviewConfig> {
+  return apiGet<StoreGoogleReviewConfig>(`/stores/${id}/google-review`);
+}
+
+export async function patchStoreGoogleReview(
+  id: UUID,
+  payload: { google_review_url: string | null }
+): Promise<Store> {
+  return apiPatch<Store>(`/stores/${id}/google-review`, payload);
 }

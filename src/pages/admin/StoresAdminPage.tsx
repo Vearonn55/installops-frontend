@@ -6,16 +6,20 @@ import toast from 'react-hot-toast';
 import {
   listStores,
   getStoreNetsis,
+  getStoreGoogleReview,
   createStore,
   patchStoreNetsis,
+  patchStoreGoogleReview,
   testStoreNetsis,
   type Store,
   type StoreNetsisConfig,
 } from '../../api/stores';
+import { useTranslation } from 'react-i18next';
 import type { UUID } from '../../api/http';
 import { cn } from '../../lib/utils';
 
 export default function StoresAdminPage() {
+  const { t } = useTranslation('common');
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState<UUID | null>(null);
   const [newStoreName, setNewStoreName] = useState('');
@@ -173,6 +177,7 @@ function StoreRow({
   onToggle: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation('common');
   const qc = useQueryClient();
   const netsisQuery = useQuery({
     queryKey: ['stores', store.id, 'netsis'],
@@ -181,6 +186,13 @@ function StoreRow({
     staleTime: 30_000,
   });
   const activeStore = netsisQuery.data;
+  const googleReviewQuery = useQuery({
+    queryKey: ['stores', store.id, 'google-review'],
+    queryFn: () => getStoreGoogleReview(store.id),
+    enabled: expanded,
+    staleTime: 30_000,
+  });
+  const [googleReviewUrl, setGoogleReviewUrl] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [pathTpl, setPathTpl] = useState('');
   const [searchQLikeCol, setSearchQLikeCol] = useState('');
@@ -207,6 +219,11 @@ function StoreRow({
   const [dbUser, setDbUser] = useState('');
   const [dbPassword, setDbPassword] = useState('');
   const [dbType, setDbType] = useState('0');
+
+  useEffect(() => {
+    if (!googleReviewQuery.data) return;
+    setGoogleReviewUrl(googleReviewQuery.data.google_review_url || '');
+  }, [googleReviewQuery.data]);
 
   useEffect(() => {
     if (!activeStore) return;
@@ -320,6 +337,34 @@ function StoreRow({
       void qc.invalidateQueries({ queryKey: ['stores', store.id, 'netsis'] });
       onSaved();
       void qc.invalidateQueries({ queryKey: ['stores', 'for-installation-create'] });
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || 'Clear failed'),
+  });
+
+  const googleReviewSaveMut = useMutation({
+    mutationFn: () =>
+      patchStoreGoogleReview(store.id, {
+        google_review_url: googleReviewUrl.trim() || null,
+      }),
+    onSuccess: () => {
+      toast.success(t('storesAdminPage.googleReview.saved'));
+      void qc.invalidateQueries({ queryKey: ['stores', store.id, 'google-review'] });
+      onSaved();
+    },
+    onError: (e: any) =>
+      toast.error(
+        e?.response?.data?.message || e?.message || t('storesAdminPage.googleReview.loadError')
+      ),
+  });
+
+  const googleReviewClearMut = useMutation({
+    mutationFn: () => patchStoreGoogleReview(store.id, { google_review_url: null }),
+    onSuccess: () => {
+      toast.success(t('storesAdminPage.googleReview.cleared'));
+      setGoogleReviewUrl('');
+      void qc.invalidateQueries({ queryKey: ['stores', store.id, 'google-review'] });
+      onSaved();
     },
     onError: (e: any) =>
       toast.error(e?.response?.data?.message || e?.message || 'Clear failed'),
@@ -766,6 +811,55 @@ function StoreRow({
               </div>
             </div>
             )}
+
+            <div className="mx-auto mt-6 max-w-3xl rounded-lg border border-gray-200 bg-white p-4">
+              <h3 className="text-sm font-semibold text-gray-900">
+                {t('storesAdminPage.googleReview.title')}
+              </h3>
+              <p className="mt-1 text-xs text-gray-500">
+                {t('storesAdminPage.googleReview.description')}
+              </p>
+              {googleReviewQuery.isLoading && (
+                <p className="mt-3 text-sm text-gray-500">Loading…</p>
+              )}
+              {googleReviewQuery.isError && (
+                <p className="mt-3 text-sm text-red-600">
+                  {t('storesAdminPage.googleReview.loadError')}
+                </p>
+              )}
+              {googleReviewQuery.data ? (
+                <>
+                  <label className="mt-3 block text-xs font-medium text-gray-600">
+                    {t('storesAdminPage.googleReview.urlLabel')}
+                    <input
+                      className="mt-1 w-full rounded-md border px-2 py-1.5 text-sm"
+                      placeholder={t('storesAdminPage.googleReview.urlPlaceholder')}
+                      value={googleReviewUrl}
+                      onChange={(e) => setGoogleReviewUrl(e.target.value)}
+                    />
+                  </label>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={googleReviewSaveMut.isPending}
+                      onClick={() => googleReviewSaveMut.mutate()}
+                      className="inline-flex items-center gap-2 rounded-md bg-primary-600 px-3 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50"
+                    >
+                      <Save className="h-4 w-4" />
+                      {t('storesAdminPage.googleReview.save')}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={googleReviewClearMut.isPending}
+                      onClick={() => googleReviewClearMut.mutate()}
+                      className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      {t('storesAdminPage.googleReview.clear')}
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
           </td>
         </tr>
       )}

@@ -14,6 +14,7 @@ import {
   XCircle,
   Trash2,
   Pencil,
+  AlertTriangle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -118,6 +119,7 @@ export default function InstallationDetailPage() {
   const { t, i18n } = useTranslation('common');
   const { hasRole } = useAuthStore();
   const isAdmin = hasRole('ADMIN');
+  const isManager = hasRole('STORE_MANAGER');
   const [canceling, setCanceling] = useState(false);
   const [staging, setStaging] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -411,6 +413,17 @@ export default function InstallationDetailPage() {
               <Pencil className="h-4 w-4 shrink-0" />
               <span className="truncate">{t('installationsPage.actions.edit')}</span>
             </button>
+          ) : null}
+          {id && isManager ? (
+            <Link
+              to={`/app/issues/report?installationId=${id}`}
+              className={headerActionBtnClass(
+                'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100'
+              )}
+            >
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t('issuesPage.manager.reportButton')}</span>
+            </Link>
           ) : null}
           {inst ? (
             <button

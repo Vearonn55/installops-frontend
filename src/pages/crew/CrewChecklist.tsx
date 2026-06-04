@@ -1,5 +1,6 @@
 // src/pages/crew/CrewChecklist.tsx
 import { useEffect, useRef, useState } from 'react';
+import QRCode from 'react-qr-code';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -68,6 +69,7 @@ export default function CrewChecklist() {
   const [draftHydrated, setDraftHydrated] = useState(false);
 
   const [photos, setPhotos] = useState<LocalPhoto[]>([]);
+  const [googleQrOpen, setGoogleQrOpen] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -96,6 +98,8 @@ export default function CrewChecklist() {
   const installStatus = values.install_status;
   const handoverDocs = values.handover_docs ?? false;
   const googleRecoGiven = values.google_reco_given ?? false;
+  const googleReviewUrl =
+    instQuery.data?.store?.google_review_url?.trim() || '';
   const failureReason = values.failure_reason ?? '';
   const markAfterSale = values.mark_after_sale ?? false;
 
@@ -589,6 +593,33 @@ export default function CrewChecklist() {
                   />
                   {t('crewPages.checklist.confirmed')}
                 </label>
+                {googleReviewUrl ? (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setGoogleQrOpen((v) => !v)}
+                      className="w-full rounded-xl border border-primary-200 bg-primary-50 px-3 py-2.5 text-sm font-medium text-primary-800"
+                    >
+                      {googleQrOpen
+                        ? t('crewPages.checklist.googleReviewQrHide')
+                        : t('crewPages.checklist.googleReviewQrShow')}
+                    </button>
+                    {googleQrOpen ? (
+                      <div className="mt-3 flex flex-col items-center rounded-xl border bg-gray-50 p-4">
+                        <div className="rounded-lg bg-white p-3">
+                          <QRCode value={googleReviewUrl} size={200} />
+                        </div>
+                        <p className="mt-3 text-center text-xs text-gray-600">
+                          {t('crewPages.checklist.googleReviewQrHint')}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-gray-500">
+                    {t('crewPages.checklist.googleReviewNotConfigured')}
+                  </p>
+                )}
               </section>
             </>
           ) : null}

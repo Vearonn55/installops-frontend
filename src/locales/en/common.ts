@@ -11,6 +11,7 @@ const enCommon = {
     usersAndRoles: 'Users',
     integrations: 'Integrations',
     storesNetsis: 'Stores & Netsis',
+    issues: 'Issues',
     audit: 'Audit',
 
     crewHome: 'Home',
@@ -758,7 +759,7 @@ profilePage: {
 
     crew: {
       title: 'Assign Crew',
-      subtitle: 'Select up to 3 crew members',
+      subtitle: 'Select crew members for this installation',
       loading: 'Loading crew…',
       loadError: 'Failed to load crew.',
       maxTooltip: 'Maximum 3 members',
@@ -852,6 +853,11 @@ profilePage: {
       paymentNoteNone: 'No payment note on this installation.',
       googleReco: 'Google review requested',
       googleRecoHint: 'Ask the customer to leave a Google review',
+      googleReviewQrShow: 'Show QR for customer',
+      googleReviewQrHide: 'Hide QR',
+      googleReviewQrHint: 'Rotate your phone so the customer can scan.',
+      googleReviewNotConfigured:
+        'Google review link is not set for this store. Ask an administrator to add it in Stores & Netsis.',
       failureReason: 'Failure reason',
       failurePlaceholder: 'Describe what went wrong…',
       markAfterSale: 'Mark as after-sale service (follow-up visit required)',
@@ -877,6 +883,75 @@ profilePage: {
       completed: 'Completed',
       failed: 'Failed',
       after_sale: 'After-sale',
+    },
+  },
+
+  issuesPage: {
+    form: {
+      bodyLabel: 'Describe the issue',
+      bodyPlaceholder: 'What happened? Include enough detail for the office to follow up.',
+      privacyNote:
+        'Only administrators can read submitted reports. You will not see a list of issues here.',
+      submit: 'Submit report',
+      success: 'Issue submitted. Only administrators can view reports.',
+      error: 'Could not submit issue',
+      minLength: 'Please enter at least {{min}} characters',
+      loadingInstallation: 'Loading installation…',
+    },
+    crew: {
+      title: 'Report an issue',
+      jobTitle: 'Report issue for this job',
+      subtitle: 'Send a private report to the office. Other crew cannot see your reports.',
+      pickJob: 'Choose an installation',
+      loadingJobs: 'Loading your jobs…',
+      noJobs: 'No assigned installations right now.',
+      changeJob: 'Choose a different job',
+      backToJob: 'Back to job',
+      reportLink: 'Report issue',
+      reportLinkHint: 'Notify the office (admin-only inbox)',
+    },
+    manager: {
+      title: 'Report installation issue',
+      subtitle: 'Send a report to administrators. You cannot view submitted reports here.',
+      needInstallation: 'Open this page from an installation to report an issue.',
+      reportButton: 'Report issue',
+    },
+    admin: {
+      title: 'Installation issues',
+      subtitle: 'Reports from crew and store managers.',
+      refresh: 'Refresh',
+      searchPlaceholder: 'Search in report text…',
+      allStores: 'All stores',
+      colDate: 'Submitted',
+      colStore: 'Store',
+      colInstallation: 'Installation',
+      colReporter: 'Reporter',
+      colBody: 'Report',
+      empty: 'No issues yet.',
+      loading: 'Loading…',
+      pageInfo: 'Page {{page}} of {{totalPages}} ({{total}} total)',
+      prev: 'Previous',
+      next: 'Next',
+      role: {
+        admin: 'Admin',
+        manager: 'Manager',
+        crew: 'Crew',
+      },
+    },
+  },
+
+  storesAdminPage: {
+    googleReview: {
+      title: 'Google review link',
+      description:
+        'Paste your Google Maps “Write a review” or g.page link. Crew can show a QR code on the checklist for customers to scan.',
+      urlLabel: 'Review URL (HTTPS)',
+      urlPlaceholder: 'https://g.page/r/…/review',
+      save: 'Save link',
+      clear: 'Clear link',
+      saved: 'Google review link saved',
+      cleared: 'Google review link cleared',
+      loadError: 'Failed to load Google review settings',
     },
   },
 

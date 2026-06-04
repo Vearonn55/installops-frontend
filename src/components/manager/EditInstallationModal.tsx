@@ -163,10 +163,6 @@ export default function EditInstallationModal({
       if (has) {
         return { ...prev, crewIds: prev.crewIds.filter((id) => id !== userId) };
       }
-      if (prev.crewIds.length >= 3) {
-        toast.error(t('createInstallationPage.toasts.maxCrew'));
-        return prev;
-      }
       return { ...prev, crewIds: [...prev.crewIds, userId] };
     });
   };
@@ -537,19 +533,16 @@ export default function EditInstallationModal({
                     {crewPickerUsers.map((c) => {
                       const name = crewPickerLabel(c)!;
                       const selected = form.crewIds.includes(c.id);
-                      const atLimit = form.crewIds.length >= 3 && !selected;
                       return (
                         <button
                           key={c.id}
                           type="button"
                           onClick={() => toggleCrew(c.id)}
-                          disabled={atLimit}
                           className={cn(
                             'rounded-lg border px-3 py-2 text-sm transition',
                             selected
                               ? 'border-primary-600 bg-primary-600 text-white'
-                              : 'border-gray-300 bg-white hover:bg-gray-50',
-                            atLimit && 'cursor-not-allowed opacity-50'
+                              : 'border-gray-300 bg-white hover:bg-gray-50'
                           )}
                         >
                           {name}

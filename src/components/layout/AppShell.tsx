@@ -20,6 +20,7 @@ import {
   HelpCircle,
   Keyboard,
   Building2,
+  AlertTriangle,
 } from 'lucide-react';
 
 import CommandPalette, { type CommandPaletteItem, type CommandPaletteRef } from '../CommandPalette';
@@ -83,6 +84,12 @@ const navigation: NavigationItem[] = [
     labelKey: 'nav.storesNetsis',
     href: '/app/admin/stores',
     icon: Building2,
+    roles: ['ADMIN'],
+  },
+  {
+    labelKey: 'nav.issues',
+    href: '/app/admin/issues',
+    icon: AlertTriangle,
     roles: ['ADMIN'],
   },
   {

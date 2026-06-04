@@ -11,6 +11,7 @@ const trCommon = {
     usersAndRoles: 'Kullanıcılar',
     integrations: 'Entegrasyonlar',
     storesNetsis: 'Mağazalar ve Netsis',
+    issues: 'Sorunlar',
     audit: 'Denetim',
 
     crewHome: 'Ana Sayfa',
@@ -758,7 +759,7 @@ profilePage: {
 
     crew: {
       title: 'Ekip Ata',
-      subtitle: 'En fazla 3 ekip üyesi seçin',
+      subtitle: 'Bu kurulum için ekip üyelerini seçin',
       loading: 'Ekip yükleniyor…',
       loadError: 'Ekip yüklenemedi.',
       maxTooltip: 'Maksimum 3 üye',
@@ -852,6 +853,11 @@ profilePage: {
       paymentNoteNone: 'Bu kurulumda ödeme notu yok.',
       googleReco: 'Google değerlendirmesi istendi',
       googleRecoHint: 'Müşteriden Google değerlendirmesi isteyin',
+      googleReviewQrShow: 'Müşteri için QR göster',
+      googleReviewQrHide: 'QR gizle',
+      googleReviewQrHint: 'Müşterinin tarayabilmesi için telefonu yan çevirin.',
+      googleReviewNotConfigured:
+        'Bu mağaza için Google değerlendirme bağlantısı tanımlı değil. Yöneticiden Mağazalar ve Netsis bölümünden eklemesini isteyin.',
       failureReason: 'Başarısızlık nedeni',
       failurePlaceholder: 'Ne olduğunu açıklayın…',
       markAfterSale: 'Satış sonrası servis olarak işaretle (takip ziyareti gerekir)',
@@ -880,8 +886,74 @@ profilePage: {
     },
   },
 
+  issuesPage: {
+    form: {
+      bodyLabel: 'Sorunu açıklayın',
+      bodyPlaceholder: 'Ne oldu? Ofisin takip edebilmesi için yeterli ayrıntı ekleyin.',
+      privacyNote:
+        'Gönderilen raporları yalnızca yöneticiler görebilir. Burada sorun listesi görünmez.',
+      submit: 'Raporu gönder',
+      success: 'Rapor gönderildi. Yalnızca yöneticiler raporları görüntüleyebilir.',
+      error: 'Rapor gönderilemedi',
+      minLength: 'En az {{min}} karakter girin',
+      loadingInstallation: 'Kurulum yükleniyor…',
+    },
+    crew: {
+      title: 'Sorun bildir',
+      jobTitle: 'Bu iş için sorun bildir',
+      subtitle: 'Ofise özel rapor gönderin. Diğer ekip üyeleri raporlarınızı göremez.',
+      pickJob: 'Bir kurulum seçin',
+      loadingJobs: 'İşleriniz yükleniyor…',
+      noJobs: 'Şu an atanmış kurulum yok.',
+      changeJob: 'Başka iş seç',
+      backToJob: 'İşe dön',
+      reportLink: 'Sorun bildir',
+      reportLinkHint: 'Ofisi bilgilendir (yalnızca yönetici gelen kutusu)',
+    },
+    manager: {
+      title: 'Kurulum sorunu bildir',
+      subtitle: 'Yöneticilere rapor gönderin. Gönderilen raporları burada listeleyemezsiniz.',
+      needInstallation: 'Sorun bildirmek için bir kurulum sayfasından bu sayfayı açın.',
+      reportButton: 'Sorun bildir',
+    },
+    admin: {
+      title: 'Kurulum sorunları',
+      subtitle: 'Ekip ve mağaza yöneticilerinden gelen raporlar.',
+      refresh: 'Yenile',
+      searchPlaceholder: 'Rapor metninde ara…',
+      allStores: 'Tüm mağazalar',
+      colDate: 'Gönderim',
+      colStore: 'Mağaza',
+      colInstallation: 'Kurulum',
+      colReporter: 'Bildiren',
+      colBody: 'Rapor',
+      empty: 'Henüz sorun yok.',
+      loading: 'Yükleniyor…',
+      pageInfo: 'Sayfa {{page}} / {{totalPages}} (toplam {{total}})',
+      prev: 'Önceki',
+      next: 'Sonraki',
+      role: {
+        admin: 'Yönetici',
+        manager: 'Mağaza yöneticisi',
+        crew: 'Ekip',
+      },
+    },
+  },
 
-
+  storesAdminPage: {
+    googleReview: {
+      title: 'Google değerlendirme bağlantısı',
+      description:
+        'Google Haritalar “Değerlendirme yaz” veya g.page bağlantınızı yapıştırın. Ekip kontrol listesinde müşterinin tarayacağı QR kodu gösterebilir.',
+      urlLabel: 'Değerlendirme URL (HTTPS)',
+      urlPlaceholder: 'https://g.page/r/…/review',
+      save: 'Bağlantıyı kaydet',
+      clear: 'Bağlantıyı temizle',
+      saved: 'Google değerlendirme bağlantısı kaydedildi',
+      cleared: 'Google değerlendirme bağlantısı temizlendi',
+      loadError: 'Google değerlendirme ayarları yüklenemedi',
+    },
+  },
 
 };
 

@@ -28,6 +28,7 @@ import ReportsPage from './pages/admin/ReportsPage';
 import RolesPage from './pages/admin/RolesPage';
 import IntegrationsPage from './pages/admin/IntegrationsPage';
 import StoresAdminPage from './pages/admin/StoresAdminPage';
+import AdminIssuesPage from './pages/admin/AdminIssuesPage';
 import CapacitySettingsPage from './pages/admin/CapacitySettingsPage';
 
 // Manager pages
@@ -37,6 +38,7 @@ import OrderDetailPage from './pages/manager/OrderDetailPage';
 import CreateOrderPage from './pages/manager/CreateOrderPage';
 import InstallationsPage from './pages/manager/InstallationsPage';
 import InstallationDetailPage from './pages/manager/InstallationDetailPage';
+import ManagerReportIssuePage from './pages/manager/ManagerReportIssuePage';
 import CreateInstallationPage from './pages/manager/CreateInstallationPage';
 import CalendarPage from './pages/manager/CalendarPage';
 
@@ -204,6 +206,15 @@ const getDefaultRoute = () => {
                   }
                 />
 
+                <Route
+                  path="issues/report"
+                  element={
+                    <RoleGuard roles={['STORE_MANAGER']}>
+                      <ManagerReportIssuePage />
+                    </RoleGuard>
+                  }
+                />
+
                 {/* Your profile*/}
                 <Route
                   path="profile"
@@ -266,6 +277,14 @@ const getDefaultRoute = () => {
                   element={
                     <RoleGuard roles={['ADMIN']}>
                       <StoresAdminPage />
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="admin/issues"
+                  element={
+                    <RoleGuard roles={['ADMIN']}>
+                      <AdminIssuesPage />
                     </RoleGuard>
                   }
                 />

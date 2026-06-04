@@ -13,6 +13,7 @@ import {
   Play,
   Package,
   Banknote,
+  AlertTriangle,
 } from 'lucide-react';
 
 import { cn } from '../../lib/utils';
@@ -266,6 +267,24 @@ export default function CrewJobDetail() {
                 </ul>
               </section>
             ) : null}
+
+            <section className="rounded-2xl border bg-white p-4 shadow-sm">
+              <button
+                type="button"
+                onClick={() => navigate(`/crew/jobs/${job.id}/issues`)}
+                className="flex w-full items-center justify-between gap-2"
+              >
+                <div className="min-w-0 text-left">
+                  <div className="text-xs uppercase tracking-wide text-gray-500">
+                    {t('issuesPage.crew.reportLink')}
+                  </div>
+                  <div className="text-sm font-medium text-gray-900">
+                    {t('issuesPage.crew.reportLinkHint')}
+                  </div>
+                </div>
+                <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+              </button>
+            </section>
 
             <section className="rounded-2xl border bg-white p-4 shadow-sm">
               <button

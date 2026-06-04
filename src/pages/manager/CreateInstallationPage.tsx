@@ -179,10 +179,6 @@ export default function CreateInstallationPage() {
       if (already) {
         return prev.filter((x) => x !== id);
       }
-      if (prev.length >= 3) {
-        toast.error(t('createInstallationPage.toasts.maxCrew'));
-        return prev;
-      }
       return [...prev, id];
     });
   };
@@ -624,7 +620,6 @@ export default function CreateInstallationPage() {
                 {crewPickerUsers.map((c) => {
                   const name = crewPickerLabel(c)!;
                   const selected = crewIds.includes(c.id);
-                  const atLimit = crewIds.length >= 3 && !selected;
                   return (
                     <button
                       key={c.id}
@@ -634,13 +629,8 @@ export default function CreateInstallationPage() {
                         'rounded-md border px-3 py-1.5 text-sm transition',
                         selected
                           ? 'border-primary-600 bg-primary-600 text-white'
-                          : 'border-gray-300 bg-white hover:bg-gray-50',
-                        atLimit && 'cursor-not-allowed opacity-50'
+                          : 'border-gray-300 bg-white hover:bg-gray-50'
                       )}
-                      disabled={atLimit}
-                      title={
-                        atLimit ? t('createInstallationPage.crew.maxTooltip') : undefined
-                      }
                     >
                       {name}
                     </button>
