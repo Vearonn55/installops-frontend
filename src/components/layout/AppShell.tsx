@@ -63,6 +63,12 @@ const navigation: NavigationItem[] = [
     roles: ['ADMIN', 'STORE_MANAGER'],
   },
   {
+    labelKey: 'nav.reportIssue',
+    href: '/app/issues/report',
+    icon: AlertTriangle,
+    roles: ['STORE_MANAGER'],
+  },
+  {
     labelKey: 'nav.reports',
     href: '/app/admin/reports',
     icon: BarChart3,
