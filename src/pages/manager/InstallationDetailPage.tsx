@@ -33,6 +33,7 @@ import {
   type MediaAsset,
 } from '../../api/media';
 import { resolveMediaUrl } from '../../lib/media-url';
+import { RevealablePhotoGrid } from '../../components/media/RevealablePhotoGrid';
 import { getNetsisOrderDetail } from '../../api/integrations';
 import {
   crewChecklistLabelKey,
@@ -806,50 +807,38 @@ export default function InstallationDetailPage() {
         <div className="card-header">
           <h3 className="card-title flex items-center gap-2">
             <ImageIcon className="h-4 w-4" />
-            Photos
+            {t('installationDetailPage.media.title')}
           </h3>
           <p className="card-description">
-            Photos captured by the crew for this installation.
+            {t('installationDetailPage.media.subtitle')}
           </p>
         </div>
         <div className="card-content">
           {mediaQuery.isLoading && (
-            <div className="text-sm text-gray-500">Loading photos…</div>
+            <div className="text-sm text-gray-500">
+              {t('installationDetailPage.media.loading')}
+            </div>
           )}
 
           {mediaQuery.isError && (
             <div className="text-sm text-red-600">
-              {mediaErrorText || 'Could not load photos for this installation.'}
+              {mediaErrorText || t('installationDetailPage.media.loadError')}
             </div>
           )}
 
           {!mediaQuery.isLoading && !mediaQuery.isError && photos.length === 0 && (
             <div className="text-sm text-gray-500">
-              No photos have been uploaded for this installation yet.
+              {t('installationDetailPage.media.empty')}
             </div>
           )}
 
           {photos.length > 0 && (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-              {photos.map((m) => {
-                const src = resolveMediaUrl(m.url);
-                return (
-                <a
-                  key={m.id}
-                  href={src}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group block overflow-hidden rounded-md border bg-gray-50"
-                >
-                  <img
-                    src={src}
-                    alt="Installation photo"
-                    className="h-32 w-full object-cover transition-transform group-hover:scale-105"
-                  />
-                </a>
-              );
-              })}
-            </div>
+            <RevealablePhotoGrid
+              photos={photos.map((m) => ({
+                id: m.id,
+                url: resolveMediaUrl(m.url),
+              }))}
+            />
           )}
         </div>
       </div>
