@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, RefreshCw, Search } from 'lucide-react';
 
-import { listInstallationIssues } from '../../api/installation-issues';
+import { listSoftwareIssues } from '../../api/software-issues';
 import { listStores } from '../../api/stores';
 import { formatUiDateTime } from '../../lib/date-display';
 import { pageHeaderClass } from '../../lib/responsive-layout';
@@ -31,9 +31,9 @@ export default function AdminIssuesPage() {
   });
 
   const issuesQuery = useQuery({
-    queryKey: ['installation-issues', { search, storeId, offset }],
+    queryKey: ['software-issues', { search, storeId, offset }],
     queryFn: () =>
-      listInstallationIssues({
+      listSoftwareIssues({
         limit: PAGE_SIZE,
         offset,
         store_id: (storeId || undefined) as UUID | undefined,
@@ -107,13 +107,13 @@ export default function AdminIssuesPage() {
                 {t('issuesPage.admin.colDate')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                {t('issuesPage.admin.colStore')}
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                {t('issuesPage.admin.colInstallation')}
+                {t('issuesPage.admin.colSubject')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('issuesPage.admin.colReporter')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('issuesPage.admin.colStore')}
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 {t('issuesPage.admin.colBody')}
@@ -126,15 +126,7 @@ export default function AdminIssuesPage() {
                 <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                   {formatUiDateTime(row.created_at)}
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-900">{row.store?.name ?? '—'}</td>
-                <td className="px-4 py-3 text-sm">
-                  <div className="font-mono text-gray-900">
-                    {row.installation?.external_order_id ?? '—'}
-                  </div>
-                  {row.installation?.install_code ? (
-                    <div className="text-xs text-gray-500">{row.installation.install_code}</div>
-                  ) : null}
-                </td>
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{row.subject}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">
                   <div>{row.creator?.name ?? '—'}</div>
                   <div className="text-xs text-gray-500">
@@ -145,6 +137,7 @@ export default function AdminIssuesPage() {
                       : '—'}
                   </div>
                 </td>
+                <td className="px-4 py-3 text-sm text-gray-600">{row.store?.name ?? '—'}</td>
                 <td className="max-w-md px-4 py-3 text-sm text-gray-700">
                   <p className="whitespace-pre-wrap break-words">{row.body}</p>
                 </td>

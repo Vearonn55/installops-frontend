@@ -324,7 +324,7 @@ const getDefaultRoute = () => {
                 <Route path="jobs/:id" element={<CrewJobDetail />} />
                 <Route path="jobs/:id/checklist" element={<CrewChecklist />} />
                 <Route path="jobs/:id/capture" element={<CrewCapture />} />
-                <Route path="jobs/:id/issues" element={<CrewIssues />} />
+                <Route path="jobs/:id/issues" element={<Navigate to="/crew/issues" replace />} />
                 <Route path="jobs/:id/order" element={<CrewOrderDetail />} />
                 <Route path="issues" element={<CrewIssues />} />
                 <Route path="settings" element={<CrewSettings />} />

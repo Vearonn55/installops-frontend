@@ -416,7 +416,7 @@ export default function InstallationDetailPage() {
           ) : null}
           {id && isManager ? (
             <Link
-              to={`/app/issues/report?installationId=${id}`}
+              to="/app/issues/report"
               className={headerActionBtnClass(
                 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100'
               )}

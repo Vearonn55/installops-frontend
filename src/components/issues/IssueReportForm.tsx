@@ -1,39 +1,33 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { Loader2, Send } from 'lucide-react';
 
-import { createInstallationIssue } from '../../api/installation-issues';
-import { getInstallation } from '../../api/installations';
-import type { UUID } from '../../api/http';
+import { createSoftwareIssue } from '../../api/software-issues';
 import { isAxiosError } from '../../api/http';
 
+const MIN_SUBJECT = 3;
 const MIN_BODY = 10;
 
 type Props = {
-  installationId: UUID;
   onSubmitted?: () => void;
 };
 
-export default function IssueReportForm({ installationId, onSubmitted }: Props) {
+export default function IssueReportForm({ onSubmitted }: Props) {
   const { t } = useTranslation('common');
+  const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
-
-  const instQuery = useQuery({
-    queryKey: ['installation', installationId, 'issue-form'],
-    queryFn: () => getInstallation(installationId),
-    enabled: !!installationId,
-  });
 
   const submitMut = useMutation({
     mutationFn: () =>
-      createInstallationIssue({
-        installation_id: installationId,
+      createSoftwareIssue({
+        subject: subject.trim(),
         body: body.trim(),
       }),
     onSuccess: () => {
       toast.success(t('issuesPage.form.success'));
+      setSubject('');
       setBody('');
       onSubmitted?.();
     },
@@ -47,9 +41,12 @@ export default function IssueReportForm({ installationId, onSubmitted }: Props) 
     },
   });
 
-  const inst = instQuery.data;
-  const trimmed = body.trim();
-  const canSubmit = trimmed.length >= MIN_BODY && !submitMut.isPending;
+  const titleTrim = subject.trim();
+  const bodyTrim = body.trim();
+  const canSubmit =
+    titleTrim.length >= MIN_SUBJECT &&
+    bodyTrim.length >= MIN_BODY &&
+    !submitMut.isPending;
 
   return (
     <form
@@ -57,7 +54,9 @@ export default function IssueReportForm({ installationId, onSubmitted }: Props) 
       onSubmit={(e) => {
         e.preventDefault();
         if (!canSubmit) {
-          if (trimmed.length < MIN_BODY) {
+          if (titleTrim.length < MIN_SUBJECT) {
+            toast.error(t('issuesPage.form.minSubject', { min: MIN_SUBJECT }));
+          } else if (bodyTrim.length < MIN_BODY) {
             toast.error(t('issuesPage.form.minLength', { min: MIN_BODY }));
           }
           return;
@@ -65,20 +64,21 @@ export default function IssueReportForm({ installationId, onSubmitted }: Props) 
         submitMut.mutate();
       }}
     >
-      {instQuery.isLoading ? (
-        <p className="text-sm text-gray-500">{t('issuesPage.form.loadingInstallation')}</p>
-      ) : null}
-      {inst ? (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-          <div className="font-medium text-gray-900">
-            {inst.install_code || inst.external_order_id}
-          </div>
-          <div className="mt-0.5 font-mono text-xs text-gray-500">{inst.external_order_id}</div>
-          {inst.store?.name ? (
-            <div className="mt-1 text-xs text-gray-600">{inst.store.name}</div>
-          ) : null}
-        </div>
-      ) : null}
+      <div>
+        <label className="text-sm font-medium text-gray-900" htmlFor="issue-subject">
+          {t('issuesPage.form.subjectLabel')}
+        </label>
+        <input
+          id="issue-subject"
+          type="text"
+          maxLength={200}
+          className="input mt-2 w-full rounded-xl text-base"
+          placeholder={t('issuesPage.form.subjectPlaceholder')}
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          disabled={submitMut.isPending}
+        />
+      </div>
 
       <div>
         <label className="text-sm font-medium text-gray-900" htmlFor="issue-body">
@@ -86,7 +86,7 @@ export default function IssueReportForm({ installationId, onSubmitted }: Props) 
         </label>
         <textarea
           id="issue-body"
-          className="input mt-2 min-h-[120px] w-full rounded-xl text-base"
+          className="input mt-2 min-h-[140px] w-full rounded-xl text-base"
           placeholder={t('issuesPage.form.bodyPlaceholder')}
           value={body}
           onChange={(e) => setBody(e.target.value)}

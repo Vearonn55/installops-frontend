@@ -271,7 +271,7 @@ export default function CrewJobDetail() {
             <section className="rounded-2xl border bg-white p-4 shadow-sm">
               <button
                 type="button"
-                onClick={() => navigate(`/crew/jobs/${job.id}/issues`)}
+                onClick={() => navigate('/crew/issues')}
                 className="flex w-full items-center justify-between gap-2"
               >
                 <div className="min-w-0 text-left">
