@@ -13,11 +13,12 @@ export function compareNetsisOrderIds(a: string, b: string): number {
   const pa = parse(as);
   const pb = parse(bs);
   if (pa && pb) {
-    const prefixCmp = pa.prefix.localeCompare(pb.prefix);
-    if (prefixCmp !== 0) return prefixCmp;
-    if (pa.num < pb.num) return -1;
-    if (pa.num > pb.num) return 1;
-    return as.localeCompare(bs);
+    if (pa.prefix === pb.prefix) {
+      if (pa.num < pb.num) return -1;
+      if (pa.num > pb.num) return 1;
+      return as.localeCompare(bs);
+    }
+    return 0;
   }
 
   return as.localeCompare(bs, undefined, { numeric: true, sensitivity: 'base' });
