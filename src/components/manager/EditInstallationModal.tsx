@@ -12,6 +12,8 @@ import {
   getInstallation,
   updateInstallationSchedule,
   updateInstallationStatus,
+  updateInstallationChecklistResult,
+  updateCrewAfterInstallationNotes,
   type InstallStatus,
   type Installation,
 } from '../../api/installations';
@@ -47,6 +49,8 @@ type FormState = {
   customer_phone: string;
   notes: string;
   customer_payment_note: string;
+  crew_after_installation_notes: string;
+  checklist_failure_reason: string;
   crewIds: string[];
 };
 
@@ -73,6 +77,8 @@ function formFromInstallation(inst: Installation): FormState {
     customer_phone: inst.customer_phone?.trim() ?? '',
     notes: inst.notes?.trim() ?? '',
     customer_payment_note: inst.customer_payment_note?.trim() ?? '',
+    crew_after_installation_notes: inst.crew_after_installation_notes?.trim() ?? '',
+    checklist_failure_reason: inst.checklist_failure_reason?.trim() ?? '',
     crewIds: (inst.crew ?? []).map((c) => c.crew_user_id),
   };
 }
@@ -230,6 +236,24 @@ export default function EditInstallationModal({
       for (const userId of form.crewIds) {
         if (!baselineIds.has(userId)) {
           await assignCrew(installationId, { crew_user_id: userId as UUID });
+        }
+      }
+
+      if (canEditStatus) {
+        const crewNotes = form.crew_after_installation_notes.trim() || null;
+        const failureReason = form.checklist_failure_reason.trim() || null;
+        const prevCrewNotes = inst.crew_after_installation_notes?.trim() || null;
+        const prevFailure = inst.checklist_failure_reason?.trim() || null;
+
+        if (crewNotes !== prevCrewNotes) {
+          await updateCrewAfterInstallationNotes(installationId, {
+            crew_after_installation_notes: crewNotes,
+          });
+        }
+        if (failureReason !== prevFailure) {
+          await updateInstallationChecklistResult(installationId, {
+            checklist_failure_reason: failureReason,
+          });
         }
       }
 
@@ -518,6 +542,43 @@ export default function EditInstallationModal({
                   }
                 />
               </div>
+
+              {canEditStatus ? (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      {t('installationsPage.editModal.crewCustomerNotes')}
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="input w-full"
+                      placeholder={t('installationsPage.editModal.crewCustomerNotesPlaceholder')}
+                      value={form.crew_after_installation_notes}
+                      onChange={(e) =>
+                        setForm((p) =>
+                          p ? { ...p, crew_after_installation_notes: e.target.value } : p
+                        )
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                      {t('installationsPage.editModal.failureReason')}
+                    </label>
+                    <textarea
+                      rows={3}
+                      className="input w-full"
+                      placeholder={t('installationsPage.editModal.failureReasonPlaceholder')}
+                      value={form.checklist_failure_reason}
+                      onChange={(e) =>
+                        setForm((p) =>
+                          p ? { ...p, checklist_failure_reason: e.target.value } : p
+                        )
+                      }
+                    />
+                  </div>
+                </>
+              ) : null}
 
               <div>
                 <label className="mb-2 block text-xs font-medium text-gray-600">

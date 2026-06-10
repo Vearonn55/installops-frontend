@@ -31,6 +31,7 @@ import ResponsiveDataView, {
 } from "../../components/ui/ResponsiveDataView";
 import { pageHeaderClass } from "../../lib/responsive-layout";
 import { DateRangeFilter } from "../../components/filters/DateRangeFilter";
+import { compareNetsisOrderIds, sortOrdersByNetsisIdDesc } from "../../lib/netsis-order-id";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -724,11 +725,11 @@ export default function OrdersPage() {
 /* ------------------------ Helpers & small components ------------------------ */
 
 function compareOrderIds(a: string, b: string): number {
-  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+  return compareNetsisOrderIds(a, b);
 }
 
 function sortOrdersByIdDesc(list: Order[]): Order[] {
-  return [...list].sort((a, b) => -compareOrderIds(a.id, b.id));
+  return sortOrdersByNetsisIdDesc(list);
 }
 
 function dedupeOrders(list: Order[]): Order[] {
