@@ -26,3 +26,29 @@ export function compareNetsisOrderIds(a: string, b: string): number {
 export function sortOrdersByNetsisIdDesc<T extends { id: string }>(list: T[]): T[] {
   return [...list].sort((a, b) => compareNetsisOrderIds(b.id, a.id));
 }
+
+function placedAtMs(o: { placed_at?: string | null; created_at?: string | null }): number | null {
+  const raw = o.placed_at ?? o.created_at;
+  if (!raw) return null;
+  const t = Date.parse(String(raw));
+  return Number.isFinite(t) ? t : null;
+}
+
+/** Newest ERP slip first: placed_at desc, then numeric order id desc. */
+export function compareOrdersByRecency(
+  a: { id: string; placed_at?: string | null; created_at?: string | null },
+  b: { id: string; placed_at?: string | null; created_at?: string | null }
+): number {
+  const ta = placedAtMs(a);
+  const tb = placedAtMs(b);
+  if (ta != null && tb != null && ta !== tb) return tb - ta;
+  if (ta != null && tb == null) return -1;
+  if (ta == null && tb != null) return 1;
+  return compareNetsisOrderIds(b.id, a.id);
+}
+
+export function sortOrdersByRecencyDesc<T extends { id: string; placed_at?: string | null; created_at?: string | null }>(
+  list: T[]
+): T[] {
+  return [...list].sort(compareOrdersByRecency);
+}

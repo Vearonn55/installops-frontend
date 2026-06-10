@@ -31,7 +31,11 @@ import ResponsiveDataView, {
 } from "../../components/ui/ResponsiveDataView";
 import { pageHeaderClass } from "../../lib/responsive-layout";
 import { DateRangeFilter } from "../../components/filters/DateRangeFilter";
-import { compareNetsisOrderIds, sortOrdersByNetsisIdDesc } from "../../lib/netsis-order-id";
+import {
+  compareNetsisOrderIds,
+  compareOrdersByRecency,
+  sortOrdersByRecencyDesc,
+} from "../../lib/netsis-order-id";
 
 const NETSIS_PAGE_SIZE = 50;
 
@@ -65,7 +69,7 @@ export default function OrdersPage() {
   };
 
 
-  const [sortBy, setSortBy] = useState<"placed_at" | "id" | "customer" | "store" | "items_count" | "status">("id");
+  const [sortBy, setSortBy] = useState<"placed_at" | "id" | "customer" | "store" | "items_count" | "status">("placed_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [page, setPage] = useState(1);
@@ -198,7 +202,7 @@ export default function OrdersPage() {
       }
 
       return {
-        orders: sortOrdersByIdDesc(dedupeOrders(nextOrders)),
+        orders: sortOrdersByRecencyDesc(dedupeOrders(nextOrders)),
         cursors: nextCursors,
         hasMore: anyFull,
         totalsByStore,
@@ -262,7 +266,7 @@ export default function OrdersPage() {
   const orders = useMemo(() => {
     if (useNetsisList && netsisOrdersQuery.data) {
       const merged = netsisOrdersQuery.data.pages.flatMap((p) => p.orders);
-      return sortOrdersByIdDesc(dedupeOrders(merged));
+      return sortOrdersByRecencyDesc(dedupeOrders(merged));
     }
     return installationsOrdersQuery.data?.data ?? [];
   }, [useNetsisList, netsisOrdersQuery.data, installationsOrdersQuery.data]);
@@ -359,9 +363,8 @@ export default function OrdersPage() {
       const dir = sortDir === "asc" ? 1 : -1;
       switch (sortBy) {
         case "placed_at": {
-          const A = a.placed_at ?? a.created_at ?? "";
-          const B = b.placed_at ?? b.created_at ?? "";
-          return dir * A.localeCompare(B);
+          const cmp = compareOrdersByRecency(a, b);
+          return dir === "desc" ? cmp : -cmp;
         }
         case "id":
           return dir * compareOrderIds(a.id, b.id);
@@ -726,10 +729,6 @@ export default function OrdersPage() {
 
 function compareOrderIds(a: string, b: string): number {
   return compareNetsisOrderIds(a, b);
-}
-
-function sortOrdersByIdDesc(list: Order[]): Order[] {
-  return sortOrdersByNetsisIdDesc(list);
 }
 
 function dedupeOrders(list: Order[]): Order[] {
