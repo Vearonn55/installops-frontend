@@ -518,6 +518,11 @@ ordersPage: {
 
     from: "Başlangıç",
     to: "Bitiş",
+
+    netsisDateHint:
+      "İsteğe bağlı — yalnızca ERP'den yüklenen siparişleri süzer. Daraltmak için tarihleri değiştirin.",
+    netsisDateActive:
+      "Tarih filtresi yüklü ERP satırlarına uygulanıyor. Eksik görünüyorsa daha fazla yükleyin veya tarih aralığını genişletin.",
   },
 
   table: {

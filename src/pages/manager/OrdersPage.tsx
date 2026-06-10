@@ -1,10 +1,6 @@
 // src/pages/manager/OrdersPage.tsx
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
-  Search,
-  Filter,
   ArrowUpDown,
   Calendar as CalendarIcon,
   User2,
@@ -14,407 +10,74 @@ import {
 
 import { cn } from "../../lib/utils";
 import { formatUiDateTime } from "../../lib/date-display";
-import { defaultDateRangeOrdersList, parseOrderDate } from "../../lib/date-range";
-// real API
-import { listOrders, type Order } from "../../api/orders";
-import { listStores, type Store as StoreType } from "../../api/stores";
-import { searchNetsisOrders, type NetsisOrderHit } from "../../api/integrations";
-import type { UUID } from "../../api/http";
-import { isAxiosError } from "../../api/http";
 import { useTranslation } from "react-i18next";
-import { useAuthStore } from "../../stores/auth";
-import { queryKeys } from "../../lib/query-client";
-import { useManagerStoreId } from "../../hooks/use-manager-store-id";
 import ResponsiveDataView, {
   MobileCardActions,
   MobileCardField,
 } from "../../components/ui/ResponsiveDataView";
 import { pageHeaderClass } from "../../lib/responsive-layout";
-import { DateRangeFilter } from "../../components/filters/DateRangeFilter";
-import {
-  compareNetsisOrderIds,
-  compareOrdersByRecency,
-  sortOrdersByRecencyDesc,
-} from "../../lib/netsis-order-id";
-
-const NETSIS_PAGE_SIZE = 50;
-
-type StoreFetchCursor = { offset: number; lastPageFull: boolean };
+import OrdersFilters from "../../components/orders/OrdersFilters";
+import OrdersLoadingPlaceholder from "../../components/orders/OrdersLoadingPlaceholder";
+import IndeterminateProgressBar from "../../components/ui/IndeterminateProgressBar";
+import { useOrdersListState } from "../../hooks/useOrdersListState";
+import type { OrderSortKey, SortDir } from "../../lib/orders-sort";
 
 export default function OrdersPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("common");
-  const isAdmin = useAuthStore((s) => s.hasRole("ADMIN"));
 
-  // 🔹 Local UI state — date range includes past orders (placed_at = installation created_at)
-  const ordersRangeDefault = useMemo(() => defaultDateRangeOrdersList(), []);
+  const {
+    isAdmin,
+    q,
+    setQ,
+    status,
+    setStatus,
+    store,
+    setStore,
+    from,
+    to,
+    setFromClamped,
+    setToClamped,
+    sortBy,
+    sortDir,
+    toggleSort,
+    page,
+    setPage,
+    useNetsisList,
+    ordersSource,
+    orders,
+    filtered,
+    paged,
+    totalPages,
+    netsisFilteredEmpty,
+    netsisCatalogTotal,
+    netsisDateFilterActive,
+    storeOptions,
+    managerStoreId,
+    isInitialLoading,
+    showLoadingBar,
+    loadingMore,
+    hasMore,
+    ordersFetchError,
+    netsisOrdersQuery,
+  } = useOrdersListState();
 
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
-  const [store, setStore] = useState<string>("");
-  const [from, setFrom] = useState<string>(ordersRangeDefault.from);
-  const [to, setTo] = useState<string>(ordersRangeDefault.to);
-
-  const setFromClamped = (val: string) => {
-    setFrom(val);
-    if (to && val > to) setTo(val);
-    setPage(1);
-    setNetsisDateFilterActive(true);
-  };
-  const setToClamped = (val: string) => {
-    setTo(val);
-    if (from && val < from) setFrom(val);
-    setPage(1);
-    setNetsisDateFilterActive(true);
-  };
-
-
-  const [sortBy, setSortBy] = useState<"placed_at" | "id" | "customer" | "store" | "items_count" | "status">("placed_at");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-
-  const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
-  /** Netsis ItemSlips are not date-scoped at the API; only filter by date after the user changes pickers. */
-  const [netsisDateFilterActive, setNetsisDateFilterActive] = useState(false);
-
-  useEffect(() => {
-    const trimmed = q.trim();
-    const t = window.setTimeout(() => {
-      setDebouncedFilterQ((prev) => (prev === trimmed ? prev : trimmed));
-    }, 400);
-    return () => window.clearTimeout(t);
-  }, [q]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [store, debouncedFilterQ, from, to, status]);
-
-  const storesQuery = useQuery({
-    queryKey: queryKeys.stores,
-    queryFn: () => listStores({ limit: 200 }),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const stores = storesQuery.data?.data ?? [];
-  const sessionValidated = useAuthStore((s) => s.sessionValidated);
-  const managerStoreId = useManagerStoreId(stores);
-
-  /** Resolved without waiting for useEffect — avoids enabled/queryKey flip on first paint. */
-  const effectiveStoreId = useMemo((): string | null => {
-    if (isAdmin) {
-      const id = store || stores[0]?.id;
-      return id || null;
-    }
-    return managerStoreId;
-  }, [isAdmin, store, stores, managerStoreId]);
-
-  const selectedStore = useMemo(
-    () => (effectiveStoreId ? stores.find((s) => s.id === effectiveStoreId) : undefined),
-    [stores, effectiveStoreId]
-  );
-  const useNetsisList = Boolean(selectedStore && storeUsesNetsisItemSlipsList(selectedStore));
-
-  useEffect(() => {
-    if (!isAdmin && managerStoreId && store !== managerStoreId) {
-      setStore(managerStoreId);
-    }
-  }, [isAdmin, managerStoreId, store]);
-
-  useEffect(() => {
-    if (!isAdmin || store || stores.length === 0) return;
-    setStore(stores[0].id);
-  }, [isAdmin, store, stores]);
-
-  useEffect(() => {
-    setNetsisDateFilterActive(false);
-  }, [effectiveStoreId, debouncedFilterQ]);
-
-  const fetchNetsisForStores = useCallback(
-    async (
-      targetStores: StoreType[],
-      q: string,
-      offsets: Record<string, number>
-    ): Promise<{
-      orders: Order[];
-      cursors: Record<string, StoreFetchCursor>;
-      hasMore: boolean;
-      totalsByStore: Record<string, number>;
-    }> => {
-      const results = await Promise.allSettled(
-        targetStores.map(async (s) => {
-          const detailOffset = offsets[s.id] ?? 0;
-
-          const res = await searchNetsisOrders({
-            store_id: s.id as UUID,
-            ...(q ? { q } : {}),
-            limit: NETSIS_PAGE_SIZE,
-            offset: detailOffset,
-          });
-
-          const hits = res.data ?? [];
-          const total = res.total;
-          const hasMore =
-            res.has_more === true ||
-            (res.has_more == null &&
-              !q.trim() &&
-              typeof total === "number" &&
-              detailOffset + hits.length < total) ||
-            (res.has_more == null && hits.length >= NETSIS_PAGE_SIZE);
-
-          return {
-            store: s,
-            hits,
-            hasMore,
-            total,
-          };
-        })
-      );
-
-      const nextOrders: Order[] = [];
-      const nextCursors: Record<string, StoreFetchCursor> = {};
-      const totalsByStore: Record<string, number> = {};
-      let anyFull = false;
-
-      for (const r of results) {
-        if (r.status !== "fulfilled") {
-          console.error("searchNetsisOrders failed for store:", r.reason);
-          continue;
-        }
-        const { store: st, hits, hasMore: storeHasMore, total } = r.value;
-        if (typeof total === "number") {
-          totalsByStore[st.id] = total;
-        }
-        if (storeHasMore) anyFull = true;
-        nextCursors[st.id] = {
-          offset: (offsets[st.id] ?? 0) + hits.length,
-          lastPageFull: storeHasMore,
-        };
-        nextOrders.push(...netsisHitsToOrders(hits, st));
-      }
-
-      if (targetStores.length && !nextOrders.length) {
-        const fail = results.find((r) => r.status === "rejected");
-        if (fail?.status === "rejected") {
-          throw fail.reason;
-        }
-      }
-
-      return {
-        orders: sortOrdersByRecencyDesc(dedupeOrders(nextOrders)),
-        cursors: nextCursors,
-        hasMore: anyFull,
-        totalsByStore,
-      };
-    },
-    []
-  );
-
-  const storesReady = !storesQuery.isPending;
-  const listEnabled =
-    sessionValidated &&
-    storesReady &&
-    Boolean(effectiveStoreId);
-
-  const netsisOrdersQuery = useInfiniteQuery({
-    queryKey: queryKeys.netsisOrdersList(
-      effectiveStoreId ?? "_pending",
-      debouncedFilterQ
-    ),
-    initialPageParam: 0,
-    queryFn: async ({ pageParam }) => {
-      if (!selectedStore) {
-        return {
-          orders: [] as Order[],
-          cursors: {} as Record<string, StoreFetchCursor>,
-          hasMore: false,
-          totalsByStore: {} as Record<string, number>,
-        };
-      }
-      const offsets = { [selectedStore.id]: pageParam as number };
-      return fetchNetsisForStores([selectedStore], debouncedFilterQ, offsets);
-    },
-    getNextPageParam: (lastPage) => {
-      if (!selectedStore) return undefined;
-      const cursor = lastPage.cursors[selectedStore.id];
-      if (!cursor?.lastPageFull) return undefined;
-      return cursor.offset;
-    },
-    enabled:
-      listEnabled && useNetsisList && Boolean(selectedStore) && Boolean(effectiveStoreId),
-    staleTime: 60_000,
-    retry: false,
-    refetchOnMount: false,
-    refetchOnReconnect: false,
-  });
-
-  const installationsOrdersQuery = useQuery({
-    queryKey: ["orders", "installations", effectiveStoreId, debouncedFilterQ],
-    queryFn: () =>
-      listOrders({
-        limit: 300,
-        ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
-        ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
-      }),
-    enabled: !useNetsisList && listEnabled,
-    staleTime: 60_000,
-  });
-
-  const ordersSource: "installations" | "netsis" = useNetsisList ? "netsis" : "installations";
-
-  const orders = useMemo(() => {
-    if (useNetsisList && netsisOrdersQuery.data) {
-      const merged = netsisOrdersQuery.data.pages.flatMap((p) => p.orders);
-      return sortOrdersByRecencyDesc(dedupeOrders(merged));
-    }
-    return installationsOrdersQuery.data?.data ?? [];
-  }, [useNetsisList, netsisOrdersQuery.data, installationsOrdersQuery.data]);
-
-  const netsisTotalsByStore = useMemo(() => {
-    const pages = netsisOrdersQuery.data?.pages;
-    if (!pages?.length) return {};
-    return pages[pages.length - 1].totalsByStore;
-  }, [netsisOrdersQuery.data]);
-
-  const needsStorePick = isAdmin && !store;
-  const searchPending = q.trim() !== debouncedFilterQ;
-
-  const loading =
-    storesQuery.isLoading ||
-    searchPending ||
-    (needsStorePick
-      ? false
-      : useNetsisList
-        ? netsisOrdersQuery.isLoading || netsisOrdersQuery.isFetching
-        : installationsOrdersQuery.isLoading || installationsOrdersQuery.isFetching);
-
-  const loadingMore = netsisOrdersQuery.isFetchingNextPage;
-  const hasMore = useNetsisList ? Boolean(netsisOrdersQuery.hasNextPage) : false;
-
-  const ordersFetchError = useMemo(() => {
-    const err = useNetsisList ? netsisOrdersQuery.error : installationsOrdersQuery.error;
-    if (!err) return null;
-    const statusCode = isAxiosError(err) ? err.response?.status : undefined;
-    const msg =
-      (isAxiosError(err) && (err.response?.data as { message?: string })?.message) ||
-      (err instanceof Error ? err.message : "Request failed");
-    if (statusCode === 404 && !useNetsisList) {
-      return "Orders list is not available on this API (404). Deploy the latest installops-backend (GET /orders) and restart Node, or fix nginx so /api/v1 is proxied to the app.";
-    }
-    return msg;
-  }, [useNetsisList, netsisOrdersQuery.error, installationsOrdersQuery.error]);
-
-  // Derived store dropdown
-  const storeOptions = useMemo(() => {
-    const all = stores.map((s) => ({
-      id: s.id,
-      label: s.name?.trim() || s.id,
-    }));
-    if (isAdmin) return all;
-    if (managerStoreId) {
-      const one = all.find((s) => s.id === managerStoreId);
-      return one ? [one] : all;
-    }
-    return all;
-  }, [stores, isAdmin, managerStoreId]);
-
-  const storeFilterOptions = useMemo(() => {
-    return storeOptions.map((s) => ({ value: s.id, label: s.label }));
-  }, [storeOptions]);
-
-  const netsisCatalogTotal = useMemo(() => {
-    const vals = Object.values(netsisTotalsByStore);
-    if (!vals.length) return null;
-    return vals.reduce((sum, n) => sum + n, 0);
-  }, [netsisTotalsByStore]);
-
-  // 🔹 Filter + search + store filter
-  const filtered = useMemo(() => {
-    let list = orders.slice();
-
-    // Date filtering (installations always; Netsis only after user adjusts dates — API pages are not date-scoped)
-    const applyDateFilter =
-      ordersSource !== "netsis" || netsisDateFilterActive;
-    if (applyDateFilter && from && to) {
-      const fromD = new Date(from + "T00:00:00");
-      const toD = new Date(to + "T23:59:59");
-      list = list.filter((o) => {
-        const dt = parseOrderDate(o.placed_at ?? o.created_at);
-        if (!dt) return false;
-        return dt >= fromD && dt <= toD;
-      });
-    }
-
-    // Status filter (Netsis slips are shown as confirmed; skip so filters do not hide the whole list)
-    if (ordersSource !== "netsis" && status !== "all") {
-      list = list.filter((o) => o.status === status);
-    }
-
-    // Store filter (match top-level id or nested store; UUID serialization can differ)
-    if (store) {
-      list = list.filter((o) => orderMatchesStoreFilter(o, store));
-    }
-
-    // Text search is handled server-side via debouncedFilterQ (Netsis search + GET /orders).
-
-    // Sorting
-    list.sort((a, b) => {
-      const dir = sortDir === "asc" ? 1 : -1;
-      switch (sortBy) {
-        case "placed_at": {
-          const cmp = compareOrdersByRecency(a, b);
-          return dir === "desc" ? cmp : -cmp;
-        }
-        case "id":
-          return dir * compareOrderIds(a.id, b.id);
-        case "customer":
-          return dir * (a.customer_name ?? "").localeCompare(b.customer_name ?? "");
-        case "store":
-          return dir * (a.store?.name ?? "").localeCompare(b.store?.name ?? "");
-        case "items_count":
-          return dir * ((a.items_count ?? 0) - (b.items_count ?? 0));
-        case "status":
-          return dir * (statusRank(String(a.status)) - statusRank(String(b.status)));
-      }
-    });
-
-    return list;
-  }, [orders, status, store, from, to, sortBy, sortDir, ordersSource, netsisDateFilterActive]);
-
-  const netsisFilteredEmpty =
-    ordersSource === "netsis" &&
-    netsisDateFilterActive &&
-    orders.length > 0 &&
-    filtered.length === 0;
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-  const toggleSort = (k: typeof sortBy) => {
-    if (sortBy === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
-    else {
-      setSortBy(k);
-      setSortDir("asc");
-    }
-  };
+  const showTableLoading = isInitialLoading;
+  const showTableRows = !isInitialLoading;
 
   const openDetail = (id: string, storeId?: string | null) => {
-    const q = storeId ? `?store_id=${encodeURIComponent(storeId)}` : "";
-    navigate(`/app/orders/${encodeURIComponent(id)}${q}`);
+    const qs = storeId ? `?store_id=${encodeURIComponent(storeId)}` : "";
+    navigate(`/app/orders/${encodeURIComponent(id)}${qs}`);
   };
+
+  const loadingMessage = t("ordersPage.loading");
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className={pageHeaderClass}>
         <div>
-          <h1 className="text-xl font-bold sm:text-2xl">
-            {t("ordersPage.title")}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {t("ordersPage.subtitle")}
-          </p>
+          <h1 className="text-xl font-bold sm:text-2xl">{t("ordersPage.title")}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t("ordersPage.subtitle")}</p>
         </div>
       </div>
 
@@ -436,324 +99,265 @@ export default function OrdersPage() {
         </div>
       ) : null}
 
-      {/* Filters */}
-      <div className="filter-panel space-y-3">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4 md:items-end">
-        {/* Search */}
-        <div className="min-w-0 md:col-span-2">
-          <label className="text-xs text-gray-600 mb-1 block">
-            {t("ordersPage.filters.searchLabel")}
-          </label>
-          <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              className="input-search-field w-full"
-              placeholder={t("ordersPage.filters.searchPlaceholder")}
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-        </div>
+      <OrdersFilters
+        q={q}
+        onQChange={(val) => {
+          setQ(val);
+          setPage(1);
+        }}
+        status={status}
+        onStatusChange={(val) => {
+          setStatus(val);
+          setPage(1);
+        }}
+        store={isAdmin ? store : managerStoreId ?? store}
+        onStoreChange={(val) => {
+          setStore(val);
+          setPage(1);
+        }}
+        storeOptions={storeOptions}
+        storeDisabled={!isAdmin && Boolean(managerStoreId)}
+        showStatusFilter={!useNetsisList}
+        from={from}
+        to={to}
+        onFromChange={setFromClamped}
+        onToChange={setToClamped}
+        showNetsisDateHint={useNetsisList}
+        netsisDateFilterActive={netsisDateFilterActive}
+      />
 
-        {/* Status */}
-        <FilterSelect
-          label={t("ordersPage.filters.statusLabel")}
-          icon={Filter}
-          value={status}
-          onChange={(v: string) => {
-            setStatus(v as any);
-            setPage(1);
-          }}
-          options={[
-            { value: "all", label: t("ordersPage.filters.status.all") },
-            { value: "pending", label: t("ordersPage.filters.status.pending") },
-            { value: "confirmed", label: t("ordersPage.filters.status.confirmed") },
-            { value: "cancelled", label: t("ordersPage.filters.status.cancelled") },
-          ]}
-        />
+      <div className="relative">
+        {showLoadingBar && !isInitialLoading ? (
+          <IndeterminateProgressBar className="absolute inset-x-0 top-0 z-10 rounded-t-xl" />
+        ) : null}
 
-        {/* Store */}
-        <FilterSelect
-          label={t("ordersPage.filters.storeLabel")}
-          icon={Store}
-          value={isAdmin ? store : managerStoreId ?? store}
-          onChange={(v: string) => {
-            setStore(v);
-            setPage(1);
-          }}
-          options={storeFilterOptions}
-          disabled={!isAdmin && Boolean(managerStoreId)}
-        />
-        </div>
+        <ResponsiveDataView
+          rows={paged}
+          keyExtractor={(o) => `${o.store_id ?? ""}:${o.id}`}
+          loading={showTableLoading}
+          loadingContent={
+            <OrdersLoadingPlaceholder message={loadingMessage} showBar={showLoadingBar} />
+          }
+          empty={showTableRows && paged.length === 0}
+          emptyContent={
+            <p className="px-4 py-8 text-center text-sm text-gray-500">
+              {netsisFilteredEmpty
+                ? t("ordersPage.noResultsInDateRange", { loaded: orders.length })
+                : t("ordersPage.noResults")}
+            </p>
+          }
+          renderMobileCard={(o) => (
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900">{o.id}</p>
+                  <p className="text-xs tabular-nums text-gray-500">
+                    {formatUiDateTime(o.placed_at ?? o.created_at ?? undefined)}
+                  </p>
+                </div>
+                <StatusPill status={String(o.status)} />
+              </div>
+              <dl className="grid grid-cols-1 gap-2">
+                <MobileCardField label={t("ordersPage.table.customer")}>
+                  {o.customer_name ?? "—"}
+                </MobileCardField>
+                <MobileCardField label={t("ordersPage.table.store")}>
+                  {o.store?.name ?? "—"}
+                </MobileCardField>
+                <MobileCardField label={t("ordersPage.table.items")}>
+                  {o.items_count ?? 0}
+                </MobileCardField>
+              </dl>
+              <MobileCardActions>
+                <button
+                  type="button"
+                  onClick={() => openDetail(o.id, o.store_id)}
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700"
+                >
+                  {t("ordersPage.actions.view")}
+                </button>
+              </MobileCardActions>
+            </div>
+          )}
+          footer={
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
+              <div className="text-gray-600">
+                {t("ordersPage.pagination.showing")} <b>{paged.length}</b>{" "}
+                {t("ordersPage.pagination.of")}{" "}
+                <b>{ordersSource === "netsis" ? orders.length : filtered.length}</b>
+                {ordersSource === "netsis" && netsisCatalogTotal != null ? (
+                  <span className="text-gray-500"> / {netsisCatalogTotal}</span>
+                ) : null}
+                {ordersSource === "netsis" && netsisDateFilterActive && filtered.length !== orders.length ? (
+                  <span className="text-gray-500">
+                    {" "}
+                    · {t("ordersPage.pagination.filtered", { count: filtered.length })}
+                  </span>
+                ) : null}
+                {ordersSource === "netsis" && hasMore ? (
+                  <span className="text-gray-500"> · {t("ordersPage.pagination.moreAvailable")}</span>
+                ) : null}
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+                {loadingMore ? (
+                  <div className="w-full sm:w-32">
+                    <IndeterminateProgressBar className="rounded-full" />
+                  </div>
+                ) : null}
+                {ordersSource === "netsis" && hasMore ? (
+                  <button
+                    type="button"
+                    onClick={() => void netsisOrdersQuery.fetchNextPage()}
+                    disabled={loadingMore || !netsisOrdersQuery.hasNextPage}
+                    className={cn(
+                      "min-h-11 rounded-md border border-primary-300 bg-primary-50 px-3 py-2 text-primary-800",
+                      loadingMore && "opacity-50"
+                    )}
+                  >
+                    {loadingMore
+                      ? t("ordersPage.pagination.loadingMore")
+                      : t("ordersPage.pagination.loadMore")}
+                  </button>
+                ) : null}
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className={cn("min-h-11 rounded-md border px-3 py-2", page === 1 && "opacity-50")}
+                >
+                  {t("ordersPage.pagination.prev")}
+                </button>
+                <div className="flex min-h-11 items-center justify-center">
+                  {t("ordersPage.pagination.page")} <b>{page}</b> / {totalPages}
+                </div>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className={cn(
+                    "min-h-11 rounded-md border px-3 py-2",
+                    page === totalPages && "opacity-50"
+                  )}
+                >
+                  {t("ordersPage.pagination.next")}
+                </button>
+              </div>
+            </div>
+          }
+          desktop={
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-600">
+                <tr>
+                  <SortTh
+                    label={t("ordersPage.table.placed")}
+                    sortKey="placed_at"
+                    activeKey={sortBy}
+                    dir={sortDir}
+                    onClick={() => toggleSort("placed_at")}
+                  />
+                  <SortTh
+                    label={t("ordersPage.table.order")}
+                    sortKey="id"
+                    activeKey={sortBy}
+                    dir={sortDir}
+                    onClick={() => toggleSort("id")}
+                  />
+                  <SortTh
+                    label={t("ordersPage.table.customer")}
+                    sortKey="customer"
+                    activeKey={sortBy}
+                    dir={sortDir}
+                    onClick={() => toggleSort("customer")}
+                  />
+                  <SortTh
+                    label={t("ordersPage.table.store")}
+                    sortKey="store"
+                    activeKey={sortBy}
+                    dir={sortDir}
+                    onClick={() => toggleSort("store")}
+                  />
+                  <SortTh
+                    label={t("ordersPage.table.items")}
+                    sortKey="items_count"
+                    activeKey={sortBy}
+                    dir={sortDir}
+                    onClick={() => toggleSort("items_count")}
+                  />
+                  <SortTh
+                    label={t("ordersPage.table.status")}
+                    sortKey="status"
+                    activeKey={sortBy}
+                    dir={sortDir}
+                    onClick={() => toggleSort("status")}
+                  />
+                  <th className="w-24 px-3 py-2" />
+                </tr>
+              </thead>
 
-        <DateRangeFilter
-          from={from}
-          to={to}
-          fromLabel={t("ordersPage.filters.from")}
-          toLabel={t("ordersPage.filters.to")}
-          onFromChange={setFromClamped}
-          onToChange={setToClamped}
+              <tbody className="divide-y">
+                {showTableLoading ? (
+                  <tr>
+                    <td colSpan={7} className="p-0">
+                      <OrdersLoadingPlaceholder message={loadingMessage} showBar={showLoadingBar} />
+                    </td>
+                  </tr>
+                ) : paged.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
+                      {netsisFilteredEmpty
+                        ? t("ordersPage.noResultsInDateRange", { loaded: orders.length })
+                        : t("ordersPage.noResults")}
+                    </td>
+                  </tr>
+                ) : (
+                  paged.map((o) => (
+                    <tr key={`${o.store_id ?? ""}:${o.id}`} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1 text-xs tabular-nums text-gray-600">
+                          <CalendarIcon className="h-3.5 w-3.5" />
+                          {formatUiDateTime(o.placed_at ?? o.created_at ?? undefined)}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-medium">{o.id}</div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <User2 className="h-4 w-4 text-gray-400" />
+                          <span>{o.customer_name ?? "-"}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Store className="h-4 w-4 text-gray-400" />
+                          <span>{o.store?.name ?? "-"}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px]">
+                          <Package className="h-3.5 w-3.5" />
+                          {o.items_count ?? 0}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <StatusPill status={String(o.status)} />
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <button
+                          className="text-primary-600 hover:text-primary-800"
+                          onClick={() => openDetail(o.id, o.store_id)}
+                        >
+                          {t("ordersPage.actions.view")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          }
         />
       </div>
-
-      <ResponsiveDataView
-        rows={paged}
-        keyExtractor={(o) => `${o.store_id ?? ""}:${o.id}`}
-        loading={loading}
-        loadingContent={
-          <p className="px-4 py-8 text-center text-sm text-gray-500">
-            {t("ordersPage.loading")}
-          </p>
-        }
-        empty={!loading && paged.length === 0}
-        emptyContent={
-          <p className="px-4 py-8 text-center text-sm text-gray-500">
-            {netsisFilteredEmpty
-              ? t("ordersPage.noResultsInDateRange", { loaded: orders.length })
-              : t("ordersPage.noResults")}
-          </p>
-        }
-        renderMobileCard={(o) => (
-          <div className="space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900">{o.id}</p>
-                <p className="text-xs tabular-nums text-gray-500">
-                  {formatUiDateTime(o.placed_at ?? o.created_at ?? undefined)}
-                </p>
-              </div>
-              <StatusPill status={String(o.status)} />
-            </div>
-            <dl className="grid grid-cols-1 gap-2">
-              <MobileCardField label={t("ordersPage.table.customer")}>
-                {o.customer_name ?? "—"}
-              </MobileCardField>
-              <MobileCardField label={t("ordersPage.table.store")}>
-                {o.store?.name ?? "—"}
-              </MobileCardField>
-              <MobileCardField label={t("ordersPage.table.items")}>
-                {o.items_count ?? 0}
-              </MobileCardField>
-            </dl>
-            <MobileCardActions>
-              <button
-                type="button"
-                onClick={() => openDetail(o.id, o.store_id)}
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700"
-              >
-                {t("ordersPage.actions.view")}
-              </button>
-            </MobileCardActions>
-          </div>
-        )}
-        footer={
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t p-3 text-sm">
-          <div className="text-gray-600">
-            {t("ordersPage.pagination.showing")} <b>{paged.length}</b>{" "}
-            {t("ordersPage.pagination.of")}{" "}
-            <b>{ordersSource === "netsis" ? orders.length : filtered.length}</b>
-            {ordersSource === "netsis" && netsisCatalogTotal != null ? (
-              <span className="text-gray-500"> / {netsisCatalogTotal}</span>
-            ) : null}
-            {ordersSource === "netsis" && netsisDateFilterActive && filtered.length !== orders.length ? (
-              <span className="text-gray-500">
-                {" "}
-                · {t("ordersPage.pagination.filtered", { count: filtered.length })}
-              </span>
-            ) : null}
-            {ordersSource === "netsis" && hasMore ? (
-              <span className="text-gray-500"> · {t("ordersPage.pagination.moreAvailable")}</span>
-            ) : null}
-          </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-            {ordersSource === "netsis" && hasMore ? (
-              <button
-                type="button"
-                onClick={() => void netsisOrdersQuery.fetchNextPage()}
-                disabled={loadingMore || !netsisOrdersQuery.hasNextPage}
-                className={cn(
-                  "min-h-11 rounded-md border border-primary-300 bg-primary-50 px-3 py-2 text-primary-800",
-                  loadingMore && "opacity-50"
-                )}
-              >
-                {loadingMore ? t("ordersPage.pagination.loadingMore") : t("ordersPage.pagination.loadMore")}
-              </button>
-            ) : null}
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className={cn(
-                "min-h-11 rounded-md border px-3 py-2",
-                page === 1 && "opacity-50"
-              )}
-            >
-              {t("ordersPage.pagination.prev")}
-            </button>
-            <div className="flex min-h-11 items-center justify-center">
-              {t("ordersPage.pagination.page")} <b>{page}</b> / {totalPages}
-            </div>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className={cn(
-                "min-h-11 rounded-md border px-3 py-2",
-                page === totalPages && "opacity-50"
-              )}
-            >
-              {t("ordersPage.pagination.next")}
-            </button>
-          </div>
-        </div>
-        }
-        desktop={
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 text-xs text-gray-600">
-            <tr>
-              <Th
-                label={t("ordersPage.table.placed")}
-                active={sortBy === "placed_at"}
-                dir={sortDir}
-                onClick={() => toggleSort("placed_at")}
-              />
-              <Th
-                label={t("ordersPage.table.order")}
-                active={sortBy === "id"}
-                dir={sortDir}
-                onClick={() => toggleSort("id")}
-              />
-              <Th
-                label={t("ordersPage.table.customer")}
-                active={sortBy === "customer"}
-                dir={sortDir}
-                onClick={() => toggleSort("customer")}
-              />
-              <Th
-                label={t("ordersPage.table.store")}
-                active={sortBy === "store"}
-                dir={sortDir}
-                onClick={() => toggleSort("store")}
-              />
-              <Th
-                label={t("ordersPage.table.items")}
-                active={sortBy === "items_count"}
-                dir={sortDir}
-                onClick={() => toggleSort("items_count")}
-              />
-              <Th
-                label={t("ordersPage.table.status")}
-                active={sortBy === "status"}
-                dir={sortDir}
-                onClick={() => toggleSort("status")}
-              />
-              <th className="w-24 px-3 py-2"></th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y">
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="p-6 text-center text-gray-500">
-                  {t("ordersPage.loading")}
-                </td>
-              </tr>
-            ) : paged.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-gray-500">
-                  {netsisFilteredEmpty
-                    ? t("ordersPage.noResultsInDateRange", { loaded: orders.length })
-                    : t("ordersPage.noResults")}
-                </td>
-              </tr>
-            ) : (
-              paged.map((o) => (
-                <tr key={`${o.store_id ?? ""}:${o.id}`} className="hover:bg-gray-50">
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-1 text-xs tabular-nums text-gray-600">
-                      <CalendarIcon className="h-3.5 w-3.5" />
-                      {formatUiDateTime(o.placed_at ?? o.created_at ?? undefined)}
-                    </div>
-                  </td>
-
-                  <td className="px-3 py-2">
-                    <div className="font-medium">{o.id}</div>
-                  </td>
-
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <User2 className="h-4 w-4 text-gray-400" />
-                      <span>{o.customer_name ?? "-"}</span>
-                    </div>
-                  </td>
-
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <Store className="h-4 w-4 text-gray-400" />
-                      <span>{o.store?.name ?? "-"}</span>
-                    </div>
-                  </td>
-
-                  <td className="px-3 py-2">
-                    <div className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px]">
-                      <Package className="h-3.5 w-3.5" />
-                      {o.items_count ?? 0}
-                    </div>
-                  </td>
-
-                  <td className="px-3 py-2">
-                    <StatusPill status={String(o.status)} />
-                  </td>
-
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      className="text-primary-600 hover:text-primary-800"
-                      onClick={() => openDetail(o.id, o.store_id)}
-                    >
-                      {t("ordersPage.actions.view")}
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        }
-      />
     </div>
   );
-}
-
-/* ------------------------ Helpers & small components ------------------------ */
-
-function compareOrderIds(a: string, b: string): number {
-  return compareNetsisOrderIds(a, b);
-}
-
-function dedupeOrders(list: Order[]): Order[] {
-  const seen = new Set<string>();
-  const out: Order[] = [];
-  for (const o of list) {
-    const key = `${o.store_id ?? ""}:${o.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(o);
-  }
-  return out;
-}
-
-
-function orderMatchesStoreFilter(o: Order, storeId: string): boolean {
-  const sid = String(storeId).trim();
-  if (o.store_id != null && String(o.store_id) === sid) return true;
-  if (o.store?.id != null && String(o.store.id) === sid) return true;
-  return false;
-}
-
-function statusRank(s: string) {
-  const ix = ["pending", "confirmed", "cancelled"].indexOf(s);
-  return ix === -1 ? 1 : ix;
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -790,63 +394,37 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function storeUsesNetsisItemSlipsList(s: StoreType): boolean {
-  if (s.netsis_configured !== true) return false;
-  return s.netsis_orders_search_source !== "sql";
-}
-
-function netsisHitsToOrders(hits: NetsisOrderHit[], store: StoreType): Order[] {
-  return hits.map((h) => ({
-    id: h.order_id,
-    external_order_id: h.order_id,
-    store_id: store.id,
-    store,
-    customer_name: h.customer_name ?? null,
-    status: "confirmed",
-    items_count: h.items_count ?? null,
-    placed_at: h.placed_at ?? undefined,
-    created_at: h.placed_at ?? undefined,
-  }));
-}
-
-function FilterSelect({ label, icon: Icon, value, onChange, options, disabled }: any) {
-  return (
-    <div className="min-w-0">
-      <label className="text-xs text-gray-600 mb-1 block">{label}</label>
-      <div className="relative">
-        <Icon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <select
-          className="input-select-with-icon w-full"
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          {options.map((o: any) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-function Th({ label, onClick, active, dir }: any) {
+function SortTh({
+  label,
+  sortKey,
+  activeKey,
+  dir,
+  onClick,
+}: {
+  label: string;
+  sortKey: OrderSortKey;
+  activeKey: OrderSortKey;
+  dir: SortDir;
+  onClick: () => void;
+}) {
+  const active = activeKey === sortKey;
   return (
     <th className="px-3 py-2 text-left font-semibold text-gray-700">
       <button
+        type="button"
         onClick={onClick}
         className={cn(
-          "inline-flex items-center gap-1 px-1.5 py-0.5 hover:bg-gray-100",
-          active && "text-primary-700"
+          "inline-flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-gray-100",
+          active && "bg-primary-50 text-primary-700"
         )}
+        aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
       >
         {label}
         <ArrowUpDown
           className={cn(
-            "h-3.5 w-3.5",
-            active && dir === "asc" && "rotate-180"
+            "h-3.5 w-3.5 transition-transform",
+            active && dir === "asc" && "rotate-180",
+            active ? "text-primary-600" : "text-gray-400"
           )}
         />
       </button>

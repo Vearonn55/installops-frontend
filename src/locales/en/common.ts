@@ -518,6 +518,11 @@ ordersPage: {
 
     from: "From",
     to: "To",
+
+    netsisDateHint:
+      "Optional — filters only orders already loaded from ERP. Change dates to narrow the list.",
+    netsisDateActive:
+      "Date filter active on loaded ERP rows. Load more or widen dates if results look incomplete.",
   },
 
   table: {
