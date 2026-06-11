@@ -31,6 +31,8 @@ import {
   deleteTransfer,
   type Transfer,
 } from '../../api/transfers';
+import { getNetsisTransferDetail } from '../../api/integrations';
+import { mergeTransferDisplayItems } from '../../lib/transfer-display-items';
 import EditTransferModal from '../../components/manager/EditTransferModal';
 import { resolveMediaUrl } from '../../lib/media-url';
 import { RevealablePhotoGrid } from '../../components/media/RevealablePhotoGrid';
@@ -82,6 +84,24 @@ export default function TransferDetailPage() {
   const tr = query.data;
   const items = useMemo(() => tr?.items ?? [], [tr]);
   const crew = useMemo(() => tr?.crew ?? [], [tr]);
+
+  const netsisTransferItemsQuery = useQuery({
+    queryKey: ['transfer-netsis-lines', tr?.id, tr?.store_id, tr?.external_transfer_id],
+    enabled: Boolean(tr?.store_id && tr?.external_transfer_id),
+    queryFn: async () => {
+      const res = await getNetsisTransferDetail({
+        store_id: String(tr!.store_id) as UUID,
+        transfer_id: String(tr!.external_transfer_id || ''),
+      });
+      return res.data?.items ?? [];
+    },
+    retry: false,
+  });
+
+  const displayItems = useMemo(
+    () => mergeTransferDisplayItems(items, netsisTransferItemsQuery.data ?? []),
+    [items, netsisTransferItemsQuery.data]
+  );
   const uiStatus = normalizeTransferStatus(tr?.status);
 
   const timelineQuery = useQuery({
@@ -434,29 +454,65 @@ export default function TransferDetailPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">SKU</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Qty</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                  {t('transferDetailPage.itemsCard.instructions')}
+                  Description
                 </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Qty</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {items.map((it) => (
-                <tr key={it.id}>
-                  <td className="px-4 py-3 font-mono text-sm text-gray-900">{it.external_product_id}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{it.quantity ?? 1}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{it.special_instructions ?? '—'}</td>
-                </tr>
-              ))}
-              {items.length === 0 && (
+              {displayItems.map((it) => {
+                const sku = String(it.sku ?? it.external_product_id ?? '').trim() || '—';
+                const nameRaw = String(it.name ?? '').trim();
+                const descRaw = String(it.description ?? '').trim();
+                const hasDistinctName = Boolean(nameRaw && nameRaw !== sku);
+                const name = hasDistinctName
+                  ? nameRaw
+                  : t('transferDetailPage.itemsCard.table.noProductTitle');
+                let description: string;
+                let descriptionIsPlaceholder = false;
+                if (descRaw && descRaw !== sku && descRaw !== nameRaw) description = descRaw;
+                else if (descRaw && descRaw !== sku) description = descRaw;
+                else {
+                  description = t('transferDetailPage.itemsCard.table.noProductDescription');
+                  descriptionIsPlaceholder = true;
+                }
+                return (
+                  <tr key={it.id}>
+                    <td className="px-4 py-3 font-mono text-sm text-gray-900">{sku}</td>
+                    <td
+                      className={cn(
+                        'px-4 py-3 text-sm text-gray-900',
+                        !hasDistinctName && 'italic text-gray-500'
+                      )}
+                    >
+                      {name}
+                    </td>
+                    <td
+                      className={cn(
+                        'px-4 py-3 text-sm text-gray-700',
+                        descriptionIsPlaceholder && 'italic text-gray-500'
+                      )}
+                    >
+                      {description}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{it.quantity ?? 1}</td>
+                  </tr>
+                );
+              })}
+              {displayItems.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-4 py-6 text-center text-sm text-gray-500">
+                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-500">
                     {t('transferDetailPage.itemsCard.none')}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          {(query.isLoading || netsisTransferItemsQuery.isLoading) && (
+            <div className="px-4 py-6 text-sm text-gray-500">{t('transferDetailPage.loading')}</div>
+          )}
         </div>
       </div>
 

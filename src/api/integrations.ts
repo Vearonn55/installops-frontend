@@ -160,8 +160,10 @@ export type NetsisTransferSearchResponse = {
 
 export type NetsisTransferLineView = {
   external_product_id: string;
+  sku?: string;
   quantity: number;
   name?: string;
+  description?: string | null;
   special_instructions?: string | null;
 };
 

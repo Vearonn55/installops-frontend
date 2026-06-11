@@ -663,6 +663,10 @@ transferDetailPage: {
     title: 'Kalemler',
     instructions: 'Notlar',
     none: 'Kalem yok.',
+    table: {
+      noProductTitle: 'ERP’de ürün adı yok (kod SKU’da)',
+      noProductDescription: 'ERP’de açıklama yok',
+    },
   },
   media: {
     title: 'Fotoğraflar',

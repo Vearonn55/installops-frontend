@@ -663,6 +663,10 @@ transferDetailPage: {
     title: 'Items',
     instructions: 'Notes',
     none: 'No line items.',
+    table: {
+      noProductTitle: 'No product title in ERP (code is in SKU)',
+      noProductDescription: 'No description in ERP',
+    },
   },
   media: {
     title: 'Photos',

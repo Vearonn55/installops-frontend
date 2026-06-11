@@ -25,6 +25,8 @@ import {
   upsertTransferCrewNotes,
   updateTransferFailureReason,
 } from '../../api/transfers';
+import { getNetsisTransferDetail } from '../../api/integrations';
+import { mergeTransferDisplayItems } from '../../lib/transfer-display-items';
 import {
   buildCrewTransferView,
   crewJobCardClass,
@@ -50,6 +52,19 @@ export default function CrewTransferJobDetail() {
   });
 
   const transfer = transferQuery.data;
+
+  const netsisTransferItemsQuery = useQuery({
+    queryKey: ['transfer-netsis-lines', transfer?.id, transfer?.store_id, transfer?.external_transfer_id],
+    enabled: Boolean(transfer?.store_id && transfer?.external_transfer_id),
+    queryFn: async () => {
+      const res = await getNetsisTransferDetail({
+        store_id: String(transfer!.store_id) as UUID,
+        transfer_id: String(transfer!.external_transfer_id || ''),
+      });
+      return res.data?.items ?? [];
+    },
+    retry: false,
+  });
 
   const job = useMemo(
     () => (transfer ? buildCrewTransferView(transfer) : null),
@@ -108,7 +123,14 @@ export default function CrewTransferJobDetail() {
     }
   };
 
-  const items = transfer?.items ?? [];
+  const displayItems = useMemo(
+    () =>
+      mergeTransferDisplayItems(
+        transfer?.items ?? [],
+        netsisTransferItemsQuery.data ?? []
+      ),
+    [transfer?.items, netsisTransferItemsQuery.data]
+  );
   const canAct = job?.status === 'in_progress';
 
   return (
@@ -217,26 +239,36 @@ export default function CrewTransferJobDetail() {
               </button>
             ) : null}
 
-            {items.length > 0 ? (
+            {displayItems.length > 0 ? (
               <section className="rounded-2xl border bg-white p-4 shadow-sm">
                 <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900">
                   <Package className="h-4 w-4" />
                   {t('crewPages.transferLines')}
                 </div>
                 <ul className="divide-y">
-                  {items.map((it) => (
-                    <li key={it.id} className="py-3">
-                      <div className="font-mono text-sm font-medium text-gray-900">
-                        {it.external_product_id}
-                      </div>
-                      {it.special_instructions ? (
-                        <p className="mt-0.5 text-xs text-gray-600">{it.special_instructions}</p>
-                      ) : null}
-                      <div className="mt-1 text-xs font-semibold text-gray-900">
-                        ×{it.quantity}
-                      </div>
-                    </li>
-                  ))}
+                  {displayItems.map((it) => {
+                    const sku = String(it.sku ?? it.external_product_id ?? '').trim();
+                    const nameRaw = String(it.name ?? '').trim();
+                    const descRaw = String(it.description ?? '').trim();
+                    const title =
+                      nameRaw && nameRaw !== sku ? nameRaw : sku;
+                    const subtitle =
+                      descRaw && descRaw !== sku && descRaw !== nameRaw
+                        ? descRaw
+                        : null;
+                    return (
+                      <li key={it.id} className="py-3">
+                        <div className="font-mono text-xs text-gray-500">{sku}</div>
+                        <div className="text-sm font-medium text-gray-900">{title}</div>
+                        {subtitle ? (
+                          <p className="mt-0.5 text-xs text-gray-600">{subtitle}</p>
+                        ) : null}
+                        <div className="mt-1 text-xs font-semibold text-gray-900">
+                          ×{it.quantity}
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             ) : null}

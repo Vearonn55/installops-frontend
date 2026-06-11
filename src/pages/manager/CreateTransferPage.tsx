@@ -70,7 +70,9 @@ export default function CreateTransferPage() {
   const [sourceDepotCode, setSourceDepotCode] = useState<number | null>(null);
   const [destDepotCode, setDestDepotCode] = useState<number | null>(null);
   const [erpDate, setErpDate] = useState<string | null>(null);
-  const [prefillItems, setPrefillItems] = useState<Array<{ external_product_id: string; quantity: number }>>([]);
+  const [prefillItems, setPrefillItems] = useState<
+    Array<{ external_product_id: string; quantity: number; special_instructions?: string | null }>
+  >([]);
 
   const handleDateBlur = () => {
     const finalized = finalizeScheduleDateInput(dateInput);
@@ -138,6 +140,8 @@ export default function CreateTransferPage() {
             .map((line) => ({
               external_product_id: line.external_product_id,
               quantity: line.quantity,
+              special_instructions:
+                line.description ?? line.special_instructions ?? null,
             }))
             .filter((it) => !!it.external_product_id)
         );
