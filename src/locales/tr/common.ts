@@ -655,7 +655,7 @@ transferDetailPage: {
   },
   timeline: {
     title: 'Aktivite',
-    subtitle: 'Özet kilometre taşları. Tam geçmiş için',
+    subtitle: 'Tam geçmiş için',
     auditLink: 'Denetim',
     empty: 'Henüz kayıt yok.',
   },
