@@ -18,7 +18,13 @@ import type { Installation } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuthStore } from '../../stores/auth';
 import { listInstallations, type Installation as ApiInstallation } from '../../api/installations';
+import { listTransfers, type Transfer } from '../../api/transfers';
 import { listStores } from '../../api/stores';
+import type { UUID } from '../../api/http';
+import {
+  normalizeTransferStatus,
+  transferStatusBadgeClass,
+} from '../../lib/transfer-status';
 import { useManagerStoreId } from '../../hooks/use-manager-store-id';
 import { useTranslation } from 'react-i18next';
 import { formatUiDayMonth, formatUiFullFromDate, formatUiTime } from '../../lib/date-display';
@@ -122,7 +128,25 @@ type CalendarInstallation = Installation & {
   customer_name?: string | null;
 };
 
-function calendarEventLabel(inst: CalendarInstallation): string {
+type CalendarEventKind = 'installation' | 'transfer';
+
+type CalendarEvent = {
+  kind: CalendarEventKind;
+  id: string;
+  scheduled_start: string;
+  scheduled_end: string;
+  status: string;
+  label: string;
+  subtitle?: string;
+};
+
+function formatDepotLabel(code?: number | null, label?: string | null): string {
+  if (label?.trim()) return label.trim();
+  if (code != null && !Number.isNaN(code)) return String(code);
+  return '—';
+}
+
+function calendarInstallationLabel(inst: CalendarInstallation): string {
   const name = (inst.customer_name || '').trim();
   if (name) return name;
   const code = (inst.install_code || '').trim();
@@ -130,19 +154,92 @@ function calendarEventLabel(inst: CalendarInstallation): string {
   return inst.order_id || inst.id;
 }
 
-function calendarEventTitle(
-  inst: CalendarInstallation,
-  statusLabel: string
-): string {
-  const parts = [calendarEventLabel(inst)];
-  if (inst.order_id) parts.push(inst.order_id);
+function mapInstallationToEvent(inst: CalendarInstallation): CalendarEvent {
+  return {
+    kind: 'installation',
+    id: inst.id,
+    scheduled_start: inst.scheduled_start,
+    scheduled_end: inst.scheduled_end,
+    status: inst.status,
+    label: calendarInstallationLabel(inst),
+    subtitle: inst.order_id || inst.install_code,
+  };
+}
+
+function mapTransferToEvent(tr: Transfer): CalendarEvent {
+  const source = formatDepotLabel(tr.source_depot_code, tr.source_depot_label);
+  const dest = formatDepotLabel(tr.dest_depot_code, tr.dest_depot_label);
+  return {
+    kind: 'transfer',
+    id: tr.id,
+    scheduled_start: tr.scheduled_start ?? '',
+    scheduled_end: tr.scheduled_end ?? tr.scheduled_start ?? '',
+    status: tr.status,
+    label: `${source} → ${dest}`,
+    subtitle: tr.transfer_code || tr.external_transfer_id,
+  };
+}
+
+function calendarEventPath(ev: CalendarEvent): string {
+  return ev.kind === 'transfer'
+    ? `/app/transfers/${ev.id}`
+    : `/app/installations/${ev.id}`;
+}
+
+function calendarEventTitle(ev: CalendarEvent, statusLabel: string): string {
+  const parts = [ev.label];
+  if (ev.subtitle) parts.push(ev.subtitle);
   parts.push(statusLabel);
-  if (inst.scheduled_start) {
-    parts.push(
-      `${toLocalHM(inst.scheduled_start)}–${toLocalHM(inst.scheduled_end)}`
-    );
+  if (ev.scheduled_start) {
+    parts.push(`${toLocalHM(ev.scheduled_start)}–${toLocalHM(ev.scheduled_end)}`);
   }
   return parts.join(' • ');
+}
+
+function calendarEventStatusClasses(ev: CalendarEvent): string {
+  if (ev.kind === 'transfer') {
+    return transferStatusBadgeClass(normalizeTransferStatus(ev.status));
+  }
+  return statusClasses(ev.status as Installation['status']);
+}
+
+function calendarEventStatusLabel(
+  ev: CalendarEvent,
+  t: (key: string) => string
+): string {
+  if (ev.kind === 'transfer') {
+    return t(`transfersPage.statusLabels.${normalizeTransferStatus(ev.status)}`);
+  }
+  return t(
+    `installationsPage.statusLabels.${statusLabelKey(ev.status as Installation['status'])}`
+  );
+}
+
+function groupEventsByDay(events: CalendarEvent[]): Map<string, CalendarEvent[]> {
+  const m = new Map<string, CalendarEvent[]>();
+  for (const ev of events) {
+    if (!ev.scheduled_start) continue;
+    const key = isoToLocalYMD(ev.scheduled_start);
+    if (!key) continue;
+    if (!m.has(key)) m.set(key, []);
+    m.get(key)!.push(ev);
+  }
+  for (const [, arr] of m) {
+    arr.sort((a, b) => (a.scheduled_start || '').localeCompare(b.scheduled_start || ''));
+  }
+  return m;
+}
+
+function TransferKindBadge({ title }: { title: string }) {
+  return (
+    <span
+      className="mr-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded bg-indigo-600 align-middle text-[8px] font-bold leading-none text-white"
+      title={title}
+      aria-label={title}
+    >
+      t
+    </span>
+  );
 }
 
 function statusLabelKey(status: Installation['status']): string {
@@ -223,17 +320,17 @@ export default function CalendarPage() {
     return hit?.name ?? storeFilter;
   }, [storeFilter, storesQuery.data]);
 
-  // Fetch installs (server filters by store for managers; client filters by date)
-  const query = useQuery({
+  const listParams = {
+    ...(storeFilter ? { store_id: storeFilter as UUID } : {}),
+    limit: 300,
+    offset: 0,
+  };
+
+  const installationsQuery = useQuery({
     queryKey: ['calendar', 'installations', { store_id: storeFilter ?? 'all' }],
     enabled: isAdmin || storesQuery.isSuccess,
     queryFn: async () => {
-      const res = await listInstallations({
-        ...(storeFilter ? { store_id: storeFilter as any } : {}),
-        limit: 300,
-        offset: 0,
-      });
-
+      const res = await listInstallations(listParams);
       const apiItems = (res.data ?? []) as ApiInstallation[];
       const mapped: CalendarInstallation[] = apiItems.map((i) => ({
         id: i.id,
@@ -249,12 +346,32 @@ export default function CalendarPage() {
         created_at: i.created_at,
         updated_at: i.updated_at,
       }));
-
-      return mapped;
+      return mapped.map(mapInstallationToEvent);
     },
   });
 
-  const installations = query.data ?? [];
+  const transfersQuery = useQuery({
+    queryKey: ['calendar', 'transfers', { store_id: storeFilter ?? 'all' }],
+    enabled: isAdmin || storesQuery.isSuccess,
+    queryFn: async () => {
+      const res = await listTransfers(listParams);
+      return (res.data ?? []).map(mapTransferToEvent);
+    },
+  });
+
+  const events = useMemo(
+    () => [...(installationsQuery.data ?? []), ...(transfersQuery.data ?? [])],
+    [installationsQuery.data, transfersQuery.data]
+  );
+
+  const isFetching = installationsQuery.isFetching || transfersQuery.isFetching;
+  const isLoading = installationsQuery.isLoading || transfersQuery.isLoading;
+  const isError = installationsQuery.isError || transfersQuery.isError;
+
+  const refreshCalendar = () => {
+    void installationsQuery.refetch();
+    void transfersQuery.refetch();
+  };
 
   /* ---- Date helpers shared by both views ---- */
   const todayStr = fmtYYYYMMDD(new Date());
@@ -265,12 +382,12 @@ export default function CalendarPage() {
   const filteredByRange = useMemo(() => {
     const fromMs = from.getTime();
     const toMs = to.getTime();
-    return installations.filter((inst) => {
-      if (!inst.scheduled_start) return false;
-      const tMs = new Date(inst.scheduled_start).getTime();
+    return events.filter((ev) => {
+      if (!ev.scheduled_start) return false;
+      const tMs = new Date(ev.scheduled_start).getTime();
       return tMs >= fromMs && tMs <= toMs;
     });
-  }, [installations, from, to]);
+  }, [events, from, to]);
 
   /* ---- Monthly prep ---- */
   const monthDays = useMemo(() => eachDayGrid(cursor), [cursor]);
@@ -284,43 +401,19 @@ export default function CalendarPage() {
     [monthStart, i18n.language]
   );
 
-  const byDayMonth = useMemo(() => {
-    const m = new Map<string, Installation[]>();
-    for (const inst of filteredByRange) {
-      if (!inst.scheduled_start) continue;
-      const key = isoToLocalYMD(inst.scheduled_start);
-      if (!key) continue;
-      if (!m.has(key)) m.set(key, []);
-      m.get(key)!.push(inst);
-    }
-    for (const [, arr] of m) {
-      arr.sort((a, b) =>
-        (a.scheduled_start || '').localeCompare(b.scheduled_start || '')
-      );
-    }
-    return m;
-  }, [filteredByRange]);
+  const byDayMonth = useMemo(
+    () => groupEventsByDay(filteredByRange),
+    [filteredByRange]
+  );
 
   /* ---- Weekly prep ---- */
   const weekDays = useMemo(() => eachDayOfWeek(cursor), [cursor]);
   const weekLabel = `${formatUiFullFromDate(weekStart)} – ${formatUiFullFromDate(weekEnd)}`;
 
-  const byDayWeek = useMemo(() => {
-    const m = new Map<string, Installation[]>();
-    for (const inst of filteredByRange) {
-      if (!inst.scheduled_start) continue;
-      const key = isoToLocalYMD(inst.scheduled_start);
-      if (!key) continue;
-      if (!m.has(key)) m.set(key, []);
-      m.get(key)!.push(inst);
-    }
-    for (const [, arr] of m) {
-      arr.sort((a, b) =>
-        (a.scheduled_start || '').localeCompare(b.scheduled_start || '')
-      );
-    }
-    return m;
-  }, [filteredByRange]);
+  const byDayWeek = useMemo(
+    () => groupEventsByDay(filteredByRange),
+    [filteredByRange]
+  );
 
   /* ---- Navigation ---- */
   const prevAction = () =>
@@ -396,12 +489,12 @@ export default function CalendarPage() {
           </div>
 
           <button
-            onClick={() => query.refetch()}
+            onClick={refreshCalendar}
             className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
-            disabled={query.isFetching}
+            disabled={isFetching}
           >
             <RefreshCw
-              className={cn('h-4 w-4', query.isFetching && 'animate-spin')}
+              className={cn('h-4 w-4', isFetching && 'animate-spin')}
             />
             {t('calendarPage.refresh')}
           </button>
@@ -459,6 +552,13 @@ export default function CalendarPage() {
           <span className="inline-block h-3 w-3 rounded border border-sky-200 bg-sky-50" />
           {t('calendarPage.legend.afterSaleService')}
         </span>
+
+        <span className="inline-flex items-center gap-2">
+          <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded bg-indigo-600 text-[8px] font-bold text-white">
+            t
+          </span>
+          {t('calendarPage.legend.transfer')}
+        </span>
       </div>
 
       {/* ===== Month View ===== */}
@@ -505,23 +605,23 @@ export default function CalendarPage() {
 
                   <div className="space-y-1">
                     {events.slice(0, 3).map((ev) => {
-                      const label = calendarEventLabel(ev);
-                      const statusLabel = t(
-                        `installationsPage.statusLabels.${statusLabelKey(ev.status)}`
-                      );
+                      const statusLabel = calendarEventStatusLabel(ev, t);
                       return (
-                      <Link
-                        to={`/app/installations/${ev.id}`}
-                        key={ev.id}
-                        className={cn(
-                          'block truncate rounded border px-2 py-1 text-[11px] font-medium hover:opacity-90',
-                          statusClasses(ev.status)
-                        )}
-                        title={calendarEventTitle(ev, statusLabel)}
-                      >
-                        {label}
-                      </Link>
-                    );
+                        <Link
+                          to={calendarEventPath(ev)}
+                          key={`${ev.kind}-${ev.id}`}
+                          className={cn(
+                            'block truncate rounded border px-2 py-1 text-[11px] font-medium hover:opacity-90',
+                            calendarEventStatusClasses(ev)
+                          )}
+                          title={calendarEventTitle(ev, statusLabel)}
+                        >
+                          {ev.kind === 'transfer' ? (
+                            <TransferKindBadge title={t('calendarPage.transferIndicator')} />
+                          ) : null}
+                          {ev.label}
+                        </Link>
+                      );
                     })}
                     {events.length > 3 && (
                       <div className="text-[11px] text-gray-500">
@@ -534,19 +634,19 @@ export default function CalendarPage() {
             })}
           </div>
 
-          {query.isLoading && (
+          {isLoading && (
             <div className="px-4 py-6 text-sm text-gray-500">
-              {t('calendarPage.loadingInstallations')}
+              {t('calendarPage.loadingEvents')}
             </div>
           )}
-          {query.isError && (
+          {isError && (
             <div className="px-4 py-6 text-sm text-red-600">
-              {t('calendarPage.failedToLoadInstallations')}
+              {t('calendarPage.failedToLoadEvents')}
             </div>
           )}
-          {!query.isLoading && filteredByRange.length === 0 && (
+          {!isLoading && filteredByRange.length === 0 && (
             <div className="px-4 py-6 text-sm text-gray-500">
-              {t('calendarPage.noInstallationsThisMonth')}
+              {t('calendarPage.noEventsThisMonth')}
             </div>
           )}
           </div>
@@ -630,10 +730,7 @@ export default function CalendarPage() {
 
                   {/* Events */}
                   {events.map((ev) => {
-                    const label = calendarEventLabel(ev);
-                    const statusLabel = t(
-                      `installationsPage.statusLabels.${statusLabelKey(ev.status)}`
-                    );
+                    const statusLabel = calendarEventStatusLabel(ev, t);
                     const s = new Date(ev.scheduled_start || day);
                     const e = new Date(ev.scheduled_end || s);
 
@@ -648,26 +745,31 @@ export default function CalendarPage() {
                       DAY_START,
                       Math.min(eh, DAY_END)
                     );
-                    const duration = Math.max(0.25, endClamped - startClamped); // >= 15 min
+                    const duration = Math.max(0.25, endClamped - startClamped);
 
                     const top = (startClamped - DAY_START) * HOUR_HEIGHT;
                     const height = Math.max(28, duration * HOUR_HEIGHT);
 
                     return (
                       <Link
-                        to={`/app/installations/${ev.id}`}
-                        key={ev.id}
+                        to={calendarEventPath(ev)}
+                        key={`${ev.kind}-${ev.id}`}
                         className={cn(
                           'absolute left-1 right-1 overflow-hidden rounded border px-2 py-1 text-[11px] font-medium shadow-sm transition-opacity hover:opacity-90',
-                          statusClasses(ev.status)
+                          calendarEventStatusClasses(ev)
                         )}
                         style={{ top, height }}
                         title={calendarEventTitle(ev, statusLabel)}
                       >
-                        <div className="truncate">{label}</div>
-                        <div className="truncate text-[10px] opacity-80">
-                          {ev.order_id || ev.install_code}
+                        <div className="truncate">
+                          {ev.kind === 'transfer' ? (
+                            <TransferKindBadge title={t('calendarPage.transferIndicator')} />
+                          ) : null}
+                          {ev.label}
                         </div>
+                        {ev.subtitle ? (
+                          <div className="truncate text-[10px] opacity-80">{ev.subtitle}</div>
+                        ) : null}
                         <div className="text-[10px] opacity-70">
                           {toLocalHM(ev.scheduled_start)}–
                           {toLocalHM(ev.scheduled_end)}
@@ -680,19 +782,19 @@ export default function CalendarPage() {
             })}
           </div>
 
-          {query.isLoading && (
+          {isLoading && (
             <div className="px-4 py-6 text-sm text-gray-500">
-              {t('calendarPage.loadingInstallations')}
+              {t('calendarPage.loadingEvents')}
             </div>
           )}
-          {query.isError && (
+          {isError && (
             <div className="px-4 py-6 text-sm text-red-600">
-              {t('calendarPage.failedToLoadInstallations')}
+              {t('calendarPage.failedToLoadEvents')}
             </div>
           )}
-          {!query.isLoading && filteredByRange.length === 0 && (
+          {!isLoading && filteredByRange.length === 0 && (
             <div className="px-4 py-6 text-sm text-gray-500">
-              {t('calendarPage.noInstallationsThisWeek')}
+              {t('calendarPage.noEventsThisWeek')}
             </div>
           )}
           </div>

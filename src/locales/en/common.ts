@@ -349,7 +349,14 @@ calendarPage: {
     failed: 'Failed',
     cancelled: 'Cancelled',
     afterSaleService: 'After-sale service',
+    transfer: 'Transfer (t)',
   },
+
+  transferIndicator: 'Transfer',
+  loadingEvents: 'Loading schedule…',
+  failedToLoadEvents: 'Failed to load calendar events.',
+  noEventsThisMonth: 'No installations or transfers in this month.',
+  noEventsThisWeek: 'No installations or transfers in this week.',
 
   weekdays: {
     mon: 'Mon',

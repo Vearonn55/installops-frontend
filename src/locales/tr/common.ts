@@ -349,7 +349,14 @@ calendarPage: {
     failed: 'Başarısız',
     cancelled: 'İptal edildi',
     afterSaleService: 'Satış sonrası servis',
+    transfer: 'Transfer (t)',
   },
+
+  transferIndicator: 'Transfer',
+  loadingEvents: 'Takvim yükleniyor…',
+  failedToLoadEvents: 'Takvim etkinlikleri yüklenemedi.',
+  noEventsThisMonth: 'Bu ay kurulum veya transfer yok.',
+  noEventsThisWeek: 'Bu hafta kurulum veya transfer yok.',
 
   weekdays: {
     mon: 'Pzt',

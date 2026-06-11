@@ -15,6 +15,7 @@ import {
   Edit3,
   Trash2,
   ArrowRight,
+  Store as StoreIcon,
 } from 'lucide-react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -149,6 +150,7 @@ export default function TransfersPage() {
 
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
+  const [adminStoreId, setAdminStoreId] = useState<string>('');
   const [status, setStatus] = useState<UiTransferStatus | 'all'>('all');
   const [from, setFrom] = useState<string>(rangeDefault.from);
   const [to, setTo] = useState<string>(rangeDefault.to);
@@ -164,7 +166,7 @@ export default function TransfersPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [q, status, from, to]);
+  }, [q, status, from, to, adminStoreId]);
 
   const storesQuery = useQuery({
     queryKey: ['stores'],
@@ -172,16 +174,19 @@ export default function TransfersPage() {
   });
 
   const managerStoreId = useManagerStoreId(storesQuery.data?.data ?? []);
+  const effectiveStoreId = isAdmin
+    ? adminStoreId || undefined
+    : managerStoreId || undefined;
 
   const transfersQuery = useInfiniteQuery({
-    queryKey: ['transfers', { store_id: managerStoreId ?? 'all', q: debouncedQ }],
+    queryKey: ['transfers', { store_id: effectiveStoreId ?? 'all', q: debouncedQ }],
     enabled: storesQuery.isSuccess && (isAdmin || Boolean(managerStoreId)),
     queryFn: async ({ pageParam }) => {
       const offset = typeof pageParam === 'number' ? pageParam : 0;
       return listTransfers({
         limit: TRANSFERS_PAGE_SIZE,
         offset,
-        ...(managerStoreId ? { store_id: managerStoreId as UUID } : {}),
+        ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
         ...(debouncedQ ? { q: debouncedQ } : {}),
       });
     },
@@ -410,7 +415,37 @@ export default function TransfersPage() {
       </div>
 
       <div className="filter-panel space-y-3">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:items-end">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-end">
+          <div className="min-w-0">
+            <label className="mb-1 block text-xs text-gray-600">
+              {t('ordersPage.storeLabel')}
+            </label>
+            <div className="relative min-w-0">
+              <StoreIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                className={cn(
+                  'input-select-with-icon w-full',
+                  !isAdmin && Boolean(managerStoreId) && 'opacity-60'
+                )}
+                value={isAdmin ? adminStoreId : managerStoreId ?? ''}
+                disabled={!isAdmin && Boolean(managerStoreId)}
+                onChange={(e) => {
+                  if (!isAdmin) return;
+                  setAdminStoreId(e.target.value);
+                  setPage(1);
+                }}
+              >
+                {isAdmin ? (
+                  <option value="">{t('ordersPage.storeAll')}</option>
+                ) : null}
+                {(storesQuery.data?.data ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="min-w-0">
             <label className="mb-1 block text-xs text-gray-600">
               {t('transfersPage.filters.searchLabel')}
