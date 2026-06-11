@@ -52,6 +52,12 @@ export type StoreNetsisConfig = Store & {
   netsis_sql_line_aciklama?: boolean | null;
   /** When true, parse kalem Ekalan (#name# #K:code#) on HTTP order detail. */
   netsis_ekalan_parse?: boolean | null;
+  netsis_transfer_search_path?: string | null;
+  netsis_transfer_search_q_column?: string | null;
+  netsis_transfer_browse_q?: string | null;
+  netsis_transfer_sort?: string | null;
+  netsis_transfers_search_source?: 'http' | 'sql' | null;
+  has_transfer_sql?: boolean;
 };
 
 export type StoreList = {
@@ -134,6 +140,12 @@ export type StoreNetsisUpdate = {
   netsis_sql_line_aciklama?: boolean | null;
   /** When true, parse kalem Ekalan (#name# #K:code#) on HTTP order detail. */
   netsis_ekalan_parse?: boolean | null;
+  netsis_transfer_search_path?: string | null;
+  netsis_transfer_search_q_column?: string | null;
+  netsis_transfer_browse_q?: string | null;
+  netsis_transfer_sort?: string | null;
+  netsis_transfers_search_source?: 'http' | 'sql' | null;
+  netsis_transfer_sql?: string | null;
 };
 
 export async function patchStoreNetsis(

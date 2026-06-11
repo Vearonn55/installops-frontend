@@ -1,6 +1,7 @@
 // src/pages/crew/CrewJobDetail.tsx
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import CrewTransferJobDetail from './CrewTransferJobDetail';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -32,7 +33,7 @@ import {
   crewStatusPillClass,
   mergeArpIntoCrewJobView,
   crewReadOnlyBannerKey,
-  isCrewChecklistAllowedStatus,
+  isCrewChecklistAllowedForJob,
   isCrewStartableStatus,
 } from '../../lib/crew-job';
 import type { NetsisOrderLineView } from '../../api/integrations';
@@ -86,6 +87,14 @@ function buildDisplayItems(
 }
 
 export default function CrewJobDetail() {
+  const [searchParams] = useSearchParams();
+  if (searchParams.get('kind') === 'transfer') {
+    return <CrewTransferJobDetail />;
+  }
+  return <CrewInstallationJobDetail />;
+}
+
+function CrewInstallationJobDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -316,7 +325,7 @@ export default function CrewJobDetail() {
               >
                 {t('crewPages.backToJobs')}
               </button>
-              {isCrewChecklistAllowedStatus(job.status) ? (
+              {isCrewChecklistAllowedForJob(job) ? (
                 <button
                   type="button"
                   onClick={() => navigate(`/crew/jobs/${job.id}/checklist`)}

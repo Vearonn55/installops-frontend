@@ -12,16 +12,22 @@ import {
   listInstallations,
   updateInstallationStatus,
 } from '../../api/installations';
+import { listTransfers, updateTransferStatus } from '../../api/transfers';
 import type { UUID } from '../../api/http';
 import { toLocalYmd } from '../../lib/local-date';
 import CrewJobCard from '../../components/crew/CrewJobCard';
 import {
   buildCrewJobView,
+  buildCrewTransferView,
+  crewJobDetailPath,
   installationDayKey,
   isCrewAssigned,
+  isCrewAssignedTransfer,
   isCrewActionableStatus,
   isCrewStartableStatus,
   isCrewVisibleInstallation,
+  isCrewVisibleTransfer,
+  transferDayKey,
   type CrewJobView,
 } from '../../lib/crew-job';
 import type { CrewJobsUiStatus } from '../../lib/installation-status';
@@ -66,12 +72,20 @@ export default function CrewHome() {
   const todayYmd = toLocalYmd(now);
   const [startingId, setStartingId] = useState<string | null>(null);
 
-  const { data, isLoading, isError } = useQuery({
+  const installationsQuery = useQuery({
     queryKey: ['crew-installations'],
     queryFn: () => listInstallations({ limit: 300, offset: 0 }),
   });
 
-  const startMutation = useMutation({
+  const transfersQuery = useQuery({
+    queryKey: ['crew-transfers'],
+    queryFn: () => listTransfers({ limit: 300, offset: 0 }),
+  });
+
+  const isLoading = installationsQuery.isLoading || transfersQuery.isLoading;
+  const isError = installationsQuery.isError || transfersQuery.isError;
+
+  const startInstallationMutation = useMutation({
     mutationFn: (id: UUID) =>
       updateInstallationStatus(id, { status: 'in_progress' }),
     onSuccess: () => {
@@ -80,12 +94,25 @@ export default function CrewHome() {
     },
   });
 
+  const startTransferMutation = useMutation({
+    mutationFn: (id: UUID) => updateTransferStatus(id, { status: 'in_progress' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crew-transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['crew-jobs-transfers'] });
+    },
+  });
+
   const myJobs: CrewJobView[] = useMemo(() => {
-    const insts = data?.data ?? [];
-    return insts
+    const insts = installationsQuery.data?.data ?? [];
+    const transfers = transfersQuery.data?.data ?? [];
+    const installationJobs = insts
       .filter((inst) => isCrewAssigned(inst, user?.id) && isCrewVisibleInstallation(inst))
       .map((inst) => buildCrewJobView(inst));
-  }, [data, user?.id]);
+    const transferJobs = transfers
+      .filter((tr) => isCrewAssignedTransfer(tr, user?.id) && isCrewVisibleTransfer(tr))
+      .map((tr) => buildCrewTransferView(tr));
+    return [...installationJobs, ...transferJobs];
+  }, [installationsQuery.data, transfersQuery.data, user?.id]);
 
   const weekJobs = useMemo(() => {
     return myJobs.filter((j) => {
@@ -97,10 +124,14 @@ export default function CrewHome() {
   const todayJobs = useMemo(
     () =>
       myJobs.filter((j) => {
-        const inst = (data?.data ?? []).find((i) => i.id === j.id);
+        if (j.kind === 'transfer') {
+          const tr = (transfersQuery.data?.data ?? []).find((t) => t.id === j.id);
+          return tr ? transferDayKey(tr) === todayYmd : false;
+        }
+        const inst = (installationsQuery.data?.data ?? []).find((i) => i.id === j.id);
         return inst ? installationDayKey(inst) === todayYmd : false;
       }),
-    [myJobs, data, todayYmd]
+    [myJobs, installationsQuery.data, transfersQuery.data, todayYmd]
   );
 
   const activeJob = useMemo(() => {
@@ -142,23 +173,38 @@ export default function CrewHome() {
     const map: Record<string, CrewJobView[]> = {};
     for (const w of weekDays) map[w.key] = [];
     for (const j of weekJobs) {
-      const inst = (data?.data ?? []).find((i) => i.id === j.id);
-      if (!inst) continue;
-      const k = dayKey(new Date(inst.scheduled_start || inst.created_at));
+      const anchor =
+        j.kind === 'transfer'
+          ? (transfersQuery.data?.data ?? []).find((t) => t.id === j.id)
+          : (installationsQuery.data?.data ?? []).find((i) => i.id === j.id);
+      if (!anchor) continue;
+      const k = dayKey(
+        new Date(
+          ('scheduled_start' in anchor && anchor.scheduled_start) ||
+            anchor.created_at
+        )
+      );
       if (!map[k]) map[k] = [];
       map[k].push(j);
     }
     return map;
-  }, [weekDays, weekJobs, data]);
+  }, [weekDays, weekJobs, installationsQuery.data, transfersQuery.data]);
 
-  const handleStart = async (id: string) => {
-    setStartingId(id);
+  const handleStart = async (job: CrewJobView) => {
+    setStartingId(job.id);
     try {
-      await startMutation.mutateAsync(id as UUID);
+      if (job.kind === 'transfer') {
+        await startTransferMutation.mutateAsync(job.id as UUID);
+      } else {
+        await startInstallationMutation.mutateAsync(job.id as UUID);
+      }
     } finally {
       setStartingId(null);
     }
   };
+
+  const starting =
+    startInstallationMutation.isPending || startTransferMutation.isPending;
 
   const otherToday = todayJobs.filter((j) => j.id !== activeJob?.id);
 
@@ -241,9 +287,9 @@ export default function CrewHome() {
           <CrewJobCard
             job={activeJob}
             showStart={isCrewStartableStatus(activeJob.status)}
-            starting={startingId === activeJob.id && startMutation.isPending}
-            onStart={() => handleStart(activeJob.id)}
-            onOpen={() => navigate(`/crew/jobs/${activeJob.id}`)}
+            starting={startingId === activeJob.id && starting}
+            onStart={() => handleStart(activeJob)}
+            onOpen={() => navigate(crewJobDetailPath(activeJob))}
           />
         ) : (
           <div className="rounded-2xl border bg-white p-4 text-sm text-gray-500 shadow-sm">
@@ -265,12 +311,12 @@ export default function CrewHome() {
         ) : (
           otherToday.map((job) => (
             <CrewJobCard
-              key={job.id}
+              key={`${job.kind}-${job.id}`}
               job={job}
               showStart={isCrewStartableStatus(job.status)}
-              starting={startingId === job.id && startMutation.isPending}
-              onStart={() => handleStart(job.id)}
-              onOpen={() => navigate(`/crew/jobs/${job.id}`)}
+              starting={startingId === job.id && starting}
+              onStart={() => handleStart(job)}
+              onOpen={() => navigate(crewJobDetailPath(job))}
             />
           ))
         )}

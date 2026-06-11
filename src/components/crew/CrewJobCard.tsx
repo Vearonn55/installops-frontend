@@ -1,4 +1,4 @@
-import { Clock, MapPin, Phone, Users, ChevronRight, Play, Banknote } from 'lucide-react';
+import { ArrowRight, Clock, MapPin, Phone, Users, ChevronRight, Play, Banknote } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import {
@@ -62,10 +62,23 @@ export default function CrewJobCard({
             >
               {t(crewStatusLabelKey(job.status))}
             </span>
+            {job.kind === 'transfer' ? (
+              <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-800">
+                {t('crewPages.transferBadge')}
+              </span>
+            ) : null}
           </div>
 
           <h3 className="text-lg font-bold leading-snug text-gray-900">
-            {job.customerName}
+            {job.kind === 'transfer' ? (
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                <span>{job.sourceDepotLabel || job.sourceDepotCode || '—'}</span>
+                <ArrowRight className="h-4 w-4 text-gray-500" />
+                <span>{job.destDepotLabel || job.destDepotCode || '—'}</span>
+              </span>
+            ) : (
+              job.customerName
+            )}
           </h3>
 
           <p className="text-sm font-medium text-gray-700">{job.storeName}</p>
@@ -130,7 +143,11 @@ export default function CrewJobCard({
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 text-base font-semibold text-white hover:bg-primary-700 disabled:opacity-60"
           >
             <Play className="h-5 w-5" />
-            {starting ? t('crewPages.starting') : t('crewPages.startInstallation')}
+            {starting
+              ? t('crewPages.starting')
+              : job.kind === 'transfer'
+                ? t('crewPages.startTransfer')
+                : t('crewPages.startInstallation')}
           </button>
         </div>
       ) : null}

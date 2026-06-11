@@ -198,6 +198,10 @@ function StoreRow({
   const [searchQLikeCol, setSearchQLikeCol] = useState('');
   const [detailPathTpl, setDetailPathTpl] = useState('');
   const [linesPathTpl, setLinesPathTpl] = useState('');
+  const [transferSearchPath, setTransferSearchPath] = useState('');
+  const [transferSearchQCol, setTransferSearchQCol] = useState('');
+  const [transferBrowseQ, setTransferBrowseQ] = useState('');
+  const [transferSort, setTransferSort] = useState('');
   const [ordersSearchSource, setOrdersSearchSource] = useState<'http' | 'sql'>('http');
   const [sqlHost, setSqlHost] = useState('');
   const [sqlPort, setSqlPort] = useState('1433');
@@ -232,6 +236,12 @@ function StoreRow({
     setSearchQLikeCol(activeStore.netsis_search_q_like_column || '');
     setDetailPathTpl(activeStore.netsis_order_detail_path || '');
     setLinesPathTpl(activeStore.netsis_order_lines_path || '');
+    setTransferSearchPath(
+      activeStore.netsis_transfer_search_path || '/api/v2/ItemTransactions?limit=50&offset=0'
+    );
+    setTransferSearchQCol(activeStore.netsis_transfer_search_q_column || 'FISNO');
+    setTransferBrowseQ(activeStore.netsis_transfer_browse_q || "Sthar_Htur='B'");
+    setTransferSort(activeStore.netsis_transfer_sort || 'Sthar_Tarih DESC');
     setOrdersSearchSource(activeStore.netsis_orders_search_source === 'sql' ? 'sql' : 'http');
     setSqlHost(activeStore.netsis_sql_host || '');
     setSqlPort(String(activeStore.netsis_sql_port ?? 1433));
@@ -277,6 +287,10 @@ function StoreRow({
         netsis_search_q_like_column: searchQLikeCol.trim() || null,
         netsis_order_detail_path: detailPathTpl.trim() || null,
         netsis_order_lines_path: linesPathTpl.trim() || null,
+        netsis_transfer_search_path: transferSearchPath.trim() || null,
+        netsis_transfer_search_q_column: transferSearchQCol.trim() || null,
+        netsis_transfer_browse_q: transferBrowseQ.trim() || null,
+        netsis_transfer_sort: transferSort.trim() || null,
         netsis_orders_search_source: ordersSearchSource,
         netsis_sql_host: sqlHost.trim() || null,
         netsis_sql_port: Number.isFinite(Number(sqlPort)) ? Math.floor(Number(sqlPort)) : 1433,
@@ -520,6 +534,48 @@ function StoreRow({
                   onChange={(e) => setLinesPathTpl(e.target.value)}
                 />
               </label>
+
+              <div className="flex flex-col gap-3 rounded-md border border-teal-200 bg-teal-50/40 p-3 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-teal-900">
+                  ItemTransactions — transfer search (depot moves)
+                </p>
+                <label className="block text-xs font-medium text-gray-600">
+                  Transfer search path
+                  <input
+                    className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 font-mono text-sm"
+                    placeholder="/api/v2/ItemTransactions?limit=50&offset=0"
+                    value={transferSearchPath}
+                    onChange={(e) => setTransferSearchPath(e.target.value)}
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600">
+                  Column for {'{'}query_sql{'}'} LIKE (default FISNO)
+                  <input
+                    className="mt-1 w-full max-w-xs rounded-md border bg-white px-2 py-1.5 font-mono text-sm"
+                    placeholder="FISNO"
+                    value={transferSearchQCol}
+                    onChange={(e) => setTransferSearchQCol(e.target.value)}
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600">
+                  Browse filter when search is empty (default Sthar_Htur=&apos;B&apos;)
+                  <input
+                    className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 font-mono text-sm"
+                    placeholder="Sthar_Htur='B'"
+                    value={transferBrowseQ}
+                    onChange={(e) => setTransferBrowseQ(e.target.value)}
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600">
+                  Sort parameter (default Sthar_Tarih DESC)
+                  <input
+                    className="mt-1 w-full rounded-md border bg-white px-2 py-1.5 font-mono text-sm"
+                    placeholder="Sthar_Tarih DESC"
+                    value={transferSort}
+                    onChange={(e) => setTransferSort(e.target.value)}
+                  />
+                </label>
+              </div>
 
               <div className="flex flex-col gap-2 rounded-md border border-sky-200 bg-sky-50/50 p-3 md:col-span-2">
                 <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">

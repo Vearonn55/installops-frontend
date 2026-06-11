@@ -5,7 +5,8 @@ export type MediaType = 'photo' | 'signature';
 
 export type MediaAsset = {
   id: UUID;
-  installation_id: UUID;
+  installation_id?: UUID | null;
+  transfer_id?: UUID | null;
   url: string;
   type: MediaType;
   tags?: Record<string, unknown> | string[]; // union from oneOf
@@ -68,6 +69,70 @@ export async function uploadInstallationMedia(
   const base =
     import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || '/api/v1';
   const url = `${base}/media/installations/${installationId}/media/upload`;
+
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 120_000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('upload_timeout');
+    }
+    throw new Error('network_error');
+  } finally {
+    window.clearTimeout(timer);
+  }
+
+  if (!res.ok) {
+    let message = `Upload failed (${res.status})`;
+    try {
+      const body = (await res.json()) as { message?: string };
+      if (body?.message) message = body.message;
+    } catch {
+      if (res.status === 413) {
+        message = 'file_too_large';
+      }
+    }
+    throw new Error(message);
+  }
+
+  return res.json() as Promise<MediaAsset>;
+}
+
+export async function listTransferMedia(
+  transferId: UUID,
+  params?: { limit?: number; offset?: number }
+): Promise<MediaAssetList> {
+  return apiGet<MediaAssetList>(`/transfers/${transferId}/media`, { params });
+}
+
+export type UploadTransferMediaOptions = {
+  type?: MediaType;
+  tags?: Record<string, unknown>;
+};
+
+export async function uploadTransferMedia(
+  transferId: UUID,
+  file: File,
+  opts?: UploadTransferMediaOptions
+): Promise<MediaAsset> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('type', opts?.type ?? 'photo');
+  if (opts?.tags && Object.keys(opts.tags).length > 0) {
+    form.append('tags', JSON.stringify(opts.tags));
+  }
+
+  const base =
+    import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || '/api/v1';
+  const url = `${base}/media/transfers/${transferId}/media/upload`;
 
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 120_000);

@@ -6,6 +6,7 @@ const enCommon = {
     dashboard: 'Dashboard',
     orders: 'Orders',
     installations: 'Installations',
+    transfers: 'Transfers',
     calendar: 'Calendar',
     reports: 'Reports',
     usersAndRoles: 'Users',
@@ -495,6 +496,235 @@ installationsPage: {
   sort: 'Sort',
 },
 
+transfersPage: {
+  title: 'Transfers',
+  subtitle: 'Depot-to-depot stock movements scheduled and tracked in InstallOps.',
+  createButton: 'Create transfer',
+
+  filters: {
+    searchLabel: 'Search',
+    searchPlaceholder: 'Transfer code, Fisno, store, depot…',
+    statusLabel: 'Status',
+    status: {
+      all: 'All',
+      scheduled: 'Scheduled',
+      in_progress: 'In progress',
+      completed: 'Completed',
+      failed: 'Failed',
+      canceled: 'Canceled',
+    },
+    from: 'From',
+    to: 'To',
+  },
+
+  chips: {
+    all: 'All',
+    scheduled: 'Scheduled',
+    in_progress: 'In progress',
+    completed: 'Completed',
+    failed: 'Failed',
+    canceled: 'Canceled',
+  },
+
+  table: {
+    start: 'Start',
+    transfer: 'Transfer',
+    depots: 'Depots',
+    store: 'Store',
+    status: 'Status',
+    crew: 'Crew',
+  },
+
+  statusLabels: {
+    scheduled: 'Scheduled',
+    in_progress: 'In progress',
+    completed: 'Completed',
+    failed: 'Failed',
+    canceled: 'Canceled',
+  },
+
+  crew: {
+    assigned: 'assigned',
+  },
+
+  actions: {
+    view: 'View',
+    edit: 'Edit',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    moreActions: 'More actions',
+  },
+
+  confirmCancel: 'Cancel this transfer?',
+  confirmDelete: 'Permanently delete this transfer? This cannot be undone.',
+
+  editModal: {
+    title: 'Edit transfer',
+    subtitle: 'Schedule, location, depot labels and notes',
+    loading: 'Loading transfer…',
+    loadError: 'Failed to load transfer.',
+    scheduledStart: 'Scheduled start',
+    scheduledEnd: 'Scheduled end',
+    sourceDepotLabel: 'Source depot label',
+    destDepotLabel: 'Destination depot label',
+    location: 'Location',
+    notes: 'Notes',
+    cancel: 'Cancel',
+    save: 'Save changes',
+    saving: 'Saving…',
+    saved: 'Transfer updated',
+    saveFailed: 'Failed to update transfer',
+    validation: {
+      startRequired: 'Scheduled start is required',
+      startInvalid: 'Start must be DD/MM/YYYY HH:mm (24-hour)',
+      endInvalid: 'End must be DD/MM/YYYY HH:mm (24-hour)',
+    },
+  },
+
+  toasts: {
+    cancelled: 'Transfer cancelled',
+    cancelFailed: 'Failed to cancel transfer',
+    deleted: 'Transfer deleted',
+    deleteFailed: 'Failed to delete transfer',
+  },
+
+  loading: 'Loading transfers…',
+  loadError: 'Failed to load transfers.',
+  noResults: 'No transfers match the filters.',
+  noResultsInRange:
+    'No transfers in the selected date range ({{loaded}} loaded). Widen From/To dates or load more.',
+
+  pagination: {
+    showing: 'Showing',
+    of: 'of',
+    prev: 'Prev',
+    next: 'Next',
+    page: 'Page',
+    loadMore: 'Load more',
+    loadingMore: 'Loading…',
+    loaded: '{{count}} loaded',
+  },
+
+  sort: 'Sort',
+},
+
+transferDetailPage: {
+  header: {
+    title: 'Transfer',
+    subtitle: 'Depot transfer details',
+    back: 'Back',
+  },
+  buttons: {
+    start: 'Start transfer',
+    complete: 'Mark completed',
+    cancel: 'Cancel transfer',
+    delete: 'Delete transfer',
+  },
+  statusCard: {
+    title: 'Status & depots',
+    fisno: 'Fisno:',
+    store: 'Store:',
+    depots: 'Route:',
+    start: 'Scheduled start:',
+    end: 'Scheduled end:',
+    erpDate: 'ERP date:',
+  },
+  crewCard: {
+    title: 'Crew',
+    none: 'No crew assigned.',
+    roleFallback: 'Crew',
+    status: {
+      accepted: 'Accepted',
+      declined: 'Declined',
+      pending: 'Pending',
+    },
+  },
+  notesCard: {
+    title: 'Notes',
+    location: 'Location',
+    managerNotes: 'Manager notes',
+    failureReason: 'Failure reason',
+    crewNotes: 'Crew notes',
+  },
+  timeline: {
+    title: 'Activity',
+    subtitle: 'High-level milestones. Full history in',
+    auditLink: 'Audit',
+    empty: 'No activity recorded yet.',
+  },
+  itemsCard: {
+    title: 'Items',
+    instructions: 'Notes',
+    none: 'No line items.',
+  },
+  media: {
+    title: 'Photos',
+    loading: 'Loading photos…',
+    loadError: 'Could not load photos.',
+    empty: 'No photos yet.',
+  },
+  loading: 'Loading…',
+  toasts: {
+    statusUpdated: 'Status updated',
+    statusFailed: 'Failed to update status',
+    cancelled: 'Transfer cancelled',
+    cancelFailed: 'Failed to cancel transfer',
+    deleted: 'Transfer deleted',
+    deleteFailed: 'Failed to delete transfer',
+  },
+},
+
+createTransferPage: {
+  header: {
+    title: 'Create transfer',
+    subtitle: 'Pick a Netsis Fisno, schedule the move and assign crew.',
+  },
+  store: {
+    title: 'Store',
+    selectPlaceholder: 'Select store',
+  },
+  transfer: {
+    title: 'Netsis transfer (Fisno)',
+    subtitle: 'Search ItemTransactions or enter Fisno manually.',
+    externalIdLabel: 'Fisno / transfer ID',
+    externalIdPlaceholder: 'Search or type Fisno…',
+    depotsFromErp: 'Depots from ERP',
+    items: 'items',
+  },
+  schedule: {
+    title: 'Schedule',
+    dateLabel: 'Date',
+    datePlaceholder: 'DD/MM/YYYY',
+    timeLabel: 'Start time',
+    timePlaceholder: 'HH:mm',
+    dateTimePlaceholder: 'DD/MM/YYYY HH:mm',
+    openCalendarAria: 'Open calendar',
+  },
+  notes: {
+    title: 'Notes',
+    placeholder: 'Optional notes for the crew…',
+  },
+  location: {
+    placeholder: 'Location (optional)',
+  },
+  crew: {
+    title: 'Crew',
+  },
+  actions: {
+    submit: 'Create transfer',
+    scheduling: 'Creating…',
+  },
+  validation: {
+    storeRequired: 'Store is required',
+    transferIdRequired: 'Fisno / transfer ID is required',
+    scheduleRequired: 'Date and start time are required',
+  },
+  toasts: {
+    created: 'Transfer created',
+    createFailed: 'Failed to create transfer',
+  },
+},
+
 ordersPage: {
   title: "Orders",
   subtitle: "InstallOps installations by default; with Netsis configured on a store, live ERP slips (ItemSlips) for that store.",
@@ -806,6 +1036,26 @@ profilePage: {
   crewPages: {
     jobsTitle: 'My jobs',
     jobsSubtitle: 'Assigned installations for the selected day',
+    jobsSubtitleMerged: 'Assigned installations and depot transfers for the selected day',
+    transferBadge: 'Transfer',
+    startTransfer: 'Start transfer',
+    transferDetail: 'Transfer',
+    transferLines: 'Transfer lines',
+    completeTransfer: 'Complete',
+    failTransfer: 'Mark failed',
+    transferCompleted: 'Transfer completed',
+    transferFailed: 'Transfer marked failed',
+    crewNotes: 'Crew notes',
+    crewNotesPlaceholder: 'Notes from the depot move…',
+    saveNotes: 'Save notes',
+    notesSaved: 'Notes saved',
+    failureReasonPlaceholder: 'Failure reason (optional before marking failed)',
+    addPhotos: 'Add photos',
+    captureTitle: 'Photos',
+    captureHint: 'Take or upload site photos for this job.',
+    takePhoto: 'Take or upload photo',
+    photoUploaded: 'Photo uploaded',
+    photoUploadFailed: 'Photo upload failed',
     loading: 'Loading…',
     loadError: 'Failed to load jobs.',
     noJobsDay: 'No assigned jobs for this day.',

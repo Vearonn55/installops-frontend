@@ -138,3 +138,104 @@ export async function getNetsisCustomerDetail(params: {
     },
   });
 }
+
+export type NetsisTransferHit = {
+  id: string;
+  external_transfer_id: string;
+  label?: string;
+  placed_at?: string | null;
+  erp_date?: string | null;
+  line_count?: number | null;
+  source_depot_code?: number | null;
+  dest_depot_code?: number | null;
+};
+
+export type NetsisTransferSearchResponse = {
+  data: NetsisTransferHit[];
+  total?: number;
+  limit?: number;
+  offset?: number;
+  browse_mode?: string;
+};
+
+export type NetsisTransferLineView = {
+  external_product_id: string;
+  quantity: number;
+  name?: string;
+  special_instructions?: string | null;
+};
+
+export type NetsisTransferDetailData = {
+  transfer_id: string;
+  external_transfer_id: string;
+  erp_date?: string | null;
+  source_depot_code?: number | null;
+  dest_depot_code?: number | null;
+  items: NetsisTransferLineView[];
+};
+
+export type NetsisTransferDetailResponse = {
+  data: NetsisTransferDetailData;
+  source: 'http';
+};
+
+function netsisTransferSearchRequestKey(params: {
+  store_id: UUID;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}): string {
+  return JSON.stringify({
+    store_id: params.store_id,
+    q: params.q ?? '',
+    limit: params.limit ?? null,
+    offset: params.offset ?? 0,
+  });
+}
+
+const inflightNetsisTransferSearch = new Map<
+  string,
+  Promise<NetsisTransferSearchResponse>
+>();
+
+export async function searchNetsisTransfers(params: {
+  store_id: UUID;
+  q?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<NetsisTransferSearchResponse> {
+  const key = netsisTransferSearchRequestKey(params);
+  const existing = inflightNetsisTransferSearch.get(key);
+  if (existing) return existing;
+
+  const request = apiGet<NetsisTransferSearchResponse>(
+    '/integrations/netsis/transfers/search',
+    {
+      params: {
+        store_id: params.store_id,
+        ...(params.q !== undefined && params.q !== '' ? { q: params.q } : {}),
+        limit: params.limit,
+        offset: params.offset,
+      },
+    }
+  ).finally(() => {
+    if (inflightNetsisTransferSearch.get(key) === request) {
+      inflightNetsisTransferSearch.delete(key);
+    }
+  });
+
+  inflightNetsisTransferSearch.set(key, request);
+  return request;
+}
+
+export async function getNetsisTransferDetail(params: {
+  store_id: UUID;
+  transfer_id: string;
+}): Promise<NetsisTransferDetailResponse> {
+  return apiGet<NetsisTransferDetailResponse>('/integrations/netsis/transfers/detail', {
+    params: {
+      store_id: params.store_id,
+      transfer_id: params.transfer_id,
+    },
+  });
+}

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Package,
+  ArrowLeftRight,
   Calendar,
   ShoppingCart,
   BarChart3,
@@ -54,6 +55,12 @@ const navigation: NavigationItem[] = [
     labelKey: 'nav.installations',
     href: '/app/installations',
     icon: Package,
+    roles: ['ADMIN', 'STORE_MANAGER'],
+  },
+  {
+    labelKey: 'nav.transfers',
+    href: '/app/transfers',
+    icon: ArrowLeftRight,
     roles: ['ADMIN', 'STORE_MANAGER'],
   },
   {

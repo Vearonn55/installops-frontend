@@ -40,6 +40,9 @@ import InstallationsPage from './pages/manager/InstallationsPage';
 import InstallationDetailPage from './pages/manager/InstallationDetailPage';
 import ManagerReportIssuePage from './pages/manager/ManagerReportIssuePage';
 import CreateInstallationPage from './pages/manager/CreateInstallationPage';
+import TransfersPage from './pages/manager/TransfersPage';
+import TransferDetailPage from './pages/manager/TransferDetailPage';
+import CreateTransferPage from './pages/manager/CreateTransferPage';
 import CalendarPage from './pages/manager/CalendarPage';
 
 // Crew pages
@@ -192,6 +195,32 @@ const getDefaultRoute = () => {
                   element={
                     <RoleGuard roles={['ADMIN', 'STORE_MANAGER']}>
                       <CreateInstallationPage />
+                    </RoleGuard>
+                  }
+                />
+
+                {/* Transfers */}
+                <Route
+                  path="transfers"
+                  element={
+                    <RoleGuard roles={['ADMIN', 'STORE_MANAGER']}>
+                      <TransfersPage />
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="transfers/new"
+                  element={
+                    <RoleGuard roles={['ADMIN', 'STORE_MANAGER']}>
+                      <CreateTransferPage />
+                    </RoleGuard>
+                  }
+                />
+                <Route
+                  path="transfers/:id"
+                  element={
+                    <RoleGuard roles={['ADMIN', 'STORE_MANAGER']}>
+                      <TransferDetailPage />
                     </RoleGuard>
                   }
                 />

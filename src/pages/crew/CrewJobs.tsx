@@ -11,16 +11,27 @@ import { useAuthStore } from '../../stores/auth';
 import CrewJobCard from '../../components/crew/CrewJobCard';
 import {
   buildCrewJobView,
+  buildCrewTransferView,
+  crewJobDetailPath,
   installationDayKey,
   isCrewAssigned,
+  isCrewAssignedTransfer,
   isCrewStartableStatus,
   isCrewVisibleInstallation,
+  isCrewVisibleTransfer,
+  transferDayKey,
+  type CrewJobView,
 } from '../../lib/crew-job';
 import {
   listInstallations,
   updateInstallationStatus,
   type InstallationList,
 } from '../../api/installations';
+import {
+  listTransfers,
+  updateTransferStatus,
+  type TransferList,
+} from '../../api/transfers';
 import type { UUID } from '../../api/http';
 
 const STRIP_DAYS_BEFORE = 4;
@@ -38,7 +49,6 @@ function addDays(date: Date, n: number) {
   return d;
 }
 
-/** Prior 4 days, today, upcoming 4 days (9 total). */
 function buildNineDayStrip(anchor = new Date()) {
   const today = startOfLocalDay(anchor);
   const len = STRIP_DAYS_BEFORE + 1 + STRIP_DAYS_AFTER;
@@ -47,13 +57,20 @@ function buildNineDayStrip(anchor = new Date()) {
   );
 }
 
-const ACTIVE_CREW_STATUSES = new Set([
+const ACTIVE_CREW_INSTALL_STATUSES = new Set([
   'scheduled',
   'staged',
   'in_progress',
   'completed',
   'failed',
   'after_sale_service',
+]);
+
+const ACTIVE_CREW_TRANSFER_STATUSES = new Set([
+  'scheduled',
+  'in_progress',
+  'completed',
+  'failed',
 ]);
 
 export default function CrewJobs() {
@@ -81,7 +98,12 @@ export default function CrewJobs() {
     queryFn: () => listInstallations({ limit: 300, offset: 0 }),
   });
 
-  const startMutation = useMutation({
+  const transfersQuery = useQuery<TransferList>({
+    queryKey: ['crew-jobs-transfers'],
+    queryFn: () => listTransfers({ limit: 300, offset: 0 }),
+  });
+
+  const startInstallationMutation = useMutation({
     mutationFn: (id: UUID) =>
       updateInstallationStatus(id, { status: 'in_progress' }),
     onSuccess: () => {
@@ -90,8 +112,16 @@ export default function CrewJobs() {
     },
   });
 
-  const loading = installationsQuery.isLoading;
-  const hasError = installationsQuery.isError;
+  const startTransferMutation = useMutation({
+    mutationFn: (id: UUID) => updateTransferStatus(id, { status: 'in_progress' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['crew-jobs-transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['crew-transfers'] });
+    },
+  });
+
+  const loading = installationsQuery.isLoading || transfersQuery.isLoading;
+  const hasError = installationsQuery.isError || transfersQuery.isError;
 
   const activeDate = useMemo(
     () =>
@@ -111,26 +141,48 @@ export default function CrewJobs() {
 
   const jobs = useMemo(() => {
     const insts = installationsQuery.data?.data ?? [];
-    return insts
+    const transfers = transfersQuery.data?.data ?? [];
+
+    const installationJobs: CrewJobView[] = insts
       .filter((inst) => {
         if (!isCrewAssigned(inst, user?.id)) return false;
         if (!isCrewVisibleInstallation(inst)) return false;
         const raw = String(inst.status || '').toLowerCase();
-        if (!ACTIVE_CREW_STATUSES.has(raw)) return false;
+        if (!ACTIVE_CREW_INSTALL_STATUSES.has(raw)) return false;
         return installationDayKey(inst) === dayYmd;
       })
-      .map((inst) => buildCrewJobView(inst))
-      .sort((a, b) => a.start.localeCompare(b.start));
-  }, [installationsQuery.data, user?.id, dayYmd]);
+      .map((inst) => buildCrewJobView(inst));
 
-  const handleStart = async (id: string) => {
-    setStartingId(id);
+    const transferJobs: CrewJobView[] = transfers
+      .filter((tr) => {
+        if (!isCrewAssignedTransfer(tr, user?.id)) return false;
+        if (!isCrewVisibleTransfer(tr)) return false;
+        const raw = String(tr.status || '').toLowerCase();
+        if (!ACTIVE_CREW_TRANSFER_STATUSES.has(raw)) return false;
+        return transferDayKey(tr) === dayYmd;
+      })
+      .map((tr) => buildCrewTransferView(tr));
+
+    return [...installationJobs, ...transferJobs].sort((a, b) =>
+      a.start.localeCompare(b.start),
+    );
+  }, [installationsQuery.data, transfersQuery.data, user?.id, dayYmd]);
+
+  const handleStart = async (job: CrewJobView) => {
+    setStartingId(job.id);
     try {
-      await startMutation.mutateAsync(id as UUID);
+      if (job.kind === 'transfer') {
+        await startTransferMutation.mutateAsync(job.id as UUID);
+      } else {
+        await startInstallationMutation.mutateAsync(job.id as UUID);
+      }
     } finally {
       setStartingId(null);
     }
   };
+
+  const starting =
+    startInstallationMutation.isPending || startTransferMutation.isPending;
 
   const renderDayButton = (d: Date, opts?: { ref?: Ref<HTMLButtonElement> }) => {
     const isActive = d.toDateString() === selectedKey;
@@ -171,7 +223,7 @@ export default function CrewJobs() {
               {dateRangeLabel}
             </div>
           </div>
-          <p className="mt-1 text-xs text-gray-500">{t('crewPages.jobsSubtitle')}</p>
+          <p className="mt-1 text-xs text-gray-500">{t('crewPages.jobsSubtitleMerged')}</p>
         </div>
 
         <div className="overflow-x-auto px-3 pb-3">
@@ -206,12 +258,12 @@ export default function CrewJobs() {
           !hasError &&
           jobs.map((job) => (
             <CrewJobCard
-              key={job.id}
+              key={`${job.kind}-${job.id}`}
               job={job}
               showStart={isCrewStartableStatus(job.status)}
-              starting={startingId === job.id && startMutation.isPending}
-              onStart={() => handleStart(job.id)}
-              onOpen={() => navigate(`/crew/jobs/${job.id}`)}
+              starting={startingId === job.id && starting}
+              onStart={() => handleStart(job)}
+              onOpen={() => navigate(crewJobDetailPath(job))}
             />
           ))}
 

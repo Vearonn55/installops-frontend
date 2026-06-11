@@ -1,4 +1,5 @@
 import type { Installation, CrewAssignment } from '../api/installations';
+import type { Transfer, TransferCrewAssignment } from '../api/transfers';
 import type { Store } from '../api/stores';
 import type { NetsisOrderDetailData } from '../api/integrations';
 import { isoToLocalYmd } from './local-date';
@@ -7,9 +8,13 @@ import {
   pickInstallationRecordStatus,
   type CrewJobsUiStatus,
 } from './installation-status';
+import { mapTransferToCrewUiStatus, normalizeTransferStatus } from './transfer-status';
 import { formatUiTime } from './date-display';
 
+export type CrewWorkKind = 'installation' | 'transfer';
+
 export type CrewJobView = {
+  kind: CrewWorkKind;
   id: string;
   installCode: string;
   orderId: string;
@@ -23,6 +28,13 @@ export type CrewJobView = {
   status: CrewJobsUiStatus;
   notes?: string;
   customerPaymentNote?: string;
+  /** Transfers only */
+  transferCode?: string;
+  externalTransferId?: string;
+  sourceDepotCode?: number | null;
+  destDepotCode?: number | null;
+  sourceDepotLabel?: string | null;
+  destDepotLabel?: string | null;
 };
 
 export function isCrewAssigned(inst: Installation, userId: string | undefined): boolean {
@@ -47,9 +59,13 @@ export function isCrewStartableStatus(status: CrewJobsUiStatus): boolean {
   return status === 'staged';
 }
 
-/** Checklist only after the job has been started. */
+/** Checklist only after the job has been started (installations only). */
 export function isCrewChecklistAllowedStatus(status: CrewJobsUiStatus): boolean {
   return status === 'in_progress';
+}
+
+export function isCrewChecklistAllowedForJob(job: Pick<CrewJobView, 'kind' | 'status'>): boolean {
+  return job.kind === 'installation' && isCrewChecklistAllowedStatus(job.status);
 }
 
 /** Highlight / prioritize on home: work that can still be acted on. */
@@ -90,6 +106,80 @@ export function installationAnchorIso(inst: Installation): string | null {
 export function installationDayKey(inst: Installation): string | null {
   const anchor = installationAnchorIso(inst);
   return anchor ? isoToLocalYmd(anchor) : null;
+}
+
+export function isCrewAssignedTransfer(
+  transfer: Transfer,
+  userId: string | undefined
+): boolean {
+  if (!userId) return false;
+  const crew = (transfer.crew || []) as TransferCrewAssignment[];
+  return crew.some((c) => c.crew_user_id === userId);
+}
+
+export function isCrewVisibleTransfer(transfer: Transfer): boolean {
+  return normalizeTransferStatus(transfer.status) !== 'canceled';
+}
+
+export function transferAnchorIso(transfer: Transfer): string | null {
+  return transfer.scheduled_start || transfer.created_at || null;
+}
+
+export function transferDayKey(transfer: Transfer): string | null {
+  const anchor = transferAnchorIso(transfer);
+  return anchor ? isoToLocalYmd(anchor) : null;
+}
+
+function transferCrewMemberNames(transfer: Transfer): string[] {
+  const crew = (transfer.crew || []) as TransferCrewAssignment[];
+  return crew
+    .map((c) => c.crew?.name?.trim() || c.crew_user_id)
+    .filter(Boolean);
+}
+
+function formatDepotLabel(code?: number | null, label?: string | null): string {
+  if (label?.trim()) return label.trim();
+  if (code != null && !Number.isNaN(code)) return String(code);
+  return '—';
+}
+
+export function buildCrewTransferView(transfer: Transfer): CrewJobView {
+  const store = transfer.store;
+  const status = mapTransferToCrewUiStatus(transfer.status) as CrewJobsUiStatus;
+  const source = formatDepotLabel(transfer.source_depot_code, transfer.source_depot_label);
+  const dest = formatDepotLabel(transfer.dest_depot_code, transfer.dest_depot_label);
+  const start = transfer.scheduled_start ?? transfer.created_at;
+  const end = transfer.scheduled_end ?? start;
+
+  return {
+    kind: 'transfer',
+    id: transfer.id,
+    installCode:
+      transfer.transfer_code?.trim() || transfer.id.slice(0, 8).toUpperCase(),
+    transferCode: transfer.transfer_code ?? undefined,
+    externalTransferId: transfer.external_transfer_id,
+    orderId: transfer.external_transfer_id,
+    customerName: `${source} → ${dest}`,
+    storeName: store?.name?.trim() || '—',
+    address: transfer.location?.trim() || storeAddressLine(store) || '—',
+    phone: '',
+    sourceDepotCode: transfer.source_depot_code,
+    destDepotCode: transfer.dest_depot_code,
+    sourceDepotLabel: transfer.source_depot_label,
+    destDepotLabel: transfer.dest_depot_label,
+    crewNames: transferCrewMemberNames(transfer),
+    start,
+    end,
+    status,
+    notes: transfer.notes ?? undefined,
+  };
+}
+
+export function crewJobDetailPath(job: Pick<CrewJobView, 'id' | 'kind'>): string {
+  if (job.kind === 'transfer') {
+    return `/crew/jobs/${job.id}?kind=transfer`;
+  }
+  return `/crew/jobs/${job.id}`;
 }
 
 export function crewMemberNames(inst: Installation): string[] {
@@ -137,6 +227,7 @@ export function buildCrewJobView(
   const end = inst.scheduled_end ?? start;
 
   return {
+    kind: 'installation',
     id: inst.id,
     installCode: inst.install_code?.trim() || inst.id.slice(0, 8).toUpperCase(),
     orderId: inst.external_order_id,

@@ -6,6 +6,7 @@ const trCommon = {
     dashboard: 'Kontrol Paneli',
     orders: 'Siparişler',
     installations: 'Kurulumlar',
+    transfers: 'Transferler',
     calendar: 'Takvim',
     reports: 'Raporlar',
     usersAndRoles: 'Kullanıcılar',
@@ -495,6 +496,235 @@ installationsPage: {
   sort: 'Sırala',
 },
 
+transfersPage: {
+  title: 'Transferler',
+  subtitle: 'Depolar arası stok hareketlerini planlayın ve takip edin.',
+  createButton: 'Transfer oluştur',
+
+  filters: {
+    searchLabel: 'Arama',
+    searchPlaceholder: 'Transfer kodu, Fisno, mağaza, depo…',
+    statusLabel: 'Durum',
+    status: {
+      all: 'Tümü',
+      scheduled: 'Planlandı',
+      in_progress: 'Devam ediyor',
+      completed: 'Tamamlandı',
+      failed: 'Başarısız',
+      canceled: 'İptal',
+    },
+    from: 'Başlangıç',
+    to: 'Bitiş',
+  },
+
+  chips: {
+    all: 'Tümü',
+    scheduled: 'Planlandı',
+    in_progress: 'Devam ediyor',
+    completed: 'Tamamlandı',
+    failed: 'Başarısız',
+    canceled: 'İptal',
+  },
+
+  table: {
+    start: 'Başlangıç',
+    transfer: 'Transfer',
+    depots: 'Depolar',
+    store: 'Mağaza',
+    status: 'Durum',
+    crew: 'Ekip',
+  },
+
+  statusLabels: {
+    scheduled: 'Planlandı',
+    in_progress: 'Devam ediyor',
+    completed: 'Tamamlandı',
+    failed: 'Başarısız',
+    canceled: 'İptal',
+  },
+
+  crew: {
+    assigned: 'atanmış',
+  },
+
+  actions: {
+    view: 'Görüntüle',
+    edit: 'Düzenle',
+    cancel: 'İptal',
+    delete: 'Sil',
+    moreActions: 'Diğer işlemler',
+  },
+
+  confirmCancel: 'Bu transfer iptal edilsin mi?',
+  confirmDelete: 'Bu transfer kalıcı olarak silinsin mi? Bu işlem geri alınamaz.',
+
+  editModal: {
+    title: 'Transferi düzenle',
+    subtitle: 'Program, konum, depo etiketleri ve notlar',
+    loading: 'Transfer yükleniyor…',
+    loadError: 'Transfer yüklenemedi.',
+    scheduledStart: 'Planlanan başlangıç',
+    scheduledEnd: 'Planlanan bitiş',
+    sourceDepotLabel: 'Kaynak depo etiketi',
+    destDepotLabel: 'Hedef depo etiketi',
+    location: 'Konum',
+    notes: 'Notlar',
+    cancel: 'İptal',
+    save: 'Kaydet',
+    saving: 'Kaydediliyor…',
+    saved: 'Transfer güncellendi',
+    saveFailed: 'Transfer güncellenemedi',
+    validation: {
+      startRequired: 'Planlanan başlangıç zorunludur',
+      startInvalid: 'Başlangıç DD/GG/YYYY SS:dd (24 saat) olmalıdır',
+      endInvalid: 'Bitiş DD/GG/YYYY SS:dd (24 saat) olmalıdır',
+    },
+  },
+
+  toasts: {
+    cancelled: 'Transfer iptal edildi',
+    cancelFailed: 'Transfer iptal edilemedi',
+    deleted: 'Transfer silindi',
+    deleteFailed: 'Transfer silinemedi',
+  },
+
+  loading: 'Transferler yükleniyor…',
+  loadError: 'Transferler yüklenemedi.',
+  noResults: 'Filtrelere uyan transfer yok.',
+  noResultsInRange:
+    'Seçilen tarih aralığında transfer yok ({{loaded}} yüklendi). Tarih aralığını genişletin veya daha fazla yükleyin.',
+
+  pagination: {
+    showing: 'Gösterilen',
+    of: '/',
+    prev: 'Önceki',
+    next: 'Sonraki',
+    page: 'Sayfa',
+    loadMore: 'Daha fazla yükle',
+    loadingMore: 'Yükleniyor…',
+    loaded: '{{count}} yüklendi',
+  },
+
+  sort: 'Sırala',
+},
+
+transferDetailPage: {
+  header: {
+    title: 'Transfer',
+    subtitle: 'Depo transferi detayları',
+    back: 'Geri',
+  },
+  buttons: {
+    start: 'Transferi başlat',
+    complete: 'Tamamlandı işaretle',
+    cancel: 'Transferi iptal et',
+    delete: 'Transferi sil',
+  },
+  statusCard: {
+    title: 'Durum ve depolar',
+    fisno: 'Fisno:',
+    store: 'Mağaza:',
+    depots: 'Güzergah:',
+    start: 'Planlanan başlangıç:',
+    end: 'Planlanan bitiş:',
+    erpDate: 'ERP tarihi:',
+  },
+  crewCard: {
+    title: 'Ekip',
+    none: 'Atanmış ekip yok.',
+    roleFallback: 'Ekip',
+    status: {
+      accepted: 'Kabul edildi',
+      declined: 'Reddedildi',
+      pending: 'Beklemede',
+    },
+  },
+  notesCard: {
+    title: 'Notlar',
+    location: 'Konum',
+    managerNotes: 'Yönetici notları',
+    failureReason: 'Hata nedeni',
+    crewNotes: 'Ekip notları',
+  },
+  timeline: {
+    title: 'Aktivite',
+    subtitle: 'Özet kilometre taşları. Tam geçmiş için',
+    auditLink: 'Denetim',
+    empty: 'Henüz kayıt yok.',
+  },
+  itemsCard: {
+    title: 'Kalemler',
+    instructions: 'Notlar',
+    none: 'Kalem yok.',
+  },
+  media: {
+    title: 'Fotoğraflar',
+    loading: 'Fotoğraflar yükleniyor…',
+    loadError: 'Fotoğraflar yüklenemedi.',
+    empty: 'Henüz fotoğraf yok.',
+  },
+  loading: 'Yükleniyor…',
+  toasts: {
+    statusUpdated: 'Durum güncellendi',
+    statusFailed: 'Durum güncellenemedi',
+    cancelled: 'Transfer iptal edildi',
+    cancelFailed: 'Transfer iptal edilemedi',
+    deleted: 'Transfer silindi',
+    deleteFailed: 'Transfer silinemedi',
+  },
+},
+
+createTransferPage: {
+  header: {
+    title: 'Transfer oluştur',
+    subtitle: 'Netsis Fisno seçin, programlayın ve ekip atayın.',
+  },
+  store: {
+    title: 'Mağaza',
+    selectPlaceholder: 'Mağaza seçin',
+  },
+  transfer: {
+    title: 'Netsis transfer (Fisno)',
+    subtitle: 'ItemTransactions arayın veya Fisno girin.',
+    externalIdLabel: 'Fisno / transfer ID',
+    externalIdPlaceholder: 'Fisno ara veya yaz…',
+    depotsFromErp: 'ERP depoları',
+    items: 'kalem',
+  },
+  schedule: {
+    title: 'Program',
+    dateLabel: 'Tarih',
+    datePlaceholder: 'GG/AA/YYYY',
+    timeLabel: 'Başlangıç saati',
+    timePlaceholder: 'SS:dd',
+    dateTimePlaceholder: 'GG/AA/YYYY SS:dd',
+    openCalendarAria: 'Takvimi aç',
+  },
+  notes: {
+    title: 'Notlar',
+    placeholder: 'Ekip için isteğe bağlı notlar…',
+  },
+  location: {
+    placeholder: 'Konum (isteğe bağlı)',
+  },
+  crew: {
+    title: 'Ekip',
+  },
+  actions: {
+    submit: 'Transfer oluştur',
+    scheduling: 'Oluşturuluyor…',
+  },
+  validation: {
+    storeRequired: 'Mağaza zorunludur',
+    transferIdRequired: 'Fisno / transfer ID zorunludur',
+    scheduleRequired: 'Tarih ve başlangıç saati zorunludur',
+  },
+  toasts: {
+    created: 'Transfer oluşturuldu',
+    createFailed: 'Transfer oluşturulamadı',
+  },
+},
+
 ordersPage: {
   title: "Siparişler",
   subtitle: "Varsayılan: InstallOps kurulumları; mağazada Netsis tanımlıysa o mağaza için canlı ERP evrakları (ItemSlips).",
@@ -806,6 +1036,26 @@ profilePage: {
   crewPages: {
     jobsTitle: 'İşlerim',
     jobsSubtitle: 'Seçilen güne atanmış kurulumlar',
+    jobsSubtitleMerged: 'Seçilen güne atanmış kurulumlar ve depo transferleri',
+    transferBadge: 'Transfer',
+    startTransfer: 'Transferi başlat',
+    transferDetail: 'Transfer',
+    transferLines: 'Transfer kalemleri',
+    completeTransfer: 'Tamamla',
+    failTransfer: 'Başarısız işaretle',
+    transferCompleted: 'Transfer tamamlandı',
+    transferFailed: 'Transfer başarısız olarak işaretlendi',
+    crewNotes: 'Ekip notları',
+    crewNotesPlaceholder: 'Depo transferi notları…',
+    saveNotes: 'Notları kaydet',
+    notesSaved: 'Notlar kaydedildi',
+    failureReasonPlaceholder: 'Başarısızlık nedeni (isteğe bağlı)',
+    addPhotos: 'Fotoğraf ekle',
+    captureTitle: 'Fotoğraflar',
+    captureHint: 'Saha fotoğrafları çekin veya yükleyin.',
+    takePhoto: 'Fotoğraf çek veya yükle',
+    photoUploaded: 'Fotoğraf yüklendi',
+    photoUploadFailed: 'Fotoğraf yüklenemedi',
     loading: 'Yükleniyor…',
     loadError: 'İşler yüklenemedi.',
     noJobsDay: 'Bu gün için atanmış iş yok.',
