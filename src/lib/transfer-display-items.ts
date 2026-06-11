@@ -8,6 +8,19 @@ export type TransferDisplayItem = TransferItem & {
   description: string | null;
 };
 
+/** ItemTransactions `Sthar_Aciklama` depot routing (e.g. `1-100`), not product notes. */
+export function isDepotRouteNote(note?: string | null): boolean {
+  const t = String(note ?? '').trim();
+  if (!t) return false;
+  return /^\d{1,4}-\d{1,4}$/.test(t);
+}
+
+function productNote(note?: string | null): string | null {
+  const t = String(note ?? '').trim();
+  if (!t || isDepotRouteNote(t)) return null;
+  return t;
+}
+
 export function mergeTransferDisplayItems(
   localItems: TransferItem[],
   netsisLines: NetsisTransferLineView[]
@@ -20,7 +33,7 @@ export function mergeTransferDisplayItems(
         {
           sku,
           name: line.name?.trim() ? line.name : null,
-          description: line.description ?? line.special_instructions ?? null,
+          description: productNote(line.description ?? line.special_instructions),
         },
       ];
     })
@@ -36,12 +49,12 @@ export function mergeTransferDisplayItems(
         external_product_id: sku,
         quantity: line.quantity,
         room_tag: null,
-        special_instructions: line.special_instructions ?? line.description ?? null,
+        special_instructions: productNote(line.special_instructions ?? line.description),
         created_at: '',
         updated_at: '',
         sku,
         name,
-        description: line.description ?? line.special_instructions ?? null,
+        description: productNote(line.description ?? line.special_instructions),
       };
     });
   }
@@ -61,7 +74,7 @@ export function mergeTransferDisplayItems(
       ...row,
       sku: pid,
       name: null,
-      description: row.special_instructions ?? null,
+      description: productNote(row.special_instructions),
     };
   });
 }

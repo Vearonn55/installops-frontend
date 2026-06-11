@@ -29,12 +29,29 @@ export function parseEkalanField(raw: string): { displayName: string; satirBaziA
   return { displayName, satirBaziAciks };
 }
 
+/** ItemTransactions `Sthar_Aciklama` often encodes depot routing (e.g. `1-100`), not product notes. */
+export function looksLikeDepotTransferAciklama(note: string): boolean {
+  const t = String(note ?? '').trim();
+  if (!t) return false;
+  return /^\d{1,4}-\d{1,4}$/.test(t);
+}
+
 export function pickEkalanFromLine(line: NetsisJson | null | undefined): string {
   if (!line || typeof line !== 'object') return '';
   const r = line as Record<string, unknown>;
   for (const key of EKALAN_KEYS) {
     const v = r[key];
     if (v != null && String(v).trim()) return String(v).trim();
+  }
+  const Stok =
+    r.Stok != null && typeof r.Stok === 'object' && !Array.isArray(r.Stok)
+      ? (r.Stok as Record<string, unknown>)
+      : null;
+  if (Stok) {
+    for (const key of EKALAN_KEYS) {
+      const v = Stok[key];
+      if (v != null && String(v).trim()) return String(v).trim();
+    }
   }
   return '';
 }
@@ -269,7 +286,9 @@ export function satirAciklamaFromLine(line: NetsisJson, opts?: NetsisLineParseOp
       r.Sthar_aciklama ??
       ''
   ).trim();
-  if (direct && !looksLikeCariKodOnly(direct, r)) return direct;
+  if (direct && !looksLikeCariKodOnly(direct, r) && !looksLikeDepotTransferAciklama(direct)) {
+    return direct;
+  }
 
   for (const key of Object.keys(r)) {
     if (/SatirBazi/i.test(key)) continue;
@@ -278,6 +297,7 @@ export function satirAciklamaFromLine(line: NetsisJson, opts?: NetsisLineParseOp
     if (typeof v !== 'string') continue;
     const t = v.trim();
     if (!t || looksLikeCariKodOnly(t, r)) continue;
+    if (looksLikeDepotTransferAciklama(t)) continue;
     if (/^\d{1,2}\.\d{1,2}\.\d{4}/.test(t)) continue;
     return t;
   }
