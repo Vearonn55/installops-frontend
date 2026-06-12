@@ -8,9 +8,9 @@ Session cookie auth (`POST /auth/login`). The API returns role names `admin`, `m
 
 | Role | Shell | Main routes |
 |------|--------|-------------|
-| **Admin** | `/app/*` | Dashboard, orders, installations, calendar, profile, settings; admin: users, roles, reports, stores (Netsis config), integrations hub, audit |
+| **Admin** | `/app/*` | Dashboard, orders, installations, **transfers**, calendar, profile, settings; admin: users, roles, reports, stores (Netsis config), integrations hub, audit |
 | **Store manager** | `/app/*` | Same except admin-only pages; scoped to the user’s store |
-| **Crew** | `/crew/*` | Home, jobs list, job detail, checklist (with photo upload), order view, settings |
+| **Crew** | `/crew/*` | Home, unified **jobs** list (installations + transfers), job detail, checklist, **photo capture** (camera/gallery), order view, settings |
 
 ### Public auth pages
 
@@ -21,20 +21,21 @@ Session cookie auth (`POST /auth/login`). The API returns role names `admin`, `m
 
 - `/app/orders/new` — create order in InstallOps (orders come from Netsis)
 - `/app/admin/capacity` — capacity settings
-- `/crew/jobs/:id/capture`, `/crew/jobs/:id/issues`, `/crew/issues` — dedicated capture/issues pages (photos are uploaded from the checklist flow)
+- `/crew/jobs/:id/issues`, `/crew/issues` — dedicated issues pages
 
 ## Implemented features
 
 - **Orders** — browse aggregated installations as orders (`GET /orders`) or live Netsis ItemSlips (`GET /integrations/netsis/orders/search`) with load-more pagination; order detail with installations, timeline, and optional Netsis document/lines
 - **Installations** — list, create (linked to Netsis `external_order_id`), detail, edit, status changes, crew assignment, media gallery, stage (`pending`/`scheduled` → `staged`)
-- **Calendar** — month/week views of installations (no capacity rules)
+- **Transfers** — list/create/detail for depot moves keyed by Netsis **`Fisno`** (`external_transfer_id`); kalemler table (SKU / name / description / qty) enriched from ItemTransactions + Items + optional Ekalan parse; calendar badge `t`
+- **Calendar** — month/week views of installations and transfers (no capacity rules)
 - **Dashboards** — admin and manager KPI-style summaries from installation data
 - **Reports** (admin) — filtered installation report table
 - **Users / roles** (admin) — user CRUD, role assignment
 - **Stores & Netsis** (admin) — per-store Netsis URL, paths, credentials, test connection
 - **Audit log** (admin) — read-only audit viewer
-- **Crew app** — responsive job list, start job (`staged` → `in_progress`), fixed checklist with required photos, completion outcomes (`completed`, `failed`, `after_sale_service`)
-- **Media** — upload from crew checklist; view on installation detail
+- **Crew app** — unified jobs (installations + transfers), start job/transfer, fixed checklist with required photos, transfer complete/fail, photo capture (camera + gallery)
+- **Media** — upload from crew checklist or capture; view on installation/transfer detail via `resolveMediaUrl` → `/api/v1/media/serve/installations|transfers/…`
 - **i18n** — English and Turkish; date display preference in settings
 - **Command palette** — top-bar search in `AppShell`: navigate pages, run commands, help links (frontend-only; no API entity search)
 
@@ -48,7 +49,7 @@ Do not expect these in the current codebase:
 - Offline queue / background sync / installable PWA (`stores/offline.ts` is unused)
 - Crew job accept/decline UI (backend supports assignment status; no frontend wiring)
 - Password reset API
-- Automated test suite (Vitest is configured; no `*.test.*` / `*.spec.*` files yet)
+- Broad automated test suite (Vitest; a few unit tests under `src/lib/`)
 - Docker image for the frontend repo
 
 ## Stack
@@ -90,7 +91,8 @@ In production behind nginx, `/api/v1` on the same origin is typical.
 
 - Client: `src/api/*` (Axios, `withCredentials: true`)
 - Session cookie `sid` after login — not JWT
-- Netsis: `src/api/integrations.ts`; field reading helpers in `src/lib/netsis-native.ts`
+- Netsis: `src/api/integrations.ts` (orders + **transfers** search/detail); field helpers in `src/lib/netsis-native.ts`
+- Transfers: `src/api/transfers.ts`; display merge in `src/lib/transfer-display-items.ts`
 - Configure Netsis per store under **Admin → Stores** (not the integrations hub alone)
 
 ## Project layout
