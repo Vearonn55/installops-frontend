@@ -7,10 +7,16 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   const apiBase =
     import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') || '/api/v1';
 
-  const match = u.match(/^\/media\/installations\/([^/]+)\/([^/]+)$/i);
-  if (match) {
-    const [, installationId, filename] = match;
+  const installationMatch = u.match(/^\/media\/installations\/([^/]+)\/([^/]+)$/i);
+  if (installationMatch) {
+    const [, installationId, filename] = installationMatch;
     return `${apiBase}/media/serve/installations/${installationId}/${filename}`;
+  }
+
+  const transferMatch = u.match(/^\/media\/transfers\/([^/]+)\/([^/]+)$/i);
+  if (transferMatch) {
+    const [, transferId, filename] = transferMatch;
+    return `${apiBase}/media/serve/transfers/${transferId}/${filename}`;
   }
 
   if (u.startsWith('/media/') && apiBase.startsWith('http')) {

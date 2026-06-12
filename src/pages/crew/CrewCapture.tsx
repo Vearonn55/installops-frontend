@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { ArrowLeft, Camera, Image as ImageIcon, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
@@ -19,7 +19,8 @@ export default function CrewCapture() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useTranslation('common');
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   const mediaQuery = useQuery({
@@ -47,18 +48,22 @@ export default function CrewCapture() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['crew-capture-media', kind, id] });
+      queryClient.invalidateQueries({
+        queryKey: [kind === 'transfer' ? 'transferMedia' : 'installationMedia', id],
+      });
       toast.success(t('crewPages.photoUploaded'));
     },
     onError: (e: Error) => toast.error(e.message || t('crewPages.photoUploadFailed')),
   });
 
-  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file || !id) return;
+  const onFilesSelected = async (fileList: FileList | null) => {
+    if (!fileList?.length || !id) return;
     setUploading(true);
     try {
-      await uploadMut.mutateAsync(file);
+      for (const file of Array.from(fileList)) {
+        if (!file.type.startsWith('image/')) continue;
+        await uploadMut.mutateAsync(file);
+      }
     } finally {
       setUploading(false);
     }
@@ -77,30 +82,55 @@ export default function CrewCapture() {
       </header>
 
       <main className="crew-page space-y-4">
-        <p className="text-sm text-gray-600">{t('crewPages.captureHint')}</p>
-
-        <button
-          type="button"
-          disabled={uploading || uploadMut.isPending}
-          onClick={() => inputRef.current?.click()}
-          className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-4 text-base font-semibold text-white disabled:opacity-60"
-        >
-          {uploading || uploadMut.isPending ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <Camera className="h-5 w-5" />
-          )}
-          {t('crewPages.takePhoto')}
-        </button>
+        <p className="text-sm text-gray-600">{t('crewPages.checklist.photosHint')}</p>
 
         <input
-          ref={inputRef}
+          ref={cameraInputRef}
           type="file"
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={onPick}
+          onChange={(e) => {
+            void onFilesSelected(e.target.files);
+            e.target.value = '';
+          }}
         />
+        <input
+          ref={galleryInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            void onFilesSelected(e.target.files);
+            e.target.value = '';
+          }}
+        />
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={uploading || uploadMut.isPending}
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 px-3 text-center text-xs font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-60"
+          >
+            {uploading || uploadMut.isPending ? (
+              <Loader2 className="mb-1.5 h-6 w-6 animate-spin" />
+            ) : (
+              <Camera className="mb-1.5 h-6 w-6" />
+            )}
+            {t('crewPages.checklist.takePhoto')}
+          </button>
+          <button
+            type="button"
+            disabled={uploading || uploadMut.isPending}
+            onClick={() => galleryInputRef.current?.click()}
+            className="flex min-h-[4.5rem] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 px-3 text-center text-xs font-semibold text-gray-700 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-60"
+          >
+            <ImageIcon className="mb-1.5 h-6 w-6" />
+            {t('crewPages.checklist.selectGallery')}
+          </button>
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
           {(mediaQuery.data?.data ?? []).map((asset) => (
