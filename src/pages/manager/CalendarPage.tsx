@@ -20,12 +20,14 @@ import { useAuthStore } from '../../stores/auth';
 import { listInstallations, type Installation as ApiInstallation } from '../../api/installations';
 import { listTransfers, type Transfer } from '../../api/transfers';
 import { listStores } from '../../api/stores';
-import type { UUID } from '../../api/http';
 import {
   normalizeTransferStatus,
   transferStatusBadgeClass,
 } from '../../lib/transfer-status';
-import { useManagerStoreId } from '../../hooks/use-manager-store-id';
+import { useManagerStoreScope } from '../../hooks/use-manager-store-scope';
+import CalendarDayEventsModal, {
+  type CalendarDayEvent,
+} from '../../components/manager/CalendarDayEventsModal';
 import { useTranslation } from 'react-i18next';
 import { formatUiDayMonth, formatUiFullFromDate, formatUiTime } from '../../lib/date-display';
 
@@ -121,6 +123,7 @@ const DAY_END = 20; // 20:00 (exclusive)
 const HOUR_HEIGHT = 56; // px per hour
 const HOURS = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i);
 const COLUMN_HEIGHT = (DAY_END - DAY_START) * HOUR_HEIGHT;
+const MONTH_CELL_EVENT_LIMIT = 3;
 
 /* =============== Calendar event helpers =============== */
 type CalendarInstallation = Installation & {
@@ -138,6 +141,7 @@ type CalendarEvent = {
   status: string;
   label: string;
   subtitle?: string;
+  store_id?: string;
 };
 
 function formatDepotLabel(code?: number | null, label?: string | null): string {
@@ -163,6 +167,7 @@ function mapInstallationToEvent(inst: CalendarInstallation): CalendarEvent {
     status: inst.status,
     label: calendarInstallationLabel(inst),
     subtitle: inst.order_id || inst.install_code,
+    store_id: inst.store_id,
   };
 }
 
@@ -177,6 +182,7 @@ function mapTransferToEvent(tr: Transfer): CalendarEvent {
     status: tr.status,
     label: `${source} → ${dest}`,
     subtitle: tr.transfer_code || tr.external_transfer_id,
+    store_id: tr.store_id,
   };
 }
 
@@ -293,6 +299,7 @@ export default function CalendarPage() {
       : 'month'
   );
   const [cursor, setCursor] = useState<Date>(() => new Date());
+  const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
 
   // Visible ranges
   const monthStart = startOfMonth(cursor);
@@ -311,23 +318,23 @@ export default function CalendarPage() {
     },
   });
 
-  const managerStoreId = useManagerStoreId(storesQuery.data ?? []);
-  const storeFilter = managerStoreId;
+  const { homeStoreId, isGrouped, storeGroupName } = useManagerStoreScope();
 
-  const storeFilterLabel = useMemo(() => {
-    if (!storeFilter) return null;
-    const hit = (storesQuery.data ?? []).find((s) => s.id === storeFilter);
-    return hit?.name ?? storeFilter;
-  }, [storeFilter, storesQuery.data]);
+  const storeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const s of storesQuery.data ?? []) {
+      m.set(s.id, s.name);
+    }
+    return m;
+  }, [storesQuery.data]);
 
   const listParams = {
-    ...(storeFilter ? { store_id: storeFilter as UUID } : {}),
     limit: 300,
     offset: 0,
   };
 
   const installationsQuery = useQuery({
-    queryKey: ['calendar', 'installations', { store_id: storeFilter ?? 'all' }],
+    queryKey: ['calendar', 'installations', { scope: isAdmin ? 'all' : homeStoreId ?? 'none' }],
     enabled: isAdmin || storesQuery.isSuccess,
     queryFn: async () => {
       const res = await listInstallations(listParams);
@@ -351,7 +358,7 @@ export default function CalendarPage() {
   });
 
   const transfersQuery = useQuery({
-    queryKey: ['calendar', 'transfers', { store_id: storeFilter ?? 'all' }],
+    queryKey: ['calendar', 'transfers', { scope: isAdmin ? 'all' : homeStoreId ?? 'none' }],
     enabled: isAdmin || storesQuery.isSuccess,
     queryFn: async () => {
       const res = await listTransfers(listParams);
@@ -372,6 +379,12 @@ export default function CalendarPage() {
     void installationsQuery.refetch();
     void transfersQuery.refetch();
   };
+
+  const dayModalEvents = useMemo((): CalendarDayEvent[] => {
+    if (!dayModalDate) return [];
+    const key = fmtYYYYMMDD(dayModalDate);
+    return events.filter((ev) => isoToLocalYMD(ev.scheduled_start) === key);
+  }, [dayModalDate, events]);
 
   /* ---- Date helpers shared by both views ---- */
   const todayStr = fmtYYYYMMDD(new Date());
@@ -450,12 +463,15 @@ export default function CalendarPage() {
               {mode === 'month'
                 ? `${formatUiFullFromDate(monthStart)} – ${formatUiFullFromDate(monthEnd)}`
                 : weekLabel}
-              {storeFilterLabel && (
+              {isGrouped && storeGroupName ? (
                 <span className="inline-flex items-center gap-1 text-gray-600">
-                  <MapPin className="h-4 w-4" />{' '}
-                  {t('calendarPage.storeLabelShort')}: {storeFilterLabel}
+                  <MapPin className="h-4 w-4" />
+                  {t('calendarPage.groupSubtitle', {
+                    name: storeGroupName,
+                    count: user?.store_group?.store_ids?.length ?? 0,
+                  })}
                 </span>
-              )}
+              ) : null}
             </p>
           </div>
         </div>
@@ -604,7 +620,7 @@ export default function CalendarPage() {
                   </div>
 
                   <div className="space-y-1">
-                    {events.slice(0, 3).map((ev) => {
+                    {events.slice(0, MONTH_CELL_EVENT_LIMIT).map((ev) => {
                       const statusLabel = calendarEventStatusLabel(ev, t);
                       return (
                         <Link
@@ -623,10 +639,14 @@ export default function CalendarPage() {
                         </Link>
                       );
                     })}
-                    {events.length > 3 && (
-                      <div className="text-[11px] text-gray-500">
-                        +{events.length - 3} {t('calendarPage.more')}
-                      </div>
+                    {events.length > MONTH_CELL_EVENT_LIMIT && (
+                      <button
+                        type="button"
+                        onClick={() => setDayModalDate(d)}
+                        className="text-left text-[11px] text-primary-700 hover:underline"
+                      >
+                        +{events.length - MONTH_CELL_EVENT_LIMIT} {t('calendarPage.more')}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -800,6 +820,18 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+      <CalendarDayEventsModal
+        open={Boolean(dayModalDate)}
+        date={dayModalDate}
+        events={dayModalEvents}
+        storeNameById={storeNameById}
+        showStoreNames={isGrouped}
+        onClose={() => setDayModalDate(null)}
+        eventPath={calendarEventPath}
+        eventTimeLabel={(ev) =>
+          `${toLocalHM(ev.scheduled_start)}–${toLocalHM(ev.scheduled_end)}`
+        }
+      />
     </div>
   );
 }

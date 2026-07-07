@@ -30,6 +30,7 @@ function mapMeToUser(me: Awaited<ReturnType<typeof getCurrentUser>>, emailFallba
     role: normalizeBackendRole(me.role),
     permissions: Array.isArray(me.permissions) ? me.permissions : [],
     store_id: me.store_id ?? undefined,
+    store_group: me.store_group ?? undefined,
     status: 'active',
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -213,6 +214,7 @@ export const initializeAuth = async () => {
       phone: me.phone ?? prev?.phone,
       permissions: Array.isArray(me.permissions) ? me.permissions : prev?.permissions,
       store_id: me.store_id ?? prev?.store_id,
+      store_group: me.store_group ?? prev?.store_group,
       status: prev?.status ?? 'active',
       created_at: prev?.created_at ?? new Date().toISOString(),
     };

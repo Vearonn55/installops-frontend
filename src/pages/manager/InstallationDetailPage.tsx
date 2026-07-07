@@ -24,6 +24,7 @@ import { formatUiDateTime } from '../../lib/date-display';
 import { apiGet, isAxiosError, type UUID } from '../../api/http';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/auth';
+import { useManagerStoreScope, isSiblingStoreJob } from '../../hooks/use-manager-store-scope';
 import {
   updateInstallationStatus,
   deleteInstallation,
@@ -141,6 +142,9 @@ export default function InstallationDetailPage() {
   });
 
   const inst = query.data;
+  const scope = useManagerStoreScope();
+  const readOnlySibling = !isAdmin && isSiblingStoreJob(scope, inst?.store_id);
+  const canMutate = isAdmin || !readOnlySibling;
   const items = useMemo<InstallationItemDto[]>(() => inst?.items ?? [], [inst]);
   const crew = useMemo<CrewAssignmentDto[]>(() => inst?.crew ?? [], [inst]);
   const checklistAnswers = useMemo(
@@ -301,6 +305,7 @@ export default function InstallationDetailPage() {
 
   const rawStatus = String(inst?.status ?? '');
   const canCancel =
+    canMutate &&
     !isAdmin &&
     inst &&
     rawStatus !== 'canceled' &&
@@ -308,7 +313,7 @@ export default function InstallationDetailPage() {
     rawStatus !== 'completed';
 
   const canStage =
-    !!inst && (rawStatus === 'pending' || rawStatus === 'scheduled');
+    canMutate && !!inst && (rawStatus === 'pending' || rawStatus === 'scheduled');
 
   const handleStage = async () => {
     if (!id) return;
@@ -362,6 +367,11 @@ export default function InstallationDetailPage() {
 
   return (
     <div className="min-w-0 space-y-6">
+      {readOnlySibling ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {t('managerScope.readOnlySibling')}
+        </div>
+      ) : null}
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
@@ -402,7 +412,7 @@ export default function InstallationDetailPage() {
               <span className="truncate">{t('installationDetailPage.buttons.viewOrder')}</span>
             </Link>
           ) : null}
-          {id ? (
+          {id && canMutate ? (
             <button
               type="button"
               onClick={() => setEditOpen(true)}

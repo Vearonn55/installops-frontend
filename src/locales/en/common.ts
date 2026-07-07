@@ -370,12 +370,26 @@ calendarPage: {
 
   more: 'more…',
 
+  groupSubtitle: '{{name}} ({{count}} stores)',
+
+  dayModal: {
+    title: '{{date}}',
+    count: '{{count}} events',
+    close: 'Close',
+    empty: 'No events on this day.',
+  },
+
   loadingInstallations: 'Loading installations…',
   failedToLoadInstallations: 'Failed to load installations.',
   noInstallationsThisMonth: 'No installations in this month.',
   noInstallationsThisWeek: 'No installations in this week.',
 
   timeColumn: 'Time',
+},
+
+managerScope: {
+  readOnlySibling:
+    'View only — this job belongs to another store in your group. You can edit jobs for your home store only.',
 },
 
 installationsPage: {
@@ -1209,6 +1223,32 @@ profilePage: {
   },
 
   storesAdminPage: {
+    groups: {
+      title: 'Store groups',
+      description:
+        'Group stores so managers see a combined calendar and job lists. Each manager can still edit only their home store.',
+      namePlaceholder: 'Group name',
+      create: 'Create group',
+      created: 'Store group created',
+      createFailed: 'Failed to create store group',
+      rename: 'Rename',
+      renamed: 'Store group renamed',
+      renameFailed: 'Failed to rename store group',
+      delete: 'Delete',
+      deleted: 'Store group deleted',
+      deleteFailed: 'Failed to delete store group',
+      deleteConfirm:
+        'Delete group "{{name}}"? Stores will be ungrouped, not deleted.',
+      empty: 'No store groups yet.',
+      loading: 'Loading groups…',
+      memberCount: '{{count}} stores',
+      column: 'Group',
+      none: 'None',
+      assigned: 'Store group updated',
+      assignFailed: 'Failed to update store group',
+      cancel: 'Cancel',
+      save: 'Save',
+    },
     googleReview: {
       title: 'Google review link',
       description:

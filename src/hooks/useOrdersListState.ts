@@ -14,7 +14,7 @@ import {
 } from "../lib/orders-sort";
 import { queryKeys } from "../lib/query-client";
 import { useAuthStore } from "../stores/auth";
-import { useManagerStoreId } from "./use-manager-store-id";
+import { useManagerStoreScope } from './use-manager-store-scope';
 
 const NETSIS_PAGE_SIZE = 50;
 const PAGE_SIZE = 10;
@@ -98,7 +98,7 @@ export function useOrdersListState() {
   });
 
   const stores = storesQuery.data?.data ?? [];
-  const managerStoreId = useManagerStoreId(stores);
+  const { homeStoreId: managerStoreId } = useManagerStoreScope();
 
   const effectiveStoreId = useMemo((): string | null => {
     if (isAdmin) {
@@ -231,7 +231,7 @@ export function useOrdersListState() {
     queryFn: () =>
       listOrders({
         limit: 300,
-        ...(effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
+        ...(isAdmin && effectiveStoreId ? { store_id: effectiveStoreId as UUID } : {}),
         ...(debouncedFilterQ ? { q: debouncedFilterQ } : {}),
       }),
     enabled: !useNetsisList && listEnabled,

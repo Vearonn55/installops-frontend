@@ -11,6 +11,12 @@ export interface User {
   /** Permissions from `GET /auth/me` when available (preferred over static role maps). */
   permissions?: string[];
   store_id?: string;
+  store_group?: {
+    id: string;
+    name: string;
+    store_ids: string[];
+    stores?: { id: string; name: string }[];
+  } | null;
   status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;

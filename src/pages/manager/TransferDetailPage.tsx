@@ -23,6 +23,7 @@ import { cn } from '../../lib/utils';
 import { formatUiDateTime } from '../../lib/date-display';
 import { apiGet, isAxiosError, type UUID } from '../../api/http';
 import { useAuthStore } from '../../stores/auth';
+import { useManagerStoreScope, isSiblingStoreJob } from '../../hooks/use-manager-store-scope';
 import {
   getTransfer,
   getTransferTimeline,
@@ -82,6 +83,9 @@ export default function TransferDetailPage() {
   });
 
   const tr = query.data;
+  const scope = useManagerStoreScope();
+  const readOnlySibling = !isAdmin && isSiblingStoreJob(scope, tr?.store_id);
+  const canMutate = isAdmin || !readOnlySibling;
   const items = useMemo(() => tr?.items ?? [], [tr]);
   const crew = useMemo(() => tr?.crew ?? [], [tr]);
 
@@ -218,6 +222,11 @@ export default function TransferDetailPage() {
 
   return (
     <div className="min-w-0 space-y-6">
+      {readOnlySibling ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {t('managerScope.readOnlySibling')}
+        </div>
+      ) : null}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <button
@@ -235,7 +244,7 @@ export default function TransferDetailPage() {
           </div>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
-          {id ? (
+          {id && canMutate ? (
             <button
               type="button"
               onClick={() => setEditOpen(true)}
@@ -245,7 +254,7 @@ export default function TransferDetailPage() {
               <span className="truncate">{t('transfersPage.actions.edit')}</span>
             </button>
           ) : null}
-          {canStartTransfer(uiStatus) ? (
+          {canMutate && canStartTransfer(uiStatus) ? (
             <button
               type="button"
               onClick={() => void handleStatus('in_progress')}
@@ -256,7 +265,7 @@ export default function TransferDetailPage() {
               <span className="truncate">{t('transferDetailPage.buttons.start')}</span>
             </button>
           ) : null}
-          {canCompleteTransfer(uiStatus) ? (
+          {canMutate && canCompleteTransfer(uiStatus) ? (
             <button
               type="button"
               onClick={() => void handleStatus('completed')}
@@ -267,7 +276,7 @@ export default function TransferDetailPage() {
               <span className="truncate">{t('transferDetailPage.buttons.complete')}</span>
             </button>
           ) : null}
-          {!isAdmin && canCancelTransfer(uiStatus) ? (
+          {canMutate && !isAdmin && canCancelTransfer(uiStatus) ? (
             <button
               type="button"
               onClick={() => void handleCancel()}

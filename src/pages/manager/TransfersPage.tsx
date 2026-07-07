@@ -27,7 +27,7 @@ import {
   defaultDateRangeInstallationsList,
   installationInDateRange,
 } from '../../lib/date-range';
-import { useManagerStoreId } from '../../hooks/use-manager-store-id';
+import { useManagerStoreScope } from '../../hooks/use-manager-store-scope';
 import { useAuthStore } from '../../stores/auth';
 import {
   listTransfers,
@@ -173,14 +173,12 @@ export default function TransfersPage() {
     queryFn: async () => listStores({ limit: 200, offset: 0 }),
   });
 
-  const managerStoreId = useManagerStoreId(storesQuery.data?.data ?? []);
-  const effectiveStoreId = isAdmin
-    ? adminStoreId || undefined
-    : managerStoreId || undefined;
+  const { homeStoreId } = useManagerStoreScope();
+  const effectiveStoreId = isAdmin ? adminStoreId || undefined : undefined;
 
   const transfersQuery = useInfiniteQuery({
     queryKey: ['transfers', { store_id: effectiveStoreId ?? 'all', q: debouncedQ }],
-    enabled: storesQuery.isSuccess && (isAdmin || Boolean(managerStoreId)),
+    enabled: storesQuery.isSuccess && (isAdmin || Boolean(homeStoreId)),
     queryFn: async ({ pageParam }) => {
       const offset = typeof pageParam === 'number' ? pageParam : 0;
       return listTransfers({
@@ -416,6 +414,7 @@ export default function TransfersPage() {
 
       <div className="filter-panel space-y-3">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:items-end">
+          {isAdmin ? (
           <div className="min-w-0">
             <label className="mb-1 block text-xs text-gray-600">
               {t('ordersPage.storeLabel')}
@@ -423,21 +422,14 @@ export default function TransfersPage() {
             <div className="relative min-w-0">
               <StoreIcon className="pointer-events-none absolute left-2.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <select
-                className={cn(
-                  'input-select-with-icon w-full',
-                  !isAdmin && Boolean(managerStoreId) && 'opacity-60'
-                )}
-                value={isAdmin ? adminStoreId : managerStoreId ?? ''}
-                disabled={!isAdmin && Boolean(managerStoreId)}
+                className="input-select-with-icon w-full"
+                value={adminStoreId}
                 onChange={(e) => {
-                  if (!isAdmin) return;
                   setAdminStoreId(e.target.value);
                   setPage(1);
                 }}
               >
-                {isAdmin ? (
-                  <option value="">{t('ordersPage.storeAll')}</option>
-                ) : null}
+                <option value="">{t('ordersPage.storeAll')}</option>
                 {(storesQuery.data?.data ?? []).map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -446,6 +438,7 @@ export default function TransfersPage() {
               </select>
             </div>
           </div>
+          ) : null}
           <div className="min-w-0">
             <label className="mb-1 block text-xs text-gray-600">
               {t('transfersPage.filters.searchLabel')}

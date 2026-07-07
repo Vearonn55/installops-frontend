@@ -22,7 +22,7 @@ import { listStores, type Store as ApiStore } from '../../api/stores';
 import { apiGet } from '../../api/http';
 import { formatUiDateTime } from '../../lib/date-display';
 import { useDateDisplayStore } from '../../stores/date-display';
-import { useManagerStoreId } from '../../hooks/use-manager-store-id';
+import { useManagerStoreScope } from '../../hooks/use-manager-store-scope';
 
 /* ---------- Period metrics & KPI helpers ---------- */
 
@@ -51,6 +51,15 @@ function kpiFrom(metrics: PeriodMetrics) {
     ratePct: pct(rateNow),
     deltaPct: Math.round(delta * 1000) / 10,
     isUp: delta >= 0,
+  };
+}
+
+function mergeMetrics(a: PeriodMetrics, b: PeriodMetrics): PeriodMetrics {
+  return {
+    success: a.success + b.success,
+    total: a.total + b.total,
+    prevSuccess: a.prevSuccess + b.prevSuccess,
+    prevTotal: a.prevTotal + b.prevTotal,
   };
 }
 
@@ -294,13 +303,18 @@ export default function ManagerDashboard() {
     return m;
   }, [storesQuery.data]);
 
-  const managerStoreId = useManagerStoreId(storesQuery.data ?? []);
+  const { homeStoreId, visibleStoreIds, isGrouped, storeGroupName } = useManagerStoreScope();
 
-  const primaryStoreId: string | null = managerStoreId;
+  const primaryStoreId: string | null = homeStoreId;
 
-  const primaryStoreName =
-    (primaryStoreId && storeNameById.get(primaryStoreId)) ||
-    'Your store';
+  const dashboardStoreIds = useMemo(() => {
+    if (visibleStoreIds?.length) return visibleStoreIds;
+    return primaryStoreId ? [primaryStoreId] : [];
+  }, [visibleStoreIds, primaryStoreId]);
+
+  const primaryStoreName = isGrouped && storeGroupName
+    ? `${storeGroupName} (${dashboardStoreIds.length} stores)`
+    : (primaryStoreId && storeNameById.get(primaryStoreId)) || 'Your store';
 
   // Metrics per store
   const storeMetrics = useMemo(
@@ -309,18 +323,22 @@ export default function ManagerDashboard() {
   );
 
   const monthlyKpi = useMemo(() => {
-    if (!primaryStoreId) return kpiFrom(EMPTY_METRICS);
-    const metricsForStore =
-      storeMetrics.monthly[primaryStoreId] ?? EMPTY_METRICS;
-    return kpiFrom(metricsForStore);
-  }, [storeMetrics.monthly, primaryStoreId]);
+    if (!dashboardStoreIds.length) return kpiFrom(EMPTY_METRICS);
+    let combined = EMPTY_METRICS;
+    for (const sid of dashboardStoreIds) {
+      combined = mergeMetrics(combined, storeMetrics.monthly[sid] ?? EMPTY_METRICS);
+    }
+    return kpiFrom(combined);
+  }, [storeMetrics.monthly, dashboardStoreIds]);
 
   const weeklyKpi = useMemo(() => {
-    if (!primaryStoreId) return kpiFrom(EMPTY_METRICS);
-    const metricsForStore =
-      storeMetrics.weekly[primaryStoreId] ?? EMPTY_METRICS;
-    return kpiFrom(metricsForStore);
-  }, [storeMetrics.weekly, primaryStoreId]);
+    if (!dashboardStoreIds.length) return kpiFrom(EMPTY_METRICS);
+    let combined = EMPTY_METRICS;
+    for (const sid of dashboardStoreIds) {
+      combined = mergeMetrics(combined, storeMetrics.weekly[sid] ?? EMPTY_METRICS);
+    }
+    return kpiFrom(combined);
+  }, [storeMetrics.weekly, dashboardStoreIds]);
 
   // Installation lookup for audit log → store mapping
   const installationById = useMemo(() => {
@@ -363,15 +381,15 @@ export default function ManagerDashboard() {
         };
       })
       .filter((a) => {
-        // If we know manager's store, only show activity for that store
-        if (!primaryStoreId) return true;
-        return a.storeId === primaryStoreId;
+        if (!dashboardStoreIds.length) return true;
+        if (!a.storeId) return false;
+        return dashboardStoreIds.includes(a.storeId);
       });
   }, [
     auditLogsQuery.data,
     installationById,
     storeNameById,
-    primaryStoreId,
+    dashboardStoreIds,
     datePattern,
   ]);
 

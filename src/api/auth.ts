@@ -26,6 +26,12 @@ export type AuthMeResponse = {
   phone?: string | null;
   store_id?: UUID | null;
   store?: { id: UUID; name: string } | null;
+  store_group?: {
+    id: UUID;
+    name: string;
+    store_ids: UUID[];
+    stores?: { id: UUID; name: string }[];
+  } | null;
 };
 
 export type LogoutResponse = {

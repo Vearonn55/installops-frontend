@@ -19,6 +19,8 @@ export type Store = {
   address?: Address;
   /** Public Google review link for crew QR on checklist (when configured). */
   google_review_url?: string | null;
+  store_group_id?: UUID | null;
+  store_group?: { id: UUID; name: string } | null;
 };
 
 /** Admin-only Netsis config (GET/PATCH /stores/:id/netsis). */
@@ -74,7 +76,9 @@ export type StoreCreate = {
   timezone?: string | null;
 };
 
-export type StoreUpdate = Partial<StoreCreate>;
+export type StoreUpdate = Partial<StoreCreate> & {
+  store_group_id?: UUID | null;
+};
 
 export type ListStoresParams = {
   q?: string;

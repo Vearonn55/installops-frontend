@@ -28,7 +28,7 @@ import {
   defaultDateRangeInstallationsList,
   installationInDateRange,
 } from '../../lib/date-range';
-import { useManagerStoreId } from '../../hooks/use-manager-store-id';
+import { useManagerStoreScope } from '../../hooks/use-manager-store-scope';
 import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
@@ -226,18 +226,17 @@ export default function InstallationsPage() {
     queryFn: async () => listStores({ limit: 200, offset: 0 }),
   });
 
-  const managerStoreId = useManagerStoreId(storesQuery.data?.data ?? []);
+  const { homeStoreId } = useManagerStoreScope();
 
   const installationsQuery = useInfiniteQuery({
-    queryKey: ['installations', { store_id: managerStoreId ?? 'all', q: debouncedQ }],
+    queryKey: ['installations', { scope: isAdmin ? 'all' : homeStoreId ?? 'none', q: debouncedQ }],
     enabled:
-      storesQuery.isSuccess && (isAdmin || Boolean(managerStoreId)),
+      storesQuery.isSuccess && (isAdmin || Boolean(homeStoreId)),
     queryFn: async ({ pageParam }) => {
       const offset = typeof pageParam === 'number' ? pageParam : 0;
       return listInstallations({
         limit: INSTALLATIONS_PAGE_SIZE,
         offset,
-        ...(managerStoreId ? { store_id: managerStoreId as UUID } : {}),
         ...(debouncedQ ? { q: debouncedQ } : {}),
       });
     },

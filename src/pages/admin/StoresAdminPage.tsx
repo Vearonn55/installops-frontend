@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Building2, RefreshCw, Save, FlaskConical } from 'lucide-react';
+import { Building2, RefreshCw, Save, FlaskConical, Pencil, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import {
@@ -8,12 +8,20 @@ import {
   getStoreNetsis,
   getStoreGoogleReview,
   createStore,
+  updateStore,
   patchStoreNetsis,
   patchStoreGoogleReview,
   testStoreNetsis,
   type Store,
   type StoreNetsisConfig,
 } from '../../api/stores';
+import {
+  listStoreGroups,
+  createStoreGroup,
+  updateStoreGroup,
+  deleteStoreGroup,
+  type StoreGroup,
+} from '../../api/store-groups';
 import { useTranslation } from 'react-i18next';
 import type { UUID } from '../../api/http';
 import { cn } from '../../lib/utils';
@@ -35,6 +43,16 @@ export default function StoresAdminPage() {
   });
 
   const stores = storesQuery.data ?? [];
+
+  const groupsQuery = useQuery({
+    queryKey: ['store-groups'],
+    queryFn: async () => {
+      const res = await listStoreGroups();
+      return res.data;
+    },
+  });
+  const groups = groupsQuery.data ?? [];
+
   const createStoreMut = useMutation({
     mutationFn: () =>
       createStore({
@@ -74,6 +92,16 @@ export default function StoresAdminPage() {
           Refresh
         </button>
       </div>
+
+      <StoreGroupsSection
+        groups={groups}
+        isLoading={groupsQuery.isLoading}
+        onChanged={() => {
+          void qc.invalidateQueries({ queryKey: ['store-groups'] });
+          void qc.invalidateQueries({ queryKey: ['stores'] });
+          void qc.invalidateQueries({ queryKey: ['stores', 'admin'] });
+        }}
+      />
 
       <div className="rounded-lg border bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-base font-semibold text-gray-900">Register new store</h2>
@@ -123,6 +151,9 @@ export default function StoresAdminPage() {
                 Store
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                {t('storesAdminPage.groups.column')}
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                 Netsis
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -138,17 +169,19 @@ export default function StoresAdminPage() {
               <StoreRow
                 key={s.id}
                 store={s}
+                groups={groups}
                 expanded={expanded === s.id}
                 onToggle={() => setExpanded((v) => (v === s.id ? null : s.id))}
                 onSaved={() => {
                   void qc.invalidateQueries({ queryKey: ['stores'] });
                   void qc.invalidateQueries({ queryKey: ['stores', 'admin'] });
+                  void qc.invalidateQueries({ queryKey: ['store-groups'] });
                 }}
               />
             ))}
             {!storesQuery.isLoading && stores.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
                   No stores found.
                 </td>
               </tr>
@@ -166,13 +199,181 @@ export default function StoresAdminPage() {
   );
 }
 
+function StoreGroupsSection({
+  groups,
+  isLoading,
+  onChanged,
+}: {
+  groups: StoreGroup[];
+  isLoading: boolean;
+  onChanged: () => void;
+}) {
+  const { t } = useTranslation('common');
+  const [newName, setNewName] = useState('');
+  const [editingId, setEditingId] = useState<UUID | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const createMut = useMutation({
+    mutationFn: () => createStoreGroup({ name: newName.trim() }),
+    onSuccess: () => {
+      toast.success(t('storesAdminPage.groups.created'));
+      setNewName('');
+      onChanged();
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || t('storesAdminPage.groups.createFailed')),
+  });
+
+  const renameMut = useMutation({
+    mutationFn: ({ id, name }: { id: UUID; name: string }) => updateStoreGroup(id, { name }),
+    onSuccess: () => {
+      toast.success(t('storesAdminPage.groups.renamed'));
+      setEditingId(null);
+      setEditName('');
+      onChanged();
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || t('storesAdminPage.groups.renameFailed')),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: UUID) => deleteStoreGroup(id),
+    onSuccess: () => {
+      toast.success(t('storesAdminPage.groups.deleted'));
+      onChanged();
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || t('storesAdminPage.groups.deleteFailed')),
+  });
+
+  return (
+    <div className="rounded-lg border bg-white p-4 shadow-sm">
+      <h2 className="mb-1 text-base font-semibold text-gray-900">
+        {t('storesAdminPage.groups.title')}
+      </h2>
+      <p className="mb-4 text-sm text-gray-500">{t('storesAdminPage.groups.description')}</p>
+
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          className="flex-1 rounded-md border px-3 py-2 text-sm"
+          placeholder={t('storesAdminPage.groups.namePlaceholder')}
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+        />
+        <button
+          type="button"
+          disabled={createMut.isPending || !newName.trim()}
+          onClick={() => createMut.mutate()}
+          className="inline-flex items-center justify-center rounded-md bg-primary-600 px-3 py-2 text-sm text-white hover:bg-primary-700 disabled:opacity-50"
+        >
+          {t('storesAdminPage.groups.create')}
+        </button>
+      </div>
+
+      {isLoading ? (
+        <p className="text-sm text-gray-500">{t('storesAdminPage.groups.loading')}</p>
+      ) : groups.length === 0 ? (
+        <p className="text-sm text-gray-500">{t('storesAdminPage.groups.empty')}</p>
+      ) : (
+        <ul className="divide-y rounded-md border">
+          {groups.map((g) => (
+            <li key={g.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 flex-1">
+                {editingId === g.id ? (
+                  <input
+                    className="w-full max-w-md rounded-md border px-2 py-1 text-sm"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                ) : (
+                  <p className="font-medium text-gray-900">{g.name}</p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  {t('storesAdminPage.groups.memberCount', { count: g.store_count })}
+                </p>
+                {g.stores.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {g.stores.map((s) => (
+                      <span
+                        key={s.id}
+                        className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                      >
+                        {s.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {editingId === g.id ? (
+                  <>
+                    <button
+                      type="button"
+                      className="rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditName('');
+                      }}
+                    >
+                      {t('storesAdminPage.groups.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md border border-primary-200 bg-primary-50 px-2 py-1 text-xs text-primary-800 hover:bg-primary-100"
+                      disabled={renameMut.isPending || !editName.trim()}
+                      onClick={() => renameMut.mutate({ id: g.id, name: editName.trim() })}
+                    >
+                      {t('storesAdminPage.groups.save')}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-gray-50"
+                      onClick={() => {
+                        setEditingId(g.id);
+                        setEditName(g.name);
+                      }}
+                    >
+                      <Pencil className="h-3 w-3" />
+                      {t('storesAdminPage.groups.rename')}
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded-md border border-rose-200 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
+                      disabled={deleteMut.isPending}
+                      onClick={() => {
+                        if (
+                          window.confirm(t('storesAdminPage.groups.deleteConfirm', { name: g.name }))
+                        ) {
+                          deleteMut.mutate(g.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {t('storesAdminPage.groups.delete')}
+                    </button>
+                  </>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function StoreRow({
   store,
+  groups,
   expanded,
   onToggle,
   onSaved,
 }: {
   store: Store;
+  groups: StoreGroup[];
   expanded: boolean;
   onToggle: () => void;
   onSaved: () => void;
@@ -267,6 +468,17 @@ function StoreRow({
 
   const hadApiPwStored = Boolean(activeStore?.netsis_password_configured);
   const hadDbPwStored = Boolean(activeStore?.netsis_db_password_configured);
+
+  const assignGroupMut = useMutation({
+    mutationFn: (store_group_id: UUID | null) =>
+      updateStore(store.id, { store_group_id }),
+    onSuccess: () => {
+      toast.success(t('storesAdminPage.groups.assigned'));
+      onSaved();
+    },
+    onError: (e: any) =>
+      toast.error(e?.response?.data?.message || e?.message || t('storesAdminPage.groups.assignFailed')),
+  });
 
   const applyStoreFromServer = () => {
     setPassword('');
@@ -404,6 +616,24 @@ function StoreRow({
           </div>
         </td>
         <td className="px-4 py-3 text-sm text-gray-600">
+          <select
+            className="max-w-[12rem] rounded-md border px-2 py-1 text-sm"
+            value={store.store_group_id ?? ''}
+            disabled={assignGroupMut.isPending}
+            onChange={(e) => {
+              const v = e.target.value;
+              assignGroupMut.mutate(v ? (v as UUID) : null);
+            }}
+          >
+            <option value="">{t('storesAdminPage.groups.none')}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="px-4 py-3 text-sm text-gray-600">
           {store.netsis_configured ? (
             <span className="text-green-700">Configured</span>
           ) : (
@@ -429,7 +659,7 @@ function StoreRow({
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={4} className="bg-gray-50 px-4 py-4">
+          <td colSpan={5} className="bg-gray-50 px-4 py-4">
             {netsisQuery.isLoading && (
               <p className="text-sm text-gray-500">Loading Netsis configuration…</p>
             )}

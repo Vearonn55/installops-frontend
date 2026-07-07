@@ -370,12 +370,26 @@ calendarPage: {
 
   more: 'daha…',
 
+  groupSubtitle: '{{name}} ({{count}} mağaza)',
+
+  dayModal: {
+    title: '{{date}}',
+    count: '{{count}} etkinlik',
+    close: 'Kapat',
+    empty: 'Bu günde etkinlik yok.',
+  },
+
   loadingInstallations: 'Kurulumlar yükleniyor…',
   failedToLoadInstallations: 'Kurulumlar yüklenemedi.',
   noInstallationsThisMonth: 'Bu ay için kurulum bulunmuyor.',
   noInstallationsThisWeek: 'Bu hafta için kurulum bulunmuyor.',
 
   timeColumn: 'Saat',
+},
+
+managerScope: {
+  readOnlySibling:
+    'Salt okunur — bu iş grubunuzdaki başka bir mağazaya ait. Yalnızca kendi mağazanızdaki işleri düzenleyebilirsiniz.',
 },
 
 installationsPage: {
@@ -1209,6 +1223,32 @@ profilePage: {
   },
 
   storesAdminPage: {
+    groups: {
+      title: 'Mağaza grupları',
+      description:
+        'Mağazaları gruplayın; yöneticiler birleşik takvim ve iş listesi görür. Her yönetici yalnızca kendi ana mağazasını düzenleyebilir.',
+      namePlaceholder: 'Grup adı',
+      create: 'Grup oluştur',
+      created: 'Mağaza grubu oluşturuldu',
+      createFailed: 'Mağaza grubu oluşturulamadı',
+      rename: 'Yeniden adlandır',
+      renamed: 'Mağaza grubu güncellendi',
+      renameFailed: 'Mağaza grubu yeniden adlandırılamadı',
+      delete: 'Sil',
+      deleted: 'Mağaza grubu silindi',
+      deleteFailed: 'Mağaza grubu silinemedi',
+      deleteConfirm:
+        '"{{name}}" grubu silinsin mi? Mağazalar silinmez, yalnızca gruptan çıkarılır.',
+      empty: 'Henüz mağaza grubu yok.',
+      loading: 'Gruplar yükleniyor…',
+      memberCount: '{{count}} mağaza',
+      column: 'Grup',
+      none: 'Yok',
+      assigned: 'Mağaza grubu güncellendi',
+      assignFailed: 'Mağaza grubu güncellenemedi',
+      cancel: 'İptal',
+      save: 'Kaydet',
+    },
     googleReview: {
       title: 'Google değerlendirme bağlantısı',
       description:
