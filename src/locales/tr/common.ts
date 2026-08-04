@@ -853,6 +853,13 @@ installationDetailPage: {
     openInMaps: "Google Maps'te aç",
   },
 
+  mapCard: {
+    title: 'Haritada konum',
+    subtitle: 'Kurulum oluşturulurken girilen konum bağlantısı.',
+    noEmbed:
+      'Bu bağlantı burada önizlenemiyor — konumu görmek için "Google Maps\'te aç" bağlantısını kullanın.',
+  },
+
   crewCard: {
     title: 'Ekip',
     subtitle: 'Atanmış ekip',

@@ -312,16 +312,10 @@ export function fmtTimeRange(startISO: string, endISO: string): string {
 }
 
 /**
- * Google Maps navigation link for a crew job: the manager-provided link when
- * set, otherwise a Maps search on the job address (often just a zone name,
- * but still a usable starting point). Returns null when there is nothing to
- * navigate to.
+ * Google Maps navigation link for a crew job: exactly the link the manager
+ * provided when creating/editing the installation. No address fallback — a
+ * zone-name search would point crews to the wrong place.
  */
-export function crewMapsHref(
-  job: Pick<CrewJobView, 'mapsUrl' | 'address'>
-): string | null {
-  if (job.mapsUrl) return job.mapsUrl;
-  const address = job.address?.trim();
-  if (!address || address === '—') return null;
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+export function crewMapsHref(job: Pick<CrewJobView, 'mapsUrl'>): string | null {
+  return job.mapsUrl || null;
 }

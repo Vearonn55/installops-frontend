@@ -853,6 +853,13 @@ installationDetailPage: {
     openInMaps: 'Open in Google Maps',
   },
 
+  mapCard: {
+    title: 'Location on map',
+    subtitle: 'The location link provided when the installation was created.',
+    noEmbed:
+      'This link cannot be previewed here — use "Open in Google Maps" to view the location.',
+  },
+
   crewCard: {
     title: 'Crew',
     subtitle: 'Assigned team',

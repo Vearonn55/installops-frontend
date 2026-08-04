@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import type { Installation } from '../../types';
 import { cn } from '../../lib/utils';
 import { formatUiDateTime } from '../../lib/date-display';
+import { googleMapsEmbedSrc } from '../../lib/google-maps';
 import { apiGet, isAxiosError, type UUID } from '../../api/http';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../stores/auth';
@@ -686,6 +687,52 @@ export default function InstallationDetailPage() {
           </div>
         </div>
       </div>
+
+      {inst?.maps_url ? (
+        <div className="card min-w-0">
+          <div className="card-header">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="card-title flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  {t('installationDetailPage.mapCard.title')}
+                </h3>
+                <p className="card-description">
+                  {t('installationDetailPage.mapCard.subtitle')}
+                </p>
+              </div>
+              <a
+                href={inst.maps_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-outline inline-flex shrink-0 items-center gap-1.5"
+              >
+                <MapPin className="h-4 w-4" />
+                {t('installationDetailPage.statusCard.openInMaps')}
+              </a>
+            </div>
+          </div>
+          <div className="card-content">
+            {(() => {
+              const embedSrc = googleMapsEmbedSrc(inst.maps_url!);
+              return embedSrc ? (
+                <iframe
+                  title={t('installationDetailPage.mapCard.title')}
+                  src={embedSrc}
+                  className="h-72 w-full rounded-md border md:h-96"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              ) : (
+                <p className="text-sm text-gray-500">
+                  {t('installationDetailPage.mapCard.noEmbed')}
+                </p>
+              );
+            })()}
+          </div>
+        </div>
+      ) : null}
 
       <div className="card min-w-0">
         <div className="card-header">
