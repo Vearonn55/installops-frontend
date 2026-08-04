@@ -1,5 +1,5 @@
 // src/pages/manager/TransfersPage.tsx
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -28,6 +28,7 @@ import {
   installationInDateRange,
 } from '../../lib/date-range';
 import { useManagerStoreScope } from '../../hooks/use-manager-store-scope';
+import { useSessionState } from '../../hooks/use-session-state';
 import { useAuthStore } from '../../stores/auth';
 import {
   listTransfers,
@@ -146,17 +147,27 @@ export default function TransfersPage() {
   const { hasRole } = useAuthStore();
   const isAdmin = hasRole('ADMIN');
 
-  const rangeDefault = useMemo(() => defaultDateRangeInstallationsList(), []);
-
-  const [q, setQ] = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
-  const [adminStoreId, setAdminStoreId] = useState<string>('');
-  const [status, setStatus] = useState<UiTransferStatus | 'all'>('all');
-  const [from, setFrom] = useState<string>(rangeDefault.from);
-  const [to, setTo] = useState<string>(rangeDefault.to);
-  const [sortBy, setSortBy] = useState<'start' | 'transferCode' | 'depots' | 'status'>('transferCode');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
+  const [q, setQ] = useSessionState<string>('transfers.q', '');
+  const [debouncedQ, setDebouncedQ] = useState(() => q.trim());
+  const [adminStoreId, setAdminStoreId] = useSessionState<string>('transfers.storeId', '');
+  const [status, setStatus] = useSessionState<UiTransferStatus | 'all'>(
+    'transfers.status',
+    'all'
+  );
+  const [from, setFrom] = useSessionState<string>(
+    'transfers.from',
+    () => defaultDateRangeInstallationsList().from
+  );
+  const [to, setTo] = useSessionState<string>(
+    'transfers.to',
+    () => defaultDateRangeInstallationsList().to
+  );
+  const [sortBy, setSortBy] = useSessionState<'start' | 'transferCode' | 'depots' | 'status'>(
+    'transfers.sortBy',
+    'transferCode'
+  );
+  const [sortDir, setSortDir] = useSessionState<'asc' | 'desc'>('transfers.sortDir', 'desc');
+  const [page, setPage] = useSessionState<number>('transfers.page', 1);
   const pageSize = 10;
 
   useEffect(() => {
@@ -164,9 +175,15 @@ export default function TransfersPage() {
     return () => window.clearTimeout(timer);
   }, [q]);
 
+  // Skip the mount run so the restored page number is not reset to 1.
+  const skipFirstPageReset = useRef(true);
   useEffect(() => {
+    if (skipFirstPageReset.current) {
+      skipFirstPageReset.current = false;
+      return;
+    }
     setPage(1);
-  }, [q, status, from, to, adminStoreId]);
+  }, [q, status, from, to, adminStoreId, setPage]);
 
   const storesQuery = useQuery({
     queryKey: ['stores'],

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { AlertTriangle, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react';
@@ -8,6 +8,7 @@ import { listStores } from '../../api/stores';
 import { formatUiDateTime } from '../../lib/date-display';
 import { pageHeaderClass } from '../../lib/responsive-layout';
 import { useDateDisplayStore } from '../../stores/date-display';
+import { useSessionState } from '../../hooks/use-session-state';
 import type { UUID } from '../../api/http';
 import { cn } from '../../lib/utils';
 
@@ -22,9 +23,9 @@ export default function AdminIssuesPage() {
   const { t } = useTranslation('common');
   useDateDisplayStore((s) => s.datePattern);
 
-  const [search, setSearch] = useState('');
-  const [storeId, setStoreId] = useState('');
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useSessionState<string>('adminIssues.search', '');
+  const [storeId, setStoreId] = useSessionState<string>('adminIssues.storeId', '');
+  const [page, setPage] = useSessionState<number>('adminIssues.page', 1);
   const offset = (page - 1) * PAGE_SIZE;
 
   const storesQuery = useQuery({

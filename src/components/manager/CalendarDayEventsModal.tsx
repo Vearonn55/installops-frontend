@@ -29,6 +29,8 @@ type Props = {
   onClose: () => void;
   eventPath: (ev: CalendarDayEvent) => string;
   eventTimeLabel: (ev: CalendarDayEvent) => string;
+  /** Replaces the default full-day heading (e.g. for a single time slot). */
+  titleOverride?: string;
 };
 
 function statusLabelKey(status: string): string {
@@ -84,6 +86,7 @@ export default function CalendarDayEventsModal({
   onClose,
   eventPath,
   eventTimeLabel,
+  titleOverride,
 }: Props) {
   const { t } = useTranslation('common');
 
@@ -104,7 +107,7 @@ export default function CalendarDayEventsModal({
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <h2 id="calendar-day-modal-title" className="text-base font-semibold text-gray-900">
-              {t('calendarPage.dayModal.title', { date: formatUiFullFromDate(date) })}
+              {titleOverride ?? t('calendarPage.dayModal.title', { date: formatUiFullFromDate(date) })}
             </h2>
             <p className="text-xs text-gray-500">
               {t('calendarPage.dayModal.count', { count: events.length })}

@@ -21,6 +21,8 @@ export type CrewJobView = {
   customerName: string;
   storeName: string;
   address: string;
+  /** Manager-provided Google Maps link for the site (installations only). */
+  mapsUrl?: string;
   phone: string;
   crewNames: string[];
   start: string;
@@ -234,6 +236,7 @@ export function buildCrewJobView(
     customerName,
     storeName: store?.name?.trim() || '—',
     address,
+    mapsUrl: inst.maps_url?.trim() || undefined,
     phone,
     crewNames: crewMemberNames(inst),
     start,
@@ -306,4 +309,19 @@ export function mergeArpIntoCrewJobView(
 export function fmtTimeRange(startISO: string, endISO: string): string {
   const f = (iso: string) => formatUiTime(iso);
   return `${f(startISO)}–${f(endISO)}`;
+}
+
+/**
+ * Google Maps navigation link for a crew job: the manager-provided link when
+ * set, otherwise a Maps search on the job address (often just a zone name,
+ * but still a usable starting point). Returns null when there is nothing to
+ * navigate to.
+ */
+export function crewMapsHref(
+  job: Pick<CrewJobView, 'mapsUrl' | 'address'>
+): string | null {
+  if (job.mapsUrl) return job.mapsUrl;
+  const address = job.address?.trim();
+  if (!address || address === '—') return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }

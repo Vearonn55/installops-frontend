@@ -1,5 +1,5 @@
 // src/pages/manager/InstallationsPage.tsx
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -25,10 +25,11 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import { formatUiDateTime } from '../../lib/date-display';
 import {
-  defaultDateRangeInstallationsList,
+  defaultDateRangeToday,
   installationInDateRange,
 } from '../../lib/date-range';
 import { useManagerStoreScope } from '../../hooks/use-manager-store-scope';
+import { useSessionState } from '../../hooks/use-session-state';
 import { useAuthStore } from '../../stores/auth';
 import {
   listInstallations,
@@ -189,26 +190,33 @@ export default function InstallationsPage() {
   const { hasRole, user } = useAuthStore();
   const isAdmin = hasRole('ADMIN');
 
-  const installationsRangeDefault = useMemo(
-    () => defaultDateRangeInstallationsList(),
-    []
+  // Filters (session-persisted so they survive navigating to detail and back)
+  const [q, setQ] = useSessionState<string>('installations.q', '');
+  const [debouncedQ, setDebouncedQ] = useState(() => q.trim());
+  const [status, setStatus] = useSessionState<InstallationStatus | 'all'>(
+    'installations.status',
+    'all'
   );
+  const [zone, setZone] = useSessionState<Zone | 'all'>('installations.zone', 'all');
 
-  // Filters
-  const [q, setQ] = useState('');
-  const [debouncedQ, setDebouncedQ] = useState('');
-  const [status, setStatus] = useState<InstallationStatus | 'all'>('all');
-  const [zone, setZone] = useState<Zone | 'all'>('all');
-
-  const [from, setFrom] = useState<string>(installationsRangeDefault.from);
-  const [to, setTo] = useState<string>(installationsRangeDefault.to);
+  const [from, setFrom] = useSessionState<string>(
+    'installations.from',
+    () => defaultDateRangeToday().from
+  );
+  const [to, setTo] = useSessionState<string>(
+    'installations.to',
+    () => defaultDateRangeToday().to
+  );
 
   // Sort & pagination
-  const [sortBy, setSortBy] = useState<'start' | 'installCode' | 'customer' | 'zone' | 'status'>(
-    'installCode'
+  const [sortBy, setSortBy] = useSessionState<
+    'start' | 'installCode' | 'customer' | 'zone' | 'status'
+  >('installations.sortBy', 'installCode');
+  const [sortDir, setSortDir] = useSessionState<'asc' | 'desc'>(
+    'installations.sortDir',
+    'desc'
   );
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useSessionState<number>('installations.page', 1);
   const pageSize = 10;
 
   useEffect(() => {
@@ -216,9 +224,15 @@ export default function InstallationsPage() {
     return () => window.clearTimeout(t);
   }, [q]);
 
+  // Reset pagination when filters change, but not on mount (would wipe the restored page).
+  const skipFirstPageReset = useRef(true);
   useEffect(() => {
+    if (skipFirstPageReset.current) {
+      skipFirstPageReset.current = false;
+      return;
+    }
     setPage(1);
-  }, [q, status, zone, from, to]);
+  }, [q, status, zone, from, to, setPage]);
 
   // Fetch stores first (names, cities, manager scope)
   const storesQuery = useQuery({
@@ -229,7 +243,10 @@ export default function InstallationsPage() {
   const { homeStoreId } = useManagerStoreScope();
 
   const installationsQuery = useInfiniteQuery({
-    queryKey: ['installations', { scope: isAdmin ? 'all' : homeStoreId ?? 'none', q: debouncedQ }],
+    queryKey: [
+      'installations',
+      { scope: isAdmin ? 'all' : homeStoreId ?? 'none', q: debouncedQ, from, to },
+    ],
     enabled:
       storesQuery.isSuccess && (isAdmin || Boolean(homeStoreId)),
     queryFn: async ({ pageParam }) => {
@@ -238,6 +255,8 @@ export default function InstallationsPage() {
         limit: INSTALLATIONS_PAGE_SIZE,
         offset,
         ...(debouncedQ ? { q: debouncedQ } : {}),
+        ...(from ? { from } : {}),
+        ...(to ? { to } : {}),
       });
     },
     initialPageParam: 0,
@@ -634,22 +653,36 @@ export default function InstallationsPage() {
         </div>
         </div>
 
-        <DateRangeFilter
-          from={from}
-          to={to}
-          fromLabel={t('installationsPage.filters.from')}
-          toLabel={t('installationsPage.filters.to')}
-          onFromChange={(val) => {
-            setFrom(val);
-            if (to && val > to) setTo(val);
-            setPage(1);
-          }}
-          onToChange={(val) => {
-            setTo(val);
-            if (from && val < from) setFrom(val);
-            setPage(1);
-          }}
-        />
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
+          <DateRangeFilter
+            from={from}
+            to={to}
+            fromLabel={t('installationsPage.filters.from')}
+            toLabel={t('installationsPage.filters.to')}
+            onFromChange={(val) => {
+              setFrom(val);
+              if (to && val > to) setTo(val);
+              setPage(1);
+            }}
+            onToChange={(val) => {
+              setTo(val);
+              if (from && val < from) setFrom(val);
+              setPage(1);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const today = defaultDateRangeToday();
+              setFrom(today.from);
+              setTo(today.to);
+              setPage(1);
+            }}
+            className="min-h-11 shrink-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            {t('installationsPage.filters.today')}
+          </button>
+        </div>
       </div>
 
       {/* Status quick filters */}

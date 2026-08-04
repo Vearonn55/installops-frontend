@@ -379,6 +379,11 @@ calendarPage: {
     empty: 'Bu günde etkinlik yok.',
   },
 
+  slotModal: {
+    title: 'Aynı saatte {{count}} kayıt • {{time}}',
+    overlapping: 'Aynı saatte {{count}} kayıt',
+  },
+
   loadingInstallations: 'Kurulumlar yükleniyor…',
   failedToLoadInstallations: 'Kurulumlar yüklenemedi.',
   noInstallationsThisMonth: 'Bu ay için kurulum bulunmuyor.',
@@ -416,6 +421,7 @@ installationsPage: {
     allZones: 'Tüm bölgeler',
     from: 'Başlangıç',
     to: 'Bitiş',
+    today: 'Bugün',
   },
 
   chips: {
@@ -843,6 +849,8 @@ installationDetailPage: {
     store: 'Mağaza:',
     start: 'Başlangıç:',
     end: 'Bitiş:',
+    location: 'Bölge:',
+    openInMaps: "Google Maps'te aç",
   },
 
   crewCard: {
@@ -997,6 +1005,12 @@ profilePage: {
       subPlaceholder: 'Yerleşim yeri seçin (isteğe bağlı)',
     },
 
+    mapsUrl: {
+      label: 'Google Maps bağlantısı',
+      placeholder: 'https://maps.app.goo.gl/…',
+      hint: 'Ekibin doğrudan navigasyon yapabilmesi için konumun Google Maps bağlantısını yapıştırın.',
+    },
+
     difficulty: {
       title: 'Kurulum Zorluğu',
       subtitle: 'Bir seçenek seçin',
@@ -1110,6 +1124,7 @@ profilePage: {
     backToJobs: 'İşlere dön',
     openChecklist: 'Kontrol listesi',
     customerPaymentNote: 'Ödeme notu',
+    navigate: 'Google Maps ile yol tarifi al',
     checklist: {
       title: 'Kurulum kontrol listesi',
       subtitle: 'Standart teslim kontrolü',

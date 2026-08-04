@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../lib/utils';
 import {
   crewJobCardClass,
+  crewMapsHref,
   crewStatusLabelKey,
   crewStatusPillClass,
   fmtTimeRange,
@@ -10,6 +11,7 @@ import {
   isCrewStartableStatus,
   type CrewJobView,
 } from '../../lib/crew-job';
+import NavigateButton from './NavigateButton';
 
 type Props = {
   job: CrewJobView;
@@ -28,6 +30,7 @@ export default function CrewJobCard({
 }: Props) {
   const { t } = useTranslation('common');
   const previewOnly = isCrewPreviewOnlyStatus(job.status);
+  const mapsHref = job.kind === 'installation' ? crewMapsHref(job) : null;
 
   return (
     <article
@@ -86,7 +89,10 @@ export default function CrewJobCard({
           <div className="space-y-1.5 pt-1 text-sm text-gray-800">
             <div className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />
-              <span className="break-words leading-snug">{job.address}</span>
+              <span className="min-w-0 flex-1 break-words leading-snug">
+                {job.address}
+              </span>
+              {mapsHref ? <NavigateButton href={mapsHref} compact /> : null}
             </div>
             {job.phone ? (
               <span

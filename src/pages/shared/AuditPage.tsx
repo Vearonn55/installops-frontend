@@ -24,6 +24,7 @@ import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { formatUiDateTime } from '../../lib/date-display';
 import { DateRangeFilter } from '../../components/filters/DateRangeFilter';
 import { useDateDisplayStore } from '../../stores/date-display';
+import { useSessionState } from '../../hooks/use-session-state';
 import { listAuditLogs, type AuditLog } from '../../api/auditLogs';
 
 const PAGE_SIZE = 20;
@@ -36,17 +37,22 @@ export default function AuditPage() {
   useDateDisplayStore((s) => s.datePattern);
 
   /* ------------------ Filters ------------------ */
-  const [search, setSearch] = useState('');
-  const [actor, setActor] = useState('');
-  const [entity, setEntity] = useState('');
-  const auditRangeDefault = useMemo(() => defaultDateRangeOneMonthAhead(), []);
-  const [from, setFrom] = useState(auditRangeDefault.from);
-  const [to, setTo] = useState(auditRangeDefault.to);
+  const [search, setSearch] = useSessionState<string>('audit.search', '');
+  const [actor, setActor] = useSessionState<string>('audit.actor', '');
+  const [entity, setEntity] = useSessionState<string>('audit.entity', '');
+  const [from, setFrom] = useSessionState<string>(
+    'audit.from',
+    () => defaultDateRangeOneMonthAhead().from
+  );
+  const [to, setTo] = useSessionState<string>(
+    'audit.to',
+    () => defaultDateRangeOneMonthAhead().to
+  );
 
   /* ------------------ Sorting & Pagination ------------------ */
-  const [sortKey, setSortKey] = useState<SortKey>('created_at');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useSessionState<SortKey>('audit.sortKey', 'created_at');
+  const [sortDir, setSortDir] = useSessionState<SortDir>('audit.sortDir', 'desc');
+  const [page, setPage] = useSessionState<number>('audit.page', 1);
 
   const offset = (page - 1) * PAGE_SIZE;
 

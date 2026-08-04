@@ -99,6 +99,7 @@ export default function CreateInstallationPage() {
   const [timeInput, setTimeInput] = useState('09:00');
   const [mainZone, setMainZone] = useState<string>('');
   const [subZone, setSubZone] = useState<string>('');
+  const [mapsUrl, setMapsUrl] = useState<string>('');
   const [crewIds, setCrewIds] = useState<string[]>([]);
   const [notes, setNotes] = useState<string>('');
   const [customerPaymentNote, setCustomerPaymentNote] = useState<string>('');
@@ -242,6 +243,7 @@ export default function CreateInstallationPage() {
         notes: notes || null,
         difficulty: difficulty as DifficultyValue,
         location: zoneLabel,
+        maps_url: mapsUrl.trim() || null,
         customer_name: customerName,
         customer_phone: customerPhone,
         customer_payment_note: customerPaymentNote.trim() || null,
@@ -485,6 +487,21 @@ export default function CreateInstallationPage() {
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-sm font-medium text-gray-700">
+                  {t('createInstallationPage.mapsUrl.label')}
+                </span>
+                <input
+                  type="url"
+                  className="input w-full"
+                  placeholder={t('createInstallationPage.mapsUrl.placeholder')}
+                  value={mapsUrl}
+                  onChange={(e) => setMapsUrl(e.target.value)}
+                />
+                <span className="text-xs text-gray-500">
+                  {t('createInstallationPage.mapsUrl.hint')}
+                </span>
               </label>
             </div>
           </section>

@@ -18,6 +18,7 @@ import RowActionsMenu, { type RowActionItem } from '../../components/ui/RowActio
 import { pageHeaderClass, pageHeaderActionsClass, primaryButtonClass } from '../../lib/responsive-layout';
 import { roleNeedsStore } from '../../lib/user-roles';
 import { useAuthStore } from '../../stores/auth';
+import { useSessionState } from '../../hooks/use-session-state';
 
 type Role = {
   id: string;
@@ -63,10 +64,10 @@ export default function UsersPage() {
   const { user: me } = useAuthStore();
   const { t } = useTranslation('common');
 
-  const [roleIdFilter, setRoleIdFilter] = useState('');
-  const [storeIdFilter, setStoreIdFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [q, setQ] = useState('');
+  const [roleIdFilter, setRoleIdFilter] = useSessionState<string>('users.roleId', '');
+  const [storeIdFilter, setStoreIdFilter] = useSessionState<string>('users.storeId', '');
+  const [statusFilter, setStatusFilter] = useSessionState<string>('users.status', '');
+  const [q, setQ] = useSessionState<string>('users.q', '');
 
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<UserRow | null>(null);

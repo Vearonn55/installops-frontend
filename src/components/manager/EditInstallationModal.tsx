@@ -44,6 +44,7 @@ type FormState = {
   scheduled_end: string;
   mainZone: string;
   subZone: string;
+  maps_url: string;
   difficulty: DifficultyValue | '';
   customer_name: string;
   customer_phone: string;
@@ -72,6 +73,7 @@ function formFromInstallation(inst: Installation): FormState {
     scheduled_end: formatScheduleDateTimeInput(inst.scheduled_end ?? null),
     mainZone: mainValue,
     subZone: subValue,
+    maps_url: inst.maps_url?.trim() ?? '',
     difficulty: (inst.difficulty as DifficultyValue | null) ?? '',
     customer_name: inst.customer_name?.trim() ?? '',
     customer_phone: inst.customer_phone?.trim() ?? '',
@@ -215,6 +217,7 @@ export default function EditInstallationModal({
         scheduled_end: scheduledEndIso,
         notes: form.notes.trim() || null,
         location: zoneLabel,
+        maps_url: form.maps_url.trim() || null,
         difficulty: form.difficulty,
         customer_name: form.customer_name.trim() || null,
         customer_phone: form.customer_phone.trim() || null,
@@ -449,6 +452,21 @@ export default function EditInstallationModal({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">
+                  {t('createInstallationPage.mapsUrl.label')}
+                </label>
+                <input
+                  type="url"
+                  className="input w-full"
+                  placeholder={t('createInstallationPage.mapsUrl.placeholder')}
+                  value={form.maps_url}
+                  onChange={(e) =>
+                    setForm((p) => (p ? { ...p, maps_url: e.target.value } : p))
+                  }
+                />
               </div>
 
               <div>

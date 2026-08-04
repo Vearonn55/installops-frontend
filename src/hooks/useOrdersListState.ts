@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { isAxiosError } from "../api/http";
 import { searchNetsisOrders, type NetsisOrderHit } from "../api/integrations";
@@ -15,6 +15,7 @@ import {
 import { queryKeys } from "../lib/query-client";
 import { useAuthStore } from "../stores/auth";
 import { useManagerStoreScope } from './use-manager-store-scope';
+import { useSessionState } from './use-session-state';
 
 const NETSIS_PAGE_SIZE = 50;
 const PAGE_SIZE = 10;
@@ -62,17 +63,24 @@ function orderMatchesStoreFilter(o: Order, storeId: string): boolean {
 export function useOrdersListState() {
   const isAdmin = useAuthStore((s) => s.hasRole("ADMIN"));
   const sessionValidated = useAuthStore((s) => s.sessionValidated);
-  const ordersRangeDefault = useMemo(() => defaultDateRangeOrdersList(), []);
-
-  const [q, setQ] = useState("");
-  const [status, setStatus] = useState<"all" | "pending" | "confirmed" | "cancelled">("all");
-  const [store, setStore] = useState("");
-  const [from, setFrom] = useState(ordersRangeDefault.from);
-  const [to, setTo] = useState(ordersRangeDefault.to);
-  const [sortBy, setSortBy] = useState<OrderSortKey>("placed_at");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [page, setPage] = useState(1);
-  const [debouncedFilterQ, setDebouncedFilterQ] = useState("");
+  const [q, setQ] = useSessionState<string>("orders.q", "");
+  const [status, setStatus] = useSessionState<"all" | "pending" | "confirmed" | "cancelled">(
+    "orders.status",
+    "all"
+  );
+  const [store, setStore] = useSessionState<string>("orders.store", "");
+  const [from, setFrom] = useSessionState<string>(
+    "orders.from",
+    () => defaultDateRangeOrdersList().from
+  );
+  const [to, setTo] = useSessionState<string>(
+    "orders.to",
+    () => defaultDateRangeOrdersList().to
+  );
+  const [sortBy, setSortBy] = useSessionState<OrderSortKey>("orders.sortBy", "placed_at");
+  const [sortDir, setSortDir] = useSessionState<SortDir>("orders.sortDir", "desc");
+  const [page, setPage] = useSessionState<number>("orders.page", 1);
+  const [debouncedFilterQ, setDebouncedFilterQ] = useState(() => q.trim());
   const [netsisDateFilterActive, setNetsisDateFilterActive] = useState(false);
 
   useEffect(() => {
@@ -83,13 +91,24 @@ export function useOrdersListState() {
     return () => window.clearTimeout(timer);
   }, [q]);
 
+  // Skip the mount run so the restored page number is not reset to 1.
+  const skipFilterPageReset = useRef(true);
   useEffect(() => {
+    if (skipFilterPageReset.current) {
+      skipFilterPageReset.current = false;
+      return;
+    }
     setPage(1);
-  }, [store, debouncedFilterQ, from, to, status]);
+  }, [store, debouncedFilterQ, from, to, status, setPage]);
 
+  const skipSortPageReset = useRef(true);
   useEffect(() => {
+    if (skipSortPageReset.current) {
+      skipSortPageReset.current = false;
+      return;
+    }
     setPage(1);
-  }, [sortBy, sortDir]);
+  }, [sortBy, sortDir, setPage]);
 
   const storesQuery = useQuery({
     queryKey: queryKeys.stores,

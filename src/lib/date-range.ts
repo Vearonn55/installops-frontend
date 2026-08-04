@@ -31,6 +31,14 @@ export function parseOrderDate(raw: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Default range for Installations: the current day only. */
+export function defaultDateRangeToday(
+  now: Date = new Date()
+): { from: string; to: string } {
+  const ymd = toYmd(now);
+  return { from: ymd, to: ymd };
+}
+
 /** Default range for Installations: last month through next month (recent + upcoming). */
 export function defaultDateRangeInstallationsList(
   now: Date = new Date()

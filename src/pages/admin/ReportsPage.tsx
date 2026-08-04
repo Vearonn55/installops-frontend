@@ -1,5 +1,5 @@
 // src/pages/admin/ReportsPage.tsx
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { defaultDateRangeOneMonthAhead } from '../../lib/date-range';
 import { formatUiDate } from '../../lib/date-display';
 import { useDateDisplayStore } from '../../stores/date-display';
+import { useSessionState } from '../../hooks/use-session-state';
 
 /* ---------- Local filter types ---------- */
 
@@ -79,12 +80,19 @@ export default function ReportsPage() {
   useDateDisplayStore((s) => s.datePattern);
 
   // default: today → one month ahead
-  const reportRangeDefaults = useMemo(() => defaultDateRangeOneMonthAhead(), []);
-
-  const [startDate, setStartDate] = useState<string>(reportRangeDefaults.from);
-  const [endDate, setEndDate] = useState<string>(reportRangeDefaults.to);
-  const [city, setCity] = useState<CityFilter>('All Cities');
-  const [storeFilter, setStoreFilter] = useState<StoreFilter>('All Stores');
+  const [startDate, setStartDate] = useSessionState<string>(
+    'reports.startDate',
+    () => defaultDateRangeOneMonthAhead().from
+  );
+  const [endDate, setEndDate] = useSessionState<string>(
+    'reports.endDate',
+    () => defaultDateRangeOneMonthAhead().to
+  );
+  const [city, setCity] = useSessionState<CityFilter>('reports.city', 'All Cities');
+  const [storeFilter, setStoreFilter] = useSessionState<StoreFilter>(
+    'reports.store',
+    'All Stores'
+  );
 
   // ensure start <= end
   const onStartChange = (val: string) => {

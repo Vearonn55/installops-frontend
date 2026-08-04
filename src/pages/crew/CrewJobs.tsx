@@ -8,6 +8,7 @@ import { cn } from '../../lib/utils';
 import { formatUiDayMonth } from '../../lib/date-display';
 import { toLocalYmd } from '../../lib/local-date';
 import { useAuthStore } from '../../stores/auth';
+import { useSessionState } from '../../hooks/use-session-state';
 import CrewJobCard from '../../components/crew/CrewJobCard';
 import {
   buildCrewJobView,
@@ -83,7 +84,11 @@ export default function CrewJobs() {
   const stripToday = dayStrip[STRIP_DAYS_BEFORE];
 
   const todayKey = stripToday.toDateString();
-  const [selectedKey, setSelectedKey] = useState<string>(todayKey);
+  // Session-persisted; activeDate falls back to today if the stored day left the strip.
+  const [selectedKey, setSelectedKey] = useSessionState<string>(
+    'crewJobs.selectedDay',
+    todayKey
+  );
   const todayButtonRef = useRef<HTMLButtonElement>(null);
 
   const dateRangeLabel = useMemo(() => {

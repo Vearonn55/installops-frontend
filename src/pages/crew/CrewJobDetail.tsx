@@ -29,6 +29,7 @@ import { useInstallationNetsis } from '../../hooks/use-installation-netsis';
 import {
   buildCrewJobView,
   crewJobCardClass,
+  crewMapsHref,
   crewStatusLabelKey,
   crewStatusPillClass,
   mergeArpIntoCrewJobView,
@@ -36,6 +37,7 @@ import {
   isCrewChecklistAllowedForJob,
   isCrewStartableStatus,
 } from '../../lib/crew-job';
+import NavigateButton from '../../components/crew/NavigateButton';
 import type { NetsisOrderLineView } from '../../api/integrations';
 
 type DisplayItem = {
@@ -198,6 +200,10 @@ function CrewInstallationJobDetail() {
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-gray-500" />
                   <span className="break-words leading-snug">{job.address}</span>
                 </div>
+                {(() => {
+                  const mapsHref = crewMapsHref(job);
+                  return mapsHref ? <NavigateButton href={mapsHref} /> : null;
+                })()}
                 {job.phone ? (
                   <a
                     href={`tel:${job.phone.replace(/\s/g, '')}`}

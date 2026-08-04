@@ -15,6 +15,7 @@ import {
   Trash2,
   Pencil,
   AlertTriangle,
+  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -86,6 +87,8 @@ type CrewAssignmentDto = {
 type InstallationWithRelations = Installation & {
   /** API field (Netsis / ERP order id); may differ from legacy `order_id` on type `Installation`. */
   external_order_id?: string;
+  location?: string | null;
+  maps_url?: string | null;
   crew_after_installation_notes?: string | null;
   checklist_failure_reason?: string | null;
   checklist_answers?: Partial<Record<string, boolean>> | null;
@@ -528,6 +531,25 @@ export default function InstallationDetailPage() {
                   : '—'}
               </span>
             </div>
+            {inst?.location ? (
+              <div>
+                {t('installationDetailPage.statusCard.location')}{' '}
+                <span className="text-gray-700">{inst.location}</span>
+              </div>
+            ) : null}
+            {inst?.maps_url ? (
+              <div>
+                <a
+                  href={inst.maps_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 font-medium text-primary-700 hover:underline"
+                >
+                  <MapPin className="h-4 w-4" />
+                  {t('installationDetailPage.statusCard.openInMaps')}
+                </a>
+              </div>
+            ) : null}
           </div>
         </div>
 

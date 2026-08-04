@@ -379,6 +379,11 @@ calendarPage: {
     empty: 'No events on this day.',
   },
 
+  slotModal: {
+    title: '{{count}} overlapping events • {{time}}',
+    overlapping: '{{count}} overlapping events',
+  },
+
   loadingInstallations: 'Loading installations…',
   failedToLoadInstallations: 'Failed to load installations.',
   noInstallationsThisMonth: 'No installations in this month.',
@@ -416,6 +421,7 @@ installationsPage: {
     allZones: 'All zones',
     from: 'From',
     to: 'To',
+    today: 'Today',
   },
 
   chips: {
@@ -843,6 +849,8 @@ installationDetailPage: {
     store: 'Store:',
     start: 'Start:',
     end: 'End:',
+    location: 'Zone:',
+    openInMaps: 'Open in Google Maps',
   },
 
   crewCard: {
@@ -997,6 +1005,12 @@ profilePage: {
       subPlaceholder: 'Select settlement (optional)',
     },
 
+    mapsUrl: {
+      label: 'Google Maps link',
+      placeholder: 'https://maps.app.goo.gl/…',
+      hint: 'Paste a Google Maps link to the site so the crew can navigate directly.',
+    },
+
     difficulty: {
       title: 'Installation Difficulty',
       subtitle: 'Select one option',
@@ -1110,6 +1124,7 @@ profilePage: {
     backToJobs: 'Back to jobs',
     openChecklist: 'Open checklist',
     customerPaymentNote: 'Payment note',
+    navigate: 'Navigate with Google Maps',
     checklist: {
       title: 'Installation checklist',
       subtitle: 'Standard install handover',

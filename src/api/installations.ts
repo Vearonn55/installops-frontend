@@ -58,6 +58,7 @@ export type Installation = {
   status: InstallStatus;
   notes?: string | null;
   location?: string | null;
+  maps_url?: string | null;
   difficulty?: 'easy' | 'intermediate' | 'hard' | null;
   customer_name?: string | null;
   customer_phone?: string | null;
@@ -93,6 +94,7 @@ export type InstallationCreate = {
   difficulty?: 'easy' | 'intermediate' | 'hard' | null;
   notes?: string | null;
   location?: string | null;
+  maps_url?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
   customer_payment_note?: string | null;
@@ -103,6 +105,9 @@ export type ListInstallationsParams = {
   store_id?: UUID;
   status?: InstallStatus;
   q?: string;
+  /** Inclusive scheduled-date range filter (YYYY-MM-DD). */
+  from?: string;
+  to?: string;
   limit?: number;
   offset?: number;
 };
@@ -112,6 +117,7 @@ export type UpdateSchedulePayload = {
   scheduled_end?: string | null;
   notes?: string | null;
   location?: string | null;
+  maps_url?: string | null;
   difficulty?: 'easy' | 'intermediate' | 'hard' | null;
   customer_name?: string | null;
   customer_phone?: string | null;

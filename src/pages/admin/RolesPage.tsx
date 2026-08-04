@@ -8,6 +8,7 @@ import * as usersApi from '../../api/users';
 import * as rolesApi from '../../api/roles';
 import type { Role as ApiRole } from '../../api/roles';
 import { cn } from '../../lib/utils';
+import { useSessionState } from '../../hooks/use-session-state';
 
 const UI_ROLES: UserRole[] = ['ADMIN', 'STORE_MANAGER', 'CREW'];
 
@@ -37,9 +38,9 @@ function uiRoleFromBackend(name: string | undefined | null): UserRole {
 
 export default function RolesPage() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'users' | 'definitions'>('users');
-  const [q, setQ] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [tab, setTab] = useSessionState<'users' | 'definitions'>('roles.tab', 'users');
+  const [q, setQ] = useSessionState<string>('roles.q', '');
+  const [roleFilter, setRoleFilter] = useSessionState<string>('roles.roleFilter', '');
 
   const apiRolesQuery = useQuery({
     queryKey: ['roles', 'definitions'],

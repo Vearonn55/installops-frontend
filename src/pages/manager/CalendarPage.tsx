@@ -25,6 +25,7 @@ import {
   transferStatusBadgeClass,
 } from '../../lib/transfer-status';
 import { useManagerStoreScope } from '../../hooks/use-manager-store-scope';
+import { useSessionState } from '../../hooks/use-session-state';
 import CalendarDayEventsModal, {
   type CalendarDayEvent,
 } from '../../components/manager/CalendarDayEventsModal';
@@ -236,6 +237,75 @@ function groupEventsByDay(events: CalendarEvent[]): Map<string, CalendarEvent[]>
   return m;
 }
 
+/* =============== Week view layout & overlap clustering =============== */
+type WeekEventLayout = { top: number; height: number };
+
+/** Rendered pixel position of an event within a week-view day column. */
+function eventLayout(ev: CalendarEvent, day: Date): WeekEventLayout {
+  const s = new Date(ev.scheduled_start || day);
+  const e = new Date(ev.scheduled_end || s);
+
+  const sh = s.getHours() + s.getMinutes() / 60;
+  const eh = e.getHours() + e.getMinutes() / 60;
+
+  const startClamped = Math.max(DAY_START, Math.min(sh, DAY_END));
+  const endClamped = Math.max(DAY_START, Math.min(eh, DAY_END));
+  const duration = Math.max(0.25, endClamped - startClamped);
+
+  const top = (startClamped - DAY_START) * HOUR_HEIGHT;
+  const height = Math.max(28, duration * HOUR_HEIGHT);
+  return { top, height };
+}
+
+type WeekEventCluster = {
+  events: CalendarEvent[];
+  top: number;
+  bottom: number;
+};
+
+/**
+ * Groups a day's events into clusters of visually overlapping cards
+ * (compared by rendered pixel bounds, so min-height collisions count too).
+ */
+function clusterOverlappingEvents(
+  events: CalendarEvent[],
+  day: Date
+): WeekEventCluster[] {
+  const placed = events
+    .map((ev) => ({ ev, layout: eventLayout(ev, day) }))
+    .sort((a, b) => a.layout.top - b.layout.top);
+
+  const clusters: WeekEventCluster[] = [];
+  for (const { ev, layout } of placed) {
+    const last = clusters[clusters.length - 1];
+    if (last && layout.top < last.bottom) {
+      last.events.push(ev);
+      last.bottom = Math.max(last.bottom, layout.top + layout.height);
+    } else {
+      clusters.push({
+        events: [ev],
+        top: layout.top,
+        bottom: layout.top + layout.height,
+      });
+    }
+  }
+  return clusters;
+}
+
+/** "10:00–12:30" span covering every event in an overlap cluster. */
+function clusterTimeLabel(events: CalendarEvent[]): string {
+  const starts = events
+    .map((e) => e.scheduled_start)
+    .filter(Boolean)
+    .sort();
+  const ends = events
+    .map((e) => e.scheduled_end || e.scheduled_start)
+    .filter(Boolean)
+    .sort();
+  if (!starts.length) return '';
+  return `${toLocalHM(starts[0])}–${toLocalHM(ends[ends.length - 1])}`;
+}
+
 function TransferKindBadge({ title }: { title: string }) {
   return (
     <span
@@ -293,13 +363,31 @@ export default function CalendarPage() {
   const { t, i18n } = useTranslation('common');
   const isAdmin = hasRole('ADMIN');
 
-  const [mode, setMode] = useState<ViewMode>(() =>
+  const [mode, setMode] = useSessionState<ViewMode>('calendar.mode', () =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
       ? 'week'
       : 'month'
   );
-  const [cursor, setCursor] = useState<Date>(() => new Date());
+  // Persist the cursor as YYYY-MM-DD (Dates don't survive JSON round-trips).
+  const [cursorYmd, setCursorYmd] = useSessionState<string>('calendar.cursor', () =>
+    fmtYYYYMMDD(new Date())
+  );
+  const cursor = useMemo(() => {
+    const d = new Date(`${cursorYmd}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? new Date() : d;
+  }, [cursorYmd]);
+  const setCursor = (update: Date | ((c: Date) => Date)) =>
+    setCursorYmd((prev) => {
+      const prevDate = new Date(`${prev}T00:00:00`);
+      const base = Number.isNaN(prevDate.getTime()) ? new Date() : prevDate;
+      const next = typeof update === 'function' ? update(base) : update;
+      return fmtYYYYMMDD(next);
+    });
   const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
+  const [slotModal, setSlotModal] = useState<{
+    date: Date;
+    events: CalendarEvent[];
+  } | null>(null);
 
   // Visible ranges
   const monthStart = startOfMonth(cursor);
@@ -748,53 +836,103 @@ export default function CalendarPage() {
                     />
                   ))}
 
-                  {/* Events */}
-                  {events.map((ev) => {
-                    const statusLabel = calendarEventStatusLabel(ev, t);
-                    const s = new Date(ev.scheduled_start || day);
-                    const e = new Date(ev.scheduled_end || s);
-
-                    const sh = s.getHours() + s.getMinutes() / 60;
-                    const eh = e.getHours() + e.getMinutes() / 60;
-
-                    const startClamped = Math.max(
-                      DAY_START,
-                      Math.min(sh, DAY_END)
-                    );
-                    const endClamped = Math.max(
-                      DAY_START,
-                      Math.min(eh, DAY_END)
-                    );
-                    const duration = Math.max(0.25, endClamped - startClamped);
-
-                    const top = (startClamped - DAY_START) * HOUR_HEIGHT;
-                    const height = Math.max(28, duration * HOUR_HEIGHT);
-
-                    return (
-                      <Link
-                        to={calendarEventPath(ev)}
-                        key={`${ev.kind}-${ev.id}`}
-                        className={cn(
-                          'absolute left-1 right-1 overflow-hidden rounded border px-2 py-1 text-[11px] font-medium shadow-sm transition-opacity hover:opacity-90',
-                          calendarEventStatusClasses(ev)
-                        )}
-                        style={{ top, height }}
-                        title={calendarEventTitle(ev, statusLabel)}
-                      >
-                        <div className="truncate">
-                          {ev.kind === 'transfer' ? (
-                            <TransferKindBadge title={t('calendarPage.transferIndicator')} />
+                  {/* Events (grouped so overlapping cards render as one stack) */}
+                  {clusterOverlappingEvents(events, day).map((cluster) => {
+                    if (cluster.events.length === 1) {
+                      const ev = cluster.events[0];
+                      const statusLabel = calendarEventStatusLabel(ev, t);
+                      return (
+                        <Link
+                          to={calendarEventPath(ev)}
+                          key={`${ev.kind}-${ev.id}`}
+                          className={cn(
+                            'absolute left-1 right-1 overflow-hidden rounded border px-2 py-1 text-[11px] font-medium shadow-sm transition-opacity hover:opacity-90',
+                            calendarEventStatusClasses(ev)
+                          )}
+                          style={{
+                            top: cluster.top,
+                            height: cluster.bottom - cluster.top,
+                          }}
+                          title={calendarEventTitle(ev, statusLabel)}
+                        >
+                          <div className="truncate">
+                            {ev.kind === 'transfer' ? (
+                              <TransferKindBadge title={t('calendarPage.transferIndicator')} />
+                            ) : null}
+                            {ev.label}
+                          </div>
+                          {ev.subtitle ? (
+                            <div className="truncate text-[10px] opacity-80">{ev.subtitle}</div>
                           ) : null}
-                          {ev.label}
-                        </div>
-                        {ev.subtitle ? (
-                          <div className="truncate text-[10px] opacity-80">{ev.subtitle}</div>
-                        ) : null}
-                        <div className="text-[10px] opacity-70">
-                          {toLocalHM(ev.scheduled_start)}–
-                          {toLocalHM(ev.scheduled_end)}
-                        </div>
-                      </Link>
+                          <div className="text-[10px] opacity-70">
+                            {toLocalHM(ev.scheduled_start)}–
+                            {toLocalHM(ev.scheduled_end)}
+                          </div>
+                        </Link>
+                      );
+                    }
+
+                    const first = cluster.events[0];
+                    const count = cluster.events.length;
+                    const timeLabel = clusterTimeLabel(cluster.events);
+                    return (
+                      <button
+                        type="button"
+                        key={`cluster-${key}-${cluster.top}`}
+                        onClick={() =>
+                          setSlotModal({ date: day, events: cluster.events })
+                        }
+                        className="absolute left-1 right-1 min-h-11 text-left"
+                        style={{
+                          top: cluster.top,
+                          height: Math.max(44, cluster.bottom - cluster.top),
+                        }}
+                        title={t('calendarPage.slotModal.title', {
+                          count,
+                          time: timeLabel,
+                        })}
+                        aria-haspopup="dialog"
+                      >
+                        {/* Offset layers so the card reads as a stack */}
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'pointer-events-none absolute inset-0 translate-x-1.5 translate-y-1.5 rounded border opacity-60',
+                            calendarEventStatusClasses(
+                              cluster.events[Math.min(2, count - 1)]
+                            )
+                          )}
+                        />
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'pointer-events-none absolute inset-0 translate-x-0.5 translate-y-0.5 rounded border opacity-80',
+                            calendarEventStatusClasses(cluster.events[1])
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            'absolute inset-0 flex flex-col overflow-hidden rounded border px-2 py-1 text-[11px] font-medium shadow-sm transition-opacity hover:opacity-90',
+                            calendarEventStatusClasses(first)
+                          )}
+                        >
+                          <span className="flex items-center justify-between gap-1">
+                            <span className="truncate">
+                              {first.kind === 'transfer' ? (
+                                <TransferKindBadge title={t('calendarPage.transferIndicator')} />
+                              ) : null}
+                              {first.label}
+                            </span>
+                            <span className="shrink-0 rounded-full bg-gray-900/80 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                              +{count - 1}
+                            </span>
+                          </span>
+                          <span className="truncate text-[10px] opacity-80">
+                            {t('calendarPage.slotModal.overlapping', { count })}
+                          </span>
+                          <span className="text-[10px] opacity-70">{timeLabel}</span>
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
@@ -830,6 +968,26 @@ export default function CalendarPage() {
         eventPath={calendarEventPath}
         eventTimeLabel={(ev) =>
           `${toLocalHM(ev.scheduled_start)}–${toLocalHM(ev.scheduled_end)}`
+        }
+      />
+      <CalendarDayEventsModal
+        open={Boolean(slotModal)}
+        date={slotModal?.date ?? null}
+        events={slotModal?.events ?? []}
+        storeNameById={storeNameById}
+        showStoreNames={isGrouped}
+        onClose={() => setSlotModal(null)}
+        eventPath={calendarEventPath}
+        eventTimeLabel={(ev) =>
+          `${toLocalHM(ev.scheduled_start)}–${toLocalHM(ev.scheduled_end)}`
+        }
+        titleOverride={
+          slotModal
+            ? t('calendarPage.slotModal.title', {
+                count: slotModal.events.length,
+                time: clusterTimeLabel(slotModal.events),
+              })
+            : undefined
         }
       />
     </div>
